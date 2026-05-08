@@ -1,6 +1,6 @@
 # Story 1.2: Workspace Configuration and Persistence
 
-Status: ready-for-dev
+Status: done
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -20,12 +20,24 @@ so that Episort only operates inside the folder I explicitly allow.
 
 ## Tasks / Subtasks
 
-- [ ] Write or update focused tests for prerequisite, settings, boundary, or feedback behavior before implementation. (AC: #1)
-- [ ] Implement the smallest production slice needed for the story in the responsible packages. (AC: #1)
-- [ ] Expose user-facing recoverable errors without secrets or stack traces. (AC: #1)
-- [ ] Run `./gradlew test` and document any manual JavaFX verification needed. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Write or update focused tests for prerequisite, settings, boundary, or feedback behavior before implementation. (AC: #1)
+- [x] Implement the smallest production slice needed for the story in the responsible packages. (AC: #1)
+- [x] Expose user-facing recoverable errors without secrets or stack traces. (AC: #1)
+- [x] Run `./gradlew test` and document any manual JavaFX verification needed. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+
+### Review Findings
+
+- [x] [Review][Patch] No Settings UI exists to select a workspace [src/main/java/com/episort/ui/AppShell.java:16]
+- [x] [Review][Patch] Persistence is not guaranteed outside the selected workspace [src/main/java/com/episort/workflow/WorkspaceConfigurationService.java:17]
+- [x] [Review][Patch] Malformed persisted workspace paths can crash startup instead of producing a recoverable blocking error [src/main/java/com/episort/config/FileSettingsStore.java:46]
+- [x] [Review][Patch] Settings load/save failures are not converted to UI-safe recoverable errors [src/main/java/com/episort/workflow/WorkspaceConfigurationService.java:22]
+- [x] [Review][Patch] `configureWorkspace(null)` can throw on directory chooser cancel paths [src/main/java/com/episort/workflow/WorkspaceConfigurationService.java:15]
+- [x] [Review][Patch] Settings location is hardcoded to a Windows-shaped `AppData` path [src/main/java/com/episort/config/FileSettingsStore.java:19]
+- [x] [Review][Patch] Settings save writes directly to the target file instead of using atomic replacement [src/main/java/com/episort/config/FileSettingsStore.java:56]
+- [x] [Review][Patch] `AppSettings` permits a null `Optional` component [src/main/java/com/episort/config/AppSettings.java:6]
+- [x] [Review][Patch] `AppShellViewModel.fromWorkspaceConfiguration()` can throw for inconsistent success results [src/main/java/com/episort/ui/AppShellViewModel.java:41]
 
 ## Dev Notes
 
@@ -115,10 +127,52 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex
 
 ### Debug Log References
 
+- `.\gradlew.bat test` first failed at compile time because the new workspace settings types did not exist yet.
+- Added the minimal config/workflow/UI implementation for workspace persistence and reload.
+- `.\gradlew.bat test` passed.
+- `.\gradlew.bat build` passed.
+- `.\gradlew.bat run` remained active after launch verification; launched processes were stopped after the smoke check.
+- Code review patches applied for Settings UI selection, settings/workspace boundary enforcement, malformed settings recovery, settings load/save recovery, directory chooser cancel handling, platform-aware config location, atomic settings writes, settings/result invariants, and defensive UI projection.
+- `.\gradlew.bat test` passed after review fixes.
+- `.\gradlew.bat build` passed after review fixes.
+- `.\gradlew.bat run` remained active after review-fix launch verification; launched processes were stopped after the smoke check.
+
 ### Completion Notes List
 
+- Added `AppSettings`, `SettingsStore`, and `FileSettingsStore` to persist workspace configuration in a user-profile settings file rather than the media workspace.
+- Added `WorkspaceConfigurationService` and `WorkspaceConfigurationResult` for valid workspace persistence, missing workspace state, and invalid/inaccessible workspace recoverable blocking errors.
+- Updated startup wiring so the JavaFX shell loads persisted workspace configuration and projects either the configured workspace or a safe recoverable error.
+- Added focused tests for persistence outside the workspace, restart reload, invalid workspace errors, empty settings, and UI display of configured workspace.
+- README was not changed for this story because no developer-facing command changed.
+- Added a minimal JavaFX Settings surface with a workspace chooser that calls the workflow service and updates the shell state.
+- Added safeguards for corrupted settings, unavailable settings storage, null workspace selection, and workspaces that would contain the settings file.
+- Settings writes now use a temporary file and atomic replacement when supported.
+
 ### File List
+
+- `src/main/java/com/episort/EpisortApplication.java`
+- `src/main/java/com/episort/config/AppSettings.java`
+- `src/main/java/com/episort/config/FileSettingsStore.java`
+- `src/main/java/com/episort/config/InvalidSettingsException.java`
+- `src/main/java/com/episort/config/SettingsStore.java`
+- `src/main/java/com/episort/config/SettingsStoreException.java`
+- `src/main/java/com/episort/ui/AppShell.java`
+- `src/main/java/com/episort/ui/AppShellViewModel.java`
+- `src/main/java/com/episort/ui/settings/SettingsPane.java`
+- `src/main/java/com/episort/workflow/StartupWorkflow.java`
+- `src/main/java/com/episort/workflow/WorkspaceConfigurationResult.java`
+- `src/main/java/com/episort/workflow/WorkspaceConfigurationService.java`
+- `src/test/java/com/episort/config/FileSettingsStoreTest.java`
+- `src/test/java/com/episort/ui/AppShellViewModelTest.java`
+- `src/test/java/com/episort/workflow/WorkspaceConfigurationServiceTest.java`
+- `_bmad-output/implementation-artifacts/1-2-workspace-configuration-and-persistence.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Change Log
+
+- 2026-05-08: Implemented workspace configuration persistence and marked story ready for review.
+- 2026-05-08: Resolved code review findings and marked story done.

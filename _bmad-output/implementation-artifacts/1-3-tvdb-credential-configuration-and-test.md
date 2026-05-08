@@ -1,6 +1,6 @@
 # Story 1.3: TVDB Credential Configuration and Test
 
-Status: ready-for-dev
+Status: done
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -20,12 +20,23 @@ so that I know metadata-backed organization can work before scanning.
 
 ## Tasks / Subtasks
 
-- [ ] Write or update focused tests for prerequisite, settings, boundary, or feedback behavior before implementation. (AC: #1)
-- [ ] Implement the smallest production slice needed for the story in the responsible packages. (AC: #1)
-- [ ] Expose user-facing recoverable errors without secrets or stack traces. (AC: #1)
-- [ ] Run `./gradlew test` and document any manual JavaFX verification needed. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Write or update focused tests for prerequisite, settings, boundary, or feedback behavior before implementation. (AC: #1)
+- [x] Implement the smallest production slice needed for the story in the responsible packages. (AC: #1)
+- [x] Expose user-facing recoverable errors without secrets or stack traces. (AC: #1)
+- [x] Run `./gradlew test` and document any manual JavaFX verification needed. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+
+### Review Findings
+
+- [x] [Review][Patch] Stored TVDB credentials are treated as valid without re-test, allowing invalid credentials to unblock organization [src/main/java/com/episort/workflow/TvdbCredentialConfigurationService.java:18]
+- [x] [Review][Patch] TVDB configuration gate is not applied to startup UI/prerequisite state [src/main/java/com/episort/EpisortApplication.java:26]
+- [x] [Review][Patch] Organization blocking is represented but not enforced by a shared workflow prerequisite gate [src/main/java/com/episort/workflow/TvdbCredentialConfigurationResult.java:6]
+- [x] [Review][Patch] TVDB network test runs synchronously from the JavaFX settings button [src/main/java/com/episort/ui/settings/SettingsPane.java:42]
+- [x] [Review][Patch] TVDB login accepts any 2xx response without verifying a usable token [src/main/java/com/episort/tvdb/HttpTvdbConnectionTester.java:37]
+- [x] [Review][Patch] TVDB credential temp files can remain after save failure [src/main/java/com/episort/config/FileTvdbCredentialStore.java:56]
+- [x] [Review][Patch] TVDB credentials are stored as raw properties without owner-only permission hardening [src/main/java/com/episort/config/FileTvdbCredentialStore.java:54]
+- [x] [Review][Patch] Recoverable failure details are discarded from UI feedback [src/main/java/com/episort/ui/AppShellViewModel.java:24]
 
 ## Dev Notes
 
@@ -115,10 +126,61 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex
 
 ### Debug Log References
 
+- `.\gradlew.bat test` first failed at compile time because the new TVDB credential and workflow types did not exist yet.
+- Added credential storage, TVDB connection-test workflow, UI Settings fields, and HTTP TVDB login adapter.
+- `.\gradlew.bat test` passed.
+- `.\gradlew.bat build` passed.
+- `.\gradlew.bat run` remained active after launch verification; launched processes were stopped after the smoke check.
+- No live TVDB credential was available in the repo/session, so live success against TVDB was not executed; success/failure behavior is covered through the `TvdbConnectionTester` port tests.
+- Code review patches applied for credential re-test, startup prerequisite gating, shared organization prerequisite gate, async TVDB test UI, TVDB token validation, temp credential cleanup, owner-only POSIX permissions where supported, and redacted error detail display.
+- `.\gradlew.bat test` passed after review fixes.
+- `.\gradlew.bat build` passed after review fixes.
+- `.\gradlew.bat run` remained active after review-fix launch verification; launched processes were stopped after the smoke check.
+
 ### Completion Notes List
 
+- Added `TvdbCredentials`, `TvdbCredentialStore`, `FileTvdbCredentialStore`, and `InMemoryTvdbCredentialStore`.
+- Added `TvdbCredentialConfigurationService` and result types to block organization when TVDB configuration is missing or the connection test fails.
+- Added `HttpTvdbConnectionTester` adapter for TVDB v4 login test without storing returned tokens.
+- Extended Settings UI with TVDB API key/PIN inputs and a `Test TVDB` action.
+- Ensured failed TVDB tests do not persist credentials and user-facing failures are redacted.
+- README was not changed for this story because no developer-facing command changed.
+- Stored TVDB credentials are re-tested before organization is allowed.
+- Startup state now combines workspace and TVDB readiness.
+- `HttpTvdbConnectionTester` requires a token-bearing response and has local HTTP contract tests.
+
 ### File List
+
+- `src/main/java/com/episort/EpisortApplication.java`
+- `src/main/java/com/episort/config/FileTvdbCredentialStore.java`
+- `src/main/java/com/episort/config/InMemoryTvdbCredentialStore.java`
+- `src/main/java/com/episort/config/TvdbCredentialStore.java`
+- `src/main/java/com/episort/config/TvdbCredentials.java`
+- `src/main/java/com/episort/logging/SecretRedactor.java`
+- `src/main/java/com/episort/tvdb/HttpTvdbConnectionTester.java`
+- `src/main/java/com/episort/ui/AppShell.java`
+- `src/main/java/com/episort/ui/AppShellViewModel.java`
+- `src/main/java/com/episort/ui/settings/SettingsPane.java`
+- `src/main/java/com/episort/workflow/StartupWorkflow.java`
+- `src/main/java/com/episort/workflow/OrganizationPrerequisitesResult.java`
+- `src/main/java/com/episort/workflow/TvdbConnectionTester.java`
+- `src/main/java/com/episort/workflow/TvdbConnectionTestResult.java`
+- `src/main/java/com/episort/workflow/TvdbCredentialConfigurationResult.java`
+- `src/main/java/com/episort/workflow/TvdbCredentialConfigurationService.java`
+- `src/test/java/com/episort/config/FileTvdbCredentialStoreTest.java`
+- `src/test/java/com/episort/logging/SecretRedactorTest.java`
+- `src/test/java/com/episort/ui/AppShellViewModelTest.java`
+- `src/test/java/com/episort/tvdb/HttpTvdbConnectionTesterTest.java`
+- `src/test/java/com/episort/workflow/StartupWorkflowTest.java`
+- `src/test/java/com/episort/workflow/TvdbCredentialConfigurationServiceTest.java`
+- `_bmad-output/implementation-artifacts/1-3-tvdb-credential-configuration-and-test.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Change Log
+
+- 2026-05-08: Implemented TVDB credential configuration and test workflow, then marked story ready for review.
+- 2026-05-08: Resolved code review findings and marked story done.

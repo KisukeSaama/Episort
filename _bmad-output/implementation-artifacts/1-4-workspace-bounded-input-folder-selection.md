@@ -1,6 +1,6 @@
 # Story 1.4: Workspace-Bounded Input Folder Selection
 
-Status: ready-for-dev
+Status: review
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -20,12 +20,12 @@ so that accidental operations outside the allowed boundary are impossible.
 
 ## Tasks / Subtasks
 
-- [ ] Write or update focused tests for prerequisite, settings, boundary, or feedback behavior before implementation. (AC: #1)
-- [ ] Implement the smallest production slice needed for the story in the responsible packages. (AC: #1)
-- [ ] Expose user-facing recoverable errors without secrets or stack traces. (AC: #1)
-- [ ] Run `./gradlew test` and document any manual JavaFX verification needed. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Write or update focused tests for prerequisite, settings, boundary, or feedback behavior before implementation. (AC: #1)
+- [x] Implement the smallest production slice needed for the story in the responsible packages. (AC: #1)
+- [x] Expose user-facing recoverable errors without secrets or stack traces. (AC: #1)
+- [x] Run `./gradlew test` and document any manual JavaFX verification needed. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
 
 ## Dev Notes
 
@@ -115,10 +115,31 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex
 
 ### Debug Log References
 
+- `./gradlew.bat test` with local JDK 21: passed
+- `./gradlew.bat build` with local JDK 21: passed
+- `./gradlew.bat run` JavaFX smoke: app remained active after launch window
+
 ### Completion Notes List
 
+- Added workspace boundary validation that resolves candidate folders before acceptance and rejects outside paths or symlink escapes.
+- Added input folder selection workflow with typed recoverable errors for missing workspace, missing input, invalid input, and outside-workspace input.
+- Exposed input folder selection in the JavaFX settings pane without persisting or mutating media files.
+- No README update required; no developer-facing command or setup changed in this story.
+
 ### File List
+
+- `src/main/java/com/episort/filesystem/WorkspaceBoundary.java`
+- `src/main/java/com/episort/workflow/InputFolderSelectionResult.java`
+- `src/main/java/com/episort/workflow/InputFolderSelectionService.java`
+- `src/main/java/com/episort/workflow/StartupWorkflow.java`
+- `src/main/java/com/episort/ui/AppShell.java`
+- `src/main/java/com/episort/ui/AppShellViewModel.java`
+- `src/main/java/com/episort/ui/settings/SettingsPane.java`
+- `src/main/java/com/episort/EpisortApplication.java`
+- `src/test/java/com/episort/filesystem/WorkspaceBoundaryTest.java`
+- `src/test/java/com/episort/workflow/InputFolderSelectionServiceTest.java`
+- `src/test/java/com/episort/ui/AppShellViewModelTest.java`

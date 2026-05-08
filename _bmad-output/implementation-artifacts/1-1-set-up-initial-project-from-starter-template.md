@@ -1,6 +1,6 @@
 # Story 1.1: Set Up Initial Project from Starter Template
 
-Status: ready-for-dev
+Status: done
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -21,12 +21,22 @@ so that I can start configuration from a stable application shell.
 
 ## Tasks / Subtasks
 
-- [ ] Write or update focused tests for prerequisite, settings, boundary, or feedback behavior before implementation. (AC: #1)
-- [ ] Implement the smallest production slice needed for the story in the responsible packages. (AC: #1)
-- [ ] Expose user-facing recoverable errors without secrets or stack traces. (AC: #1)
-- [ ] Run `./gradlew test` and document any manual JavaFX verification needed. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Write or update focused tests for prerequisite, settings, boundary, or feedback behavior before implementation. (AC: #1)
+- [x] Implement the smallest production slice needed for the story in the responsible packages. (AC: #1)
+- [x] Expose user-facing recoverable errors without secrets or stack traces. (AC: #1)
+- [x] Run `./gradlew test` and document any manual JavaFX verification needed. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+
+### Review Findings
+
+- [x] [Review][Patch] UI-safe errors can leak secrets placed in `message` [src/main/java/com/episort/workflow/ApplicationError.java:14]
+- [x] [Review][Patch] Redactor misses common JSON/log credential shapes [src/main/java/com/episort/logging/SecretRedactor.java:9]
+- [x] [Review][Patch] Redactor throws on null log messages [src/main/java/com/episort/logging/SecretRedactor.java:14]
+- [x] [Review][Patch] JavaFX boundary test allows non-UI packages whose name starts with `ui` [src/test/java/com/episort/ArchitectureBoundaryTest.java:41]
+- [x] [Review][Patch] JavaFX launch acceptance remains manually unverified [src/main/java/com/episort/EpisortApplication.java:8]
+- [x] [Review][Patch] `ui.settings` responsible package boundary is missing [_bmad-output/implementation-artifacts/1-1-set-up-initial-project-from-starter-template.md:46]
+- [x] [Review][Patch] Recoverable error exposure is not wired into the application shell [src/main/java/com/episort/EpisortApplication.java:11]
 
 ## Dev Notes
 
@@ -116,10 +126,64 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex
 
 ### Debug Log References
 
+- `.\gradlew.bat test` initially failed because the Gradle wrapper jar was not present.
+- Temporary local tools were downloaded under ignored `.tools/` to generate the Gradle wrapper and run verification with JDK 21.
+- `.\gradlew.bat test` failed once because the JUnit Platform launcher was not aligned; added explicit `testRuntimeOnly("org.junit.platform:junit-platform-launcher")`.
+- `.\gradlew.bat test` failed once because the architecture boundary test treated the JavaFX launcher as a non-UI violation; excluded `EpisortApplication.java` while preserving the package-boundary rule for non-UI packages.
+- `.\gradlew.bat test` passed.
+- `.\gradlew.bat build` passed.
+- Code review patches applied for safe error redaction, JSON credential redaction, null redaction handling, exact UI boundary tests, `ui.settings` package boundary, startup error wiring, and JavaFX run verification.
+- `.\gradlew.bat run` remained active after launch verification; launched processes were stopped after the smoke check.
+
 ### Completion Notes List
 
+- Initialized a Gradle Java application using Kotlin DSL, Java 21 toolchain, OpenJFX plugin, JavaFX controls, and JUnit 5.
+- Added a JavaFX application shell with a minimal settings-required startup state.
+- Added typed recoverable application errors and log secret redaction coverage.
+- Added package-boundary marker packages for `ui`, `workflow`, `config`, `filesystem`, `scanner`, `matching`, `planning`, `tvdb`, `ai`, `persistence`, and `logging`.
+- Added architecture-boundary, UI view model, application error, and secret redaction tests.
+- Updated README with the developer commands introduced by the scaffold.
+- JavaFX launch smoke verification completed with `.\gradlew.bat run`; the app process stayed active after startup and was stopped after verification.
+- Code review follow-ups resolved: UI-safe messages are redacted, JSON credential log shapes are covered, null redaction is handled, architecture boundary tests match the exact `ui` package, `ui.settings` exists, startup shell uses workflow-backed recoverable error state, and `.\gradlew.bat run` launch was smoke-verified.
+
 ### File List
+
+- `.gitignore`
+- `README.md`
+- `build.gradle.kts`
+- `settings.gradle.kts`
+- `gradlew`
+- `gradlew.bat`
+- `gradle/wrapper/gradle-wrapper.jar`
+- `gradle/wrapper/gradle-wrapper.properties`
+- `src/main/java/com/episort/EpisortApplication.java`
+- `src/main/java/com/episort/ai/package-info.java`
+- `src/main/java/com/episort/config/package-info.java`
+- `src/main/java/com/episort/filesystem/package-info.java`
+- `src/main/java/com/episort/logging/SecretRedactor.java`
+- `src/main/java/com/episort/matching/package-info.java`
+- `src/main/java/com/episort/persistence/package-info.java`
+- `src/main/java/com/episort/planning/package-info.java`
+- `src/main/java/com/episort/scanner/package-info.java`
+- `src/main/java/com/episort/tvdb/package-info.java`
+- `src/main/java/com/episort/ui/AppShell.java`
+- `src/main/java/com/episort/ui/AppShellViewModel.java`
+- `src/main/java/com/episort/ui/settings/package-info.java`
+- `src/main/java/com/episort/workflow/ApplicationError.java`
+- `src/main/java/com/episort/workflow/ErrorSeverity.java`
+- `src/main/java/com/episort/workflow/StartupWorkflow.java`
+- `src/test/java/com/episort/ArchitectureBoundaryTest.java`
+- `src/test/java/com/episort/logging/SecretRedactorTest.java`
+- `src/test/java/com/episort/ui/AppShellViewModelTest.java`
+- `src/test/java/com/episort/workflow/ApplicationErrorTest.java`
+- `_bmad-output/implementation-artifacts/1-1-set-up-initial-project-from-starter-template.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Change Log
+
+- 2026-05-08: Implemented initial Gradle JavaFX scaffold and marked story ready for review.
+- 2026-05-08: Resolved code review findings and marked story done.
