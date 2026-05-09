@@ -1,6 +1,6 @@
 # Story 3.2: Single Bundled Model Enforcement
 
-Status: ready-for-dev
+Status: review
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -21,12 +21,12 @@ so that I do not need to select, download, or manage models.
 
 ## Tasks / Subtasks
 
-- [ ] Add tests around AI prerequisite status, advisory suggestion handling, and validation-gate isolation. (AC: #1)
-- [ ] Implement `AiPatternAssistant` and `AiRuntimeProbe` behind ports with no cloud AI calls. (AC: #1)
-- [ ] Use exactly one bundled model and no user-facing external model management. (AC: #1)
-- [ ] Ensure AI can suggest or explain but cannot validate, plan-approve, execute, or mutate state without user action. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Add tests around AI prerequisite status, advisory suggestion handling, and validation-gate isolation. (AC: #1)
+- [x] Implement `AiPatternAssistant` and `AiRuntimeProbe` behind ports with no cloud AI calls. (AC: #1)
+- [x] Use exactly one bundled model and no user-facing external model management. (AC: #1)
+- [x] Ensure AI can suggest or explain but cannot validate, plan-approve, execute, or mutate state without user action. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
 
 ## Dev Notes
 
@@ -116,10 +116,35 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex (Amelia, BMAD dev-story)
 
 ### Debug Log References
 
+- Red phase: `.\gradlew.bat test --tests com.episort.ai.AiPrerequisiteServiceTest` failed on missing single-model enforcement types and diagnostic API as expected.
+- Green phase: `.\gradlew.bat test --tests com.episort.ai.AiPrerequisiteServiceTest` passed after adding bundled-only model configuration and runtime diagnostic support.
+- Port verification: `.\gradlew.bat test --tests com.episort.ai.AiPrerequisiteServiceTest --tests com.episort.ai.AiPatternAssistantTest --tests com.episort.workflow.AiWorkflowGateTest` passed.
+- Authority isolation verification: `.\gradlew.bat test --tests com.episort.ai.AiPatternAssistantTest --tests com.episort.workflow.AiWorkflowGateTest` passed.
+- Final validation: `.\gradlew.bat build` passed with local `.tools\jdk21`.
+
 ### Completion Notes List
 
+- Added explicit tests for bundled-only model configuration, rejection of external model paths, and runtime diagnostics without private media metadata.
+- Reused the 3.1 AI ports (`AiPatternAssistant`, `AiRuntimeProbe`) and verified they remain local-only/advisory through the existing targeted test suite.
+- Enforced a single stable bundled model identity and blocked external model paths from the AI configuration surface.
+- Verified AI suggestions remain advisory-only and cannot claim validation or execution authority.
+- README/developer notes were not changed because no developer-facing command or setup step changed.
+- No manual UI verification was required because this story introduced no UI surface.
+
 ### File List
+
+- src/main/java/com/episort/ai/AiBundledModel.java
+- src/main/java/com/episort/ai/AiModelConfiguration.java
+- src/main/java/com/episort/ai/AiPrerequisiteService.java
+- src/main/java/com/episort/ai/AiRuntimeDiagnostic.java
+- src/test/java/com/episort/ai/AiPrerequisiteServiceTest.java
+- _bmad-output/implementation-artifacts/3-2-single-bundled-model-enforcement.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+
+### Change Log
+
+- 2026-05-09: Enforced single bundled AI model configuration, added runtime diagnostics without private media metadata, rejected external model paths, and validated advisory-only AI boundaries.

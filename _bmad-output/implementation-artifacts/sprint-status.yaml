@@ -54,9 +54,9 @@ development_status:
   2-3-mixed-media-group-seed-classification: done
   2-4-large-inventory-progress-and-result-summary: done
   epic-2-retrospective: optional
-  epic-3: backlog
-  3-1-local-ai-runtime-prerequisite-check: ready-for-dev
-  3-2-single-bundled-model-enforcement: ready-for-dev
+  epic-3: in-progress
+  3-1-local-ai-runtime-prerequisite-check: done
+  3-2-single-bundled-model-enforcement: review
   3-3-ai-assisted-pattern-detection-suggestions: ready-for-dev
   3-4-contextual-ai-explanation-and-correction-help: ready-for-dev
   epic-3-retrospective: optional

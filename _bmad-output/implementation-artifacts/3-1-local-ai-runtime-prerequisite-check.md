@@ -1,6 +1,6 @@
 # Story 3.1: Local AI Runtime Prerequisite Check
 
-Status: ready-for-dev
+Status: done
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -21,12 +21,12 @@ so that AI-dependent workflows do not silently produce unreliable results.
 
 ## Tasks / Subtasks
 
-- [ ] Add tests around AI prerequisite status, advisory suggestion handling, and validation-gate isolation. (AC: #1)
-- [ ] Implement `AiPatternAssistant` and `AiRuntimeProbe` behind ports with no cloud AI calls. (AC: #1)
-- [ ] Use exactly one bundled model and no user-facing external model management. (AC: #1)
-- [ ] Ensure AI can suggest or explain but cannot validate, plan-approve, execute, or mutate state without user action. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Add tests around AI prerequisite status, advisory suggestion handling, and validation-gate isolation. (AC: #1)
+- [x] Implement `AiPatternAssistant` and `AiRuntimeProbe` behind ports with no cloud AI calls. (AC: #1)
+- [x] Use exactly one bundled model and no user-facing external model management. (AC: #1)
+- [x] Ensure AI can suggest or explain but cannot validate, plan-approve, execute, or mutate state without user action. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
 
 ## Dev Notes
 
@@ -116,10 +116,61 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex (Amelia, BMAD dev-story)
 
 ### Debug Log References
 
+- Red phase: targeted Gradle test compile failed on missing AI/workflow types as expected.
+- Green phase: targeted tests passed with `.\gradlew.bat test --tests com.episort.ai.AiPrerequisiteServiceTest --tests com.episort.ai.AiPatternAssistantTest --tests com.episort.workflow.AiWorkflowGateTest`.
+- Final validation: `.\gradlew.bat build` passed with local `.tools\jdk21`.
+
 ### Completion Notes List
 
+- Added local AI runtime prerequisite domain types and port interfaces with no cloud AI calls.
+- Added recoverable AI workflow gating that blocks AI-dependent workflows while leaving non-AI workflows available.
+- Added one bundled model enum value and no user-facing external model management.
+- Added advisory-only AI pattern suggestion types that reject validation or execution authority and support selected-item context minimization.
+- No README/developer notes update was needed because no new developer-facing command or setup step was introduced.
+
 ### File List
+
+- src/main/java/com/episort/ai/AiBundledModel.java
+- src/main/java/com/episort/ai/AiHardwareSignals.java
+- src/main/java/com/episort/ai/AiPatternAssistant.java
+- src/main/java/com/episort/ai/AiPatternSuggestion.java
+- src/main/java/com/episort/ai/AiPatternSuggestionRequest.java
+- src/main/java/com/episort/ai/AiPrerequisite.java
+- src/main/java/com/episort/ai/AiPrerequisiteCheckResult.java
+- src/main/java/com/episort/ai/AiPrerequisiteService.java
+- src/main/java/com/episort/ai/AiRuntimeProbe.java
+- src/main/java/com/episort/ai/AiRuntimeStatus.java
+- src/main/java/com/episort/ai/UnavailableLocalAiRuntimeProbe.java
+- src/main/java/com/episort/workflow/AiWorkflowGate.java
+- src/main/java/com/episort/workflow/AiWorkflowGateResult.java
+- src/test/java/com/episort/ai/AiPatternAssistantTest.java
+- src/test/java/com/episort/ai/AiPrerequisiteServiceTest.java
+- src/test/java/com/episort/workflow/AiWorkflowGateTest.java
+- _bmad-output/implementation-artifacts/3-1-local-ai-runtime-prerequisite-check.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+
+### Change Log
+
+- 2026-05-09: Implemented local AI prerequisite checks, advisory-only AI ports, AI workflow gate, and tests for Story 3.1.
+
+## Senior Developer Review (AI)
+
+### Review Outcome
+
+Approved - 2026-05-09
+
+### Findings
+
+- No blocking findings.
+- Verified AC #1 coverage: missing AI runtime/GPU/VRAM/model blocks AI-dependent workflow with a recoverable error while non-AI workflow remains available.
+- Verified AI authority boundary: suggestions are advisory-only and cannot claim validation or execution authority.
+- Verified architecture boundary: `ai` and workflow additions do not import JavaFX, perform no cloud calls, and do not mutate filesystem state.
+
+### Validation Evidence
+
+- `.\gradlew.bat test --tests com.episort.ai.AiPrerequisiteServiceTest --tests com.episort.ai.AiPatternAssistantTest --tests com.episort.workflow.AiWorkflowGateTest`
+- `.\gradlew.bat build`
