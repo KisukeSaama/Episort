@@ -1,17 +1,17 @@
 # Episort
 
-Episort est une application desktop JavaFX, pensee pour Windows, qui aide a organiser des episodes de series TV depuis un dossier de travail. Elle scanne les fichiers video, regroupe les contenus probables, s'appuie sur TVDB pour les metadonnees, puis prepare un plan de rangement a valider avant toute operation fichier.
+Episort is a Windows-first JavaFX desktop app for safely organizing TV series episodes from a working directory. It scans media files, detects likely groups, uses TVDB metadata, and prepares a file operation plan that must be validated before anything is moved.
 
-## Fonctionnalites
+## Features
 
-- Scan des fichiers `.avi`, `.mp4` et `.mkv`.
-- Detection de dossiers mixtes pouvant contenir plusieurs series.
-- Recherche TVDB et prise en charge des ordres aired, DVD et absolute.
-- Validation en deux temps : motifs/groupes detectes, puis plan exact source -> destination.
-- Operations bornees au dossier de travail configure.
-- Assistant IA local optionnel pour suggerer ou expliquer des motifs, sans pouvoir approuver ni executer.
+- Scans `.avi`, `.mp4`, and `.mkv` files.
+- Handles mixed folders that may contain several series.
+- Uses TVDB search and aired, DVD, and absolute episode orders.
+- Requires two validations: detected groups/patterns, then exact source -> destination plan.
+- Keeps file operations inside the configured working directory.
+- Includes an optional local AI assistant for pattern suggestions and explanations only.
 
-Format cible :
+Target layout:
 
 ```text
 Series Name in English/
@@ -26,7 +26,7 @@ Series Name in English/
 - Gradle
 - JUnit 5
 
-## Commandes
+## Commands
 
 ```bash
 ./gradlew run
@@ -34,7 +34,7 @@ Series Name in English/
 ./gradlew build
 ```
 
-Sous Windows PowerShell :
+On Windows PowerShell:
 
 ```powershell
 .\gradlew.bat run
@@ -44,18 +44,18 @@ Sous Windows PowerShell :
 
 ## Configuration
 
-Les identifiants TVDB ne doivent pas etre versionnes. Utiliser une variable d'environnement ou un fichier de configuration ignore.
+TVDB credentials must stay out of source control. Use an environment variable or an ignored config file.
 
-L'IA locale utilise Qwen3 8B via un runtime embarque llama.cpp. Le modele est telecharge une fois dans `%LOCALAPPDATA%\Episort\models\`. Si le runtime ou le modele est indisponible, l'application reste utilisable sans les fonctions IA.
+Local AI uses Qwen3 8B through an embedded llama.cpp runtime. The model is downloaded once to `%LOCALAPPDATA%\Episort\models\`. If the runtime or model is unavailable, the app remains usable without AI features.
 
-Pour preparer une distribution avec le runtime embarque :
+To prepare a distribution with the embedded runtime:
 
 ```powershell
 .\gradlew.bat fetchLlamaRuntime
 .\gradlew.bat installDist
 ```
 
-Les tests LLM reels sont des smoke tests optionnels :
+Real LLM tests are optional smoke tests:
 
 ```powershell
 .\gradlew.bat test -PrunLocalLlm=true
@@ -64,4 +64,4 @@ Les tests LLM reels sont des smoke tests optionnels :
 ## Documentation
 
 - Design system : `docs/design-system.md`
-- Artefacts BMAD : `_bmad-output/`
+- BMAD artifacts: `_bmad-output/`
