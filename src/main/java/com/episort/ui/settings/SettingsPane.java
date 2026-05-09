@@ -23,17 +23,19 @@ import javafx.stage.Window;
 
 public final class SettingsPane {
     private final VBox root;
-    private final Label prerequisitesHeading;
-    private final Label preferencesHeading;
+    private final Label pageEyebrow;
+    private final Label pageTitle;
+    private final Label pageSubtitle;
     private final Label workspaceTitle;
     private final Label workspaceDescription;
     private final Label workspaceValue;
-    private final Label languageTitle;
-    private final Label languageDescription;
+    private final Label preferencesTitle;
+    private final Label preferencesDescription;
     private final Button chooseWorkspace;
-    private final Button closeButton;
     private final ComboBox<AppLanguage> languageCombo;
     private final Supplier<Optional<Path>> currentWorkspace;
+    @SuppressWarnings("unused")
+    private final Runnable onClose;
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
 
     public SettingsPane(
@@ -43,13 +45,21 @@ public final class SettingsPane {
             Runnable onClose,
             Consumer<AppShellViewModel> onConfigured) {
         this.currentWorkspace = currentWorkspace;
+        this.onClose = onClose;
 
-        prerequisitesHeading = new Label();
-        prerequisitesHeading.getStyleClass().addAll("section-heading", "section-heading-accent");
+        pageEyebrow = new Label();
+        pageEyebrow.getStyleClass().add("page-title");
 
-        preferencesHeading = new Label();
-        preferencesHeading.getStyleClass().addAll("section-heading", "section-heading-accent");
+        pageTitle = new Label();
+        pageTitle.getStyleClass().add("page-heading");
 
+        pageSubtitle = new Label();
+        pageSubtitle.getStyleClass().add("page-subtitle");
+        pageSubtitle.setWrapText(true);
+
+        VBox header = new VBox(4, pageEyebrow, pageTitle, pageSubtitle);
+
+        // ---- Workspace section -------------------------------------
         workspaceTitle = new Label();
         workspaceTitle.getStyleClass().add("settings-section-title");
 
@@ -79,18 +89,21 @@ public final class SettingsPane {
             }
         });
 
-        HBox workspaceAction = new HBox(10, chooseWorkspace, workspaceValue);
+        HBox workspaceAction = new HBox(12, chooseWorkspace, workspaceValue);
         workspaceAction.setAlignment(Pos.CENTER_LEFT);
+        workspaceAction.getStyleClass().add("settings-row");
+        HBox.setHgrow(workspaceValue, Priority.ALWAYS);
 
-        VBox workspaceSection = new VBox(8, workspaceTitle, workspaceDescription, workspaceAction);
+        VBox workspaceSection = new VBox(10, workspaceTitle, workspaceDescription, divider(), workspaceAction);
         workspaceSection.getStyleClass().add("settings-section");
 
-        languageTitle = new Label();
-        languageTitle.getStyleClass().add("settings-section-title");
+        // ---- Preferences section -----------------------------------
+        preferencesTitle = new Label();
+        preferencesTitle.getStyleClass().add("settings-section-title");
 
-        languageDescription = new Label();
-        languageDescription.getStyleClass().add("settings-section-description");
-        languageDescription.setWrapText(true);
+        preferencesDescription = new Label();
+        preferencesDescription.getStyleClass().add("settings-section-description");
+        preferencesDescription.setWrapText(true);
 
         languageCombo = new ComboBox<>(FXCollections.observableArrayList(AppLanguage.FRENCH, AppLanguage.ENGLISH));
         languageCombo.setConverter(new javafx.util.StringConverter<>() {
@@ -111,27 +124,19 @@ public final class SettingsPane {
             }
         });
 
-        VBox languageSection = new VBox(8, languageTitle, languageDescription, languageCombo);
-        languageSection.getStyleClass().add("settings-section");
+        HBox preferencesRow = new HBox(12, languageCombo);
+        preferencesRow.setAlignment(Pos.CENTER_LEFT);
+        preferencesRow.getStyleClass().add("settings-row");
 
-        closeButton = new Button();
-        closeButton.getStyleClass().add("primary");
-        closeButton.setOnAction(event -> onClose.run());
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        HBox actionRow = new HBox(spacer, closeButton);
-        actionRow.setAlignment(Pos.CENTER_RIGHT);
+        VBox preferencesSection = new VBox(10, preferencesTitle, preferencesDescription, divider(), preferencesRow);
+        preferencesSection.getStyleClass().add("settings-section");
 
         applyLanguage(AppLanguage.FRENCH);
         refreshWorkspaceValue(currentWorkspace.get());
 
-        root = new VBox(14,
-                prerequisitesHeading,
-                workspaceSection,
-                preferencesHeading,
-                languageSection,
-                actionRow);
+        root = new VBox(18, header, workspaceSection, preferencesSection);
+        root.getStyleClass().add("settings-page");
+        root.setMaxWidth(960);
     }
 
     public VBox root() {
@@ -140,16 +145,17 @@ public final class SettingsPane {
 
     public void applyLanguage(AppLanguage language) {
         currentLanguage = language;
-        prerequisitesHeading.setText(UiText.prerequisitesHeading(language));
-        preferencesHeading.setText(UiText.preferencesHeading(language));
+        pageEyebrow.setText(UiText.settingsHeading(language));
+        pageTitle.setText(UiText.settingsPageTitle(language));
+        pageSubtitle.setText(UiText.settingsPageSubtitle(language));
+
         workspaceTitle.setText(UiText.workspaceSectionTitle(language));
         workspaceDescription.setText(UiText.workspaceSectionDescription(language));
         chooseWorkspace.setText(UiText.chooseWorkspaceButton(language));
-        languageTitle.setText(UiText.languageLabel(language));
-        languageDescription.setText(language == AppLanguage.ENGLISH
-                ? "Choose the interface language."
-                : "Choisis la langue de l'interface.");
-        closeButton.setText(UiText.closeSettingsButton(language));
+
+        preferencesTitle.setText(UiText.preferencesSectionTitle(language));
+        preferencesDescription.setText(UiText.preferencesSectionDescription(language));
+
         languageCombo.setValue(language);
         refreshWorkspaceValue(currentWorkspace.get());
     }
@@ -160,5 +166,11 @@ public final class SettingsPane {
 
     private void refreshWorkspaceValue(Optional<Path> workspace) {
         workspaceValue.setText(UiText.workspaceValue(currentLanguage, workspace));
+    }
+
+    private static Region divider() {
+        Region div = new Region();
+        div.getStyleClass().add("settings-section-divider");
+        return div;
     }
 }

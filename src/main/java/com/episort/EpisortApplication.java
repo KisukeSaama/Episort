@@ -6,6 +6,13 @@ import com.episort.config.EmbeddedTvdbCredentialsProvider;
 import com.episort.config.FileTvdbCredentialStore;
 import com.episort.config.FileSettingsStore;
 import com.episort.config.TvdbCredentials;
+import com.episort.persistence.FileRunEventStore;
+import com.episort.persistence.RunEvent;
+import com.episort.persistence.RunEventStatus;
+import com.episort.persistence.RunEventStore;
+import com.episort.persistence.RunEventType;
+import com.episort.scanner.InventoryScanResult;
+import com.episort.scanner.InventorySummary;
 import com.episort.scanner.MediaInventoryScanner;
 import com.episort.workflow.StartupWorkflow;
 import com.episort.workflow.InventoryWorkflowService;
@@ -15,6 +22,10 @@ import com.episort.tvdb.HttpTvdbConnectionTester;
 import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ErrorSeverity;
 import com.episort.ui.platform.WindowsTitleBar;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,16 +52,17 @@ public class EpisortApplication extends Application {
         AppShellViewModel viewModel = AppShellViewModel.fromStartupPrerequisites(
                 startupWorkflow.loadWorkspaceConfiguration(),
                 startupWorkflow.loadTvdbConfiguration());
+        RunEventStore runEventStore = FileRunEventStore.userProfileStore();
         AppShell appShell = new AppShell(
                 viewModel,
                 workspace -> AppShellViewModel.fromWorkspaceConfiguration(
                         startupWorkflow.configureWorkspace(workspace)),
-                inputFolder -> scanInputFolder(startupWorkflow, inputFolder),
+                inputFolder -> scanInputFolder(startupWorkflow, inputFolder, runEventStore),
                 (apiKey, subscriberPin) -> configureTvdb(startupWorkflow, apiKey, subscriberPin),
                 () -> startupWorkflow.loadWorkspaceConfiguration().settings().workspaceDirectory(),
                 () -> startupWorkflow.loadWorkspaceConfiguration().success(),
                 () -> {},
-                true);
+                runEventStore);
         stage.setTitle("Episort");
         stage.getIcons().add(AppShell.logoImage());
         stage.setScene(new Scene(appShell.root(), 1180, 760));
@@ -69,17 +81,85 @@ public class EpisortApplication extends Application {
         scanExecutor.shutdownNow();
     }
 
-    private CompletableFuture<AppShellViewModel> scanInputFolder(StartupWorkflow startupWorkflow, java.nio.file.Path inputFolder) {
+    private CompletableFuture<AppShellViewModel> scanInputFolder(
+            StartupWorkflow startupWorkflow, Path inputFolder, RunEventStore runEventStore) {
         var selection = startupWorkflow.selectInputFolder(inputFolder);
         if (!selection.success()) {
             return CompletableFuture.completedFuture(AppShellViewModel.fromInputFolderSelection(selection));
         }
         var selectedFolder = selection.inputFolder().orElseThrow();
+        Optional<Path> workspace = startupWorkflow.loadWorkspaceConfiguration().settings().workspaceDirectory();
         InventoryWorkflowService service = new InventoryWorkflowService(new MediaInventoryScanner(), scanExecutor);
         return service.scan(selectedFolder, progress -> {})
-                .thenApply(result -> AppShellViewModel.fromInventoryScan(
-                        selectedFolder,
-                        new com.episort.scanner.InventoryScanResult(result.items(), result.groups(), result.summary())));
+                .thenApply(result -> {
+                    InventoryScanResult scanResult = new InventoryScanResult(result.items(), result.groups(), result.summary());
+                    recordScanCompleted(runEventStore, workspace, selectedFolder, scanResult);
+                    return AppShellViewModel.fromInventoryScan(selectedFolder, scanResult);
+                })
+                .exceptionally(throwable -> {
+                    recordScanFailed(runEventStore, workspace, selectedFolder, throwable);
+                    return AppShellViewModel.fromError(ApplicationError.recoverable(
+                            "INPUT_FOLDER_INVALID",
+                            ErrorSeverity.BLOCKING,
+                            "Inventory scan failed.",
+                            ""));
+                });
+    }
+
+    private static void recordScanCompleted(
+            RunEventStore store,
+            Optional<Path> workspace,
+            Path subjectFolder,
+            InventoryScanResult result) {
+        InventorySummary summary = result.summary();
+        Map<String, String> metrics = new LinkedHashMap<>();
+        metrics.put("supported", String.valueOf(summary.supportedVideoCount()));
+        metrics.put("sidecar", String.valueOf(summary.sidecarCount()));
+        metrics.put("unsupported", String.valueOf(summary.unsupportedCount()));
+        metrics.put("ignored", String.valueOf(summary.ignoredCount()));
+        metrics.put("series", String.valueOf(summary.likelySeriesGroupCount()));
+        metrics.put("movies", String.valueOf(summary.likelyMovieGroupCount()));
+        metrics.put("unknown", String.valueOf(summary.unknownItemCount()));
+
+        RunEventStatus status = summary.unknownItemCount() > 0
+                ? RunEventStatus.WARNING
+                : RunEventStatus.SUCCESS;
+        String summaryText = summary.supportedVideoCount() + " video(s), "
+                + summary.likelySeriesGroupCount() + " series, "
+                + summary.likelyMovieGroupCount() + " movies, "
+                + summary.unknownItemCount() + " unknown";
+
+        try {
+            store.append(RunEvent.of(
+                    RunEventType.SCAN_COMPLETED,
+                    status,
+                    workspace,
+                    Optional.of(subjectFolder),
+                    summaryText,
+                    metrics));
+        } catch (RuntimeException ignored) {
+            // Best-effort recording — do not fail the user-visible flow.
+        }
+    }
+
+    private static void recordScanFailed(
+            RunEventStore store,
+            Optional<Path> workspace,
+            Path subjectFolder,
+            Throwable throwable) {
+        Map<String, String> metrics = new LinkedHashMap<>();
+        metrics.put("error", throwable.getClass().getSimpleName());
+        try {
+            store.append(RunEvent.of(
+                    RunEventType.SCAN_FAILED,
+                    RunEventStatus.FAILED,
+                    workspace,
+                    Optional.of(subjectFolder),
+                    throwable.getMessage() == null ? "" : throwable.getMessage(),
+                    metrics));
+        } catch (RuntimeException ignored) {
+            // Best-effort recording.
+        }
     }
 
     private AppShellViewModel configureTvdb(

@@ -15,6 +15,8 @@ inputDocuments:
 
 This document provides the complete epic and story breakdown for episort, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.
 
+**Sequencing note (revised):** local AI is implemented immediately after non-destructive inventory (Epic 3) so that downstream TVDB resolution, matching, review, and planning epics can rely on the real local AI runtime instead of large hand-built mock fixtures or fake datasets. Mock TVDB and mock-AI fixtures are limited to thin smoke tests; from Epic 4 onward the realistic path uses the bundled local AI plus real TVDB calls behind the existing port abstractions.
+
 ## Requirements Inventory
 
 ### Functional Requirements
@@ -153,6 +155,7 @@ NFR25: Logs must avoid recording TVDB credentials, generated tokens, private API
 - Packaging starts with Gradle application distributions; V1 packaging should use JDK `jpackage` after the JavaFX/module/dependency layout is stable.
 - CI can be added after Gradle initialization and should run compile, unit tests, formatting/checkstyle, and build artifact smoke checks.
 - Deferred implementation research remains for TVDB v4 endpoint mapping, local AI runtime/model selection, Windows path-length/title truncation rules, and SQLite migration mechanism.
+- With the local AI runtime available from Epic 3 onward, downstream epics avoid building large fake datasets or extensive mock TVDB fixtures; tests use the real bundled AI runtime where it adds signal, and keep mocks limited to deterministic boundary cases.
 
 ### UX Design Requirements
 
@@ -170,73 +173,73 @@ FR7: Epic 1 - Rejecting input folders outside workspace.
 FR8: Epic 2 - Supported video scanning.
 FR9: Epic 2 - Sidecar identification.
 FR10: Epic 2 - Unsupported file identification.
-FR11: Epic 5 - Original extension preservation in destination names.
+FR11: Epic 6 - Original extension preservation in destination names.
 FR12: Epic 2 - Mixed movies and TV series in one input scope.
 FR13: Epic 2 - Pre-matching grouping by series, movie, ignored, or unsupported status.
-FR14: Epic 7 - Local AI-assisted pattern detection and grouping/matching candidates.
-FR15: Epic 3 - TVDB series candidate search.
-FR16: Epic 3 - TVDB movie candidate search.
-FR17: Epic 3 - User correction of TVDB series association.
-FR18: Epic 3 - User correction of TVDB movie association.
-FR19: Epic 3 - TVDB series metadata retrieval.
-FR20: Epic 3 - TVDB movie metadata retrieval.
-FR21: Epic 3 - Best available TVDB fallback title.
-FR22: Epic 3 - Homonymous media distinction through TVDB identity.
-FR23: Epic 3 - TVDB-backed episode match proposals.
-FR24: Epic 3 - TVDB-backed movie match proposals.
-FR25: Epic 3 - Aired, DVD, and absolute order support.
-FR26: Epic 3 - User review and change of episode order.
-FR27: Epic 3 - Specials and OVA identification where represented in TVDB.
+FR14: Epic 3 - Local AI-assisted pattern detection and grouping/matching candidates.
+FR15: Epic 4 - TVDB series candidate search.
+FR16: Epic 4 - TVDB movie candidate search.
+FR17: Epic 4 - User correction of TVDB series association.
+FR18: Epic 4 - User correction of TVDB movie association.
+FR19: Epic 4 - TVDB series metadata retrieval.
+FR20: Epic 4 - TVDB movie metadata retrieval.
+FR21: Epic 4 - Best available TVDB fallback title.
+FR22: Epic 4 - Homonymous media distinction through TVDB identity.
+FR23: Epic 4 - TVDB-backed episode match proposals.
+FR24: Epic 4 - TVDB-backed movie match proposals.
+FR25: Epic 4 - Aired, DVD, and absolute order support.
+FR26: Epic 4 - User review and change of episode order.
+FR27: Epic 4 - Specials and OVA identification where represented in TVDB.
 FR28: Epic 2 - Ignored or unsupported marking before planning.
-FR29: Epic 4 - Duplicate candidate identification.
-FR30: Epic 4 - Manual correction of assignments.
-FR31: Epic 3 - One supported video maps to at most one episode or movie.
-FR32: Epic 5 - Series folder path generation.
-FR33: Epic 5 - `Season XX` folder path generation.
-FR34: Epic 5 - Series episode filename generation.
-FR35: Epic 5 - Specials path generation.
-FR36: Epic 5 - Movie filename generation.
-FR37: Epic 5 - Complete workspace-bounded operation plan generation.
-FR38: Epic 5 - Destination path conflict detection.
-FR39: Epic 5 - Non-executable exclusions for ignored, unsupported, duplicate-excluded, and unassigned files.
-FR40: Epic 4 - Source and destination path review before execution.
-FR41: Epic 4 - Review of groups, ignored files, unsupported files, ambiguities, and conflicts.
-FR42: Epic 4 - Detected pattern validation.
-FR43: Epic 4 - Exact source-to-destination plan validation.
-FR44: Epic 4 - Execution blocked until validations are complete.
-FR45: Epic 4 - Validation state separate from confidence.
-FR46: Epic 4 - Confidence and uncertainty visibility.
-FR47: Epic 4 - Ambiguous, conflicting, duplicate, unsupported, ignored, and weak-match visibility.
-FR48: Epic 4 - Corrections without workflow restart.
-FR49: Epic 4 - Session-scoped user corrections.
-FR50: Epic 4 - No silent propagation of corrections to neighboring files.
-FR51: Epic 7 - Contextual AI assistance requests.
-FR52: Epic 7 - Selected-item context passed to local AI.
-FR53: Epic 7 - AI explanation of proposed grouping or match.
-FR54: Epic 7 - AI correction suggestions for ambiguous or weak matches.
-FR55: Epic 7 - AI cannot authorize or execute filesystem operations.
-FR56: Epic 6 - Approved operation plan execution.
-FR57: Epic 6 - Destination folder creation within workspace.
-FR58: Epic 6 - Approved rename and move operations within workspace.
-FR59: Epic 6 - No automatic deletion.
-FR60: Epic 6 - Untouched files for ignored, unsupported, excluded, unassigned, or unapproved items.
-FR61: Epic 6 - Per-file failure reporting without false full-success.
-FR62: Epic 6 - Post-execution recap.
+FR29: Epic 5 - Duplicate candidate identification.
+FR30: Epic 5 - Manual correction of assignments.
+FR31: Epic 4 - One supported video maps to at most one episode or movie.
+FR32: Epic 6 - Series folder path generation.
+FR33: Epic 6 - `Season XX` folder path generation.
+FR34: Epic 6 - Series episode filename generation.
+FR35: Epic 6 - Specials path generation.
+FR36: Epic 6 - Movie filename generation.
+FR37: Epic 6 - Complete workspace-bounded operation plan generation.
+FR38: Epic 6 - Destination path conflict detection.
+FR39: Epic 6 - Non-executable exclusions for ignored, unsupported, duplicate-excluded, and unassigned files.
+FR40: Epic 5 - Source and destination path review before execution.
+FR41: Epic 5 - Review of groups, ignored files, unsupported files, ambiguities, and conflicts.
+FR42: Epic 5 - Detected pattern validation.
+FR43: Epic 5 - Exact source-to-destination plan validation.
+FR44: Epic 5 - Execution blocked until validations are complete.
+FR45: Epic 5 - Validation state separate from confidence.
+FR46: Epic 5 - Confidence and uncertainty visibility.
+FR47: Epic 5 - Ambiguous, conflicting, duplicate, unsupported, ignored, and weak-match visibility.
+FR48: Epic 5 - Corrections without workflow restart.
+FR49: Epic 5 - Session-scoped user corrections.
+FR50: Epic 5 - No silent propagation of corrections to neighboring files.
+FR51: Epic 3 - Contextual AI assistance requests (consumed by Epic 5 review surface).
+FR52: Epic 3 - Selected-item context passed to local AI.
+FR53: Epic 3 - AI explanation of proposed grouping or match.
+FR54: Epic 3 - AI correction suggestions for ambiguous or weak matches.
+FR55: Epic 3 - AI cannot authorize or execute filesystem operations.
+FR56: Epic 7 - Approved operation plan execution.
+FR57: Epic 7 - Destination folder creation within workspace.
+FR58: Epic 7 - Approved rename and move operations within workspace.
+FR59: Epic 7 - No automatic deletion.
+FR60: Epic 7 - Untouched files for ignored, unsupported, excluded, unassigned, or unapproved items.
+FR61: Epic 7 - Per-file failure reporting without false full-success.
+FR62: Epic 7 - Post-execution recap.
 FR63: Epic 1 - Progress for scan, metadata lookup, planning, and execution.
 FR64: Epic 1 - Completion and blocking-error notifications.
 FR65: Epic 1 - Taskbar progress where supported.
 FR66: Epic 1 - Dark mode.
 FR67: Epic 1 - Local diagnostic logs outside media workspace.
-FR68: Epic 7 - Local AI runtime prerequisite verification.
-FR69: Epic 7 - Blocking AI-dependent workflows when GPU, VRAM, or AI prerequisites fail.
-FR70: Epic 7 - One bundled local AI model for V1.
-FR71: Epic 7 - No user-facing external AI model management.
-FR72: Epic 6 - Retry or continue options for locked or temporarily unavailable files.
-FR73: Epic 5 - Reuse existing destination folders matching the approved plan.
-FR74: Epic 3 - Merge groups resolving to the same TVDB-backed destination identity.
-FR75: Epic 5 - Deterministic title truncation for Windows path limits.
-FR76: Epic 6 - Interrupted execution detection and diagnostic log location.
-FR77: Epic 3 - Transient TVDB retry before blocking error.
+FR68: Epic 3 - Local AI runtime prerequisite verification.
+FR69: Epic 3 - Blocking AI-dependent workflows when GPU, VRAM, or AI prerequisites fail.
+FR70: Epic 3 - One bundled local AI model for V1.
+FR71: Epic 3 - No user-facing external AI model management.
+FR72: Epic 7 - Retry or continue options for locked or temporarily unavailable files.
+FR73: Epic 6 - Reuse existing destination folders matching the approved plan.
+FR74: Epic 4 - Merge groups resolving to the same TVDB-backed destination identity.
+FR75: Epic 6 - Deterministic title truncation for Windows path limits.
+FR76: Epic 7 - Interrupted execution detection and diagnostic log location.
+FR77: Epic 4 - Transient TVDB retry before blocking error.
 
 ## Epic List
 
@@ -245,28 +248,28 @@ Users can launch Episort, configure the workspace and TVDB access, test prerequi
 **FRs covered:** FR1, FR2, FR3, FR4, FR5, FR6, FR7, FR63, FR64, FR65, FR66, FR67
 
 ### Epic 2: Inventaire média non destructif
-Users can select a valid folder, scan up to 2,000 files, and distinguish supported videos, sidecars, unsupported files, and mixed content without filesystem mutation.
+Users can select a valid folder, scan up to 2,000 files, and distinguish supported videos, sidecars, unsupported files, and mixed content without filesystem mutation. Grouping at this stage uses lightweight heuristics only; refined AI-assisted grouping arrives in Epic 3.
 **FRs covered:** FR8, FR9, FR10, FR12, FR13, FR28
 
-### Epic 3: Résolution TVDB et matching média
-Users can resolve series and movies through TVDB, choose correct candidates, retrieve metadata, manage episode orders, specials, homonyms, and fallback titles.
+### Epic 3: Assistance AI locale contrôlée
+Local AI runtime, bundled-model enforcement, and AI-assisted pattern, grouping, explanation, and correction suggestions land here so every later epic can rely on real AI output instead of hand-built fake datasets. AI remains advisory and has no authority over validation or execution.
+**FRs covered:** FR14, FR51, FR52, FR53, FR54, FR55, FR68, FR69, FR70, FR71
+
+### Epic 4: Résolution TVDB et matching média
+Users can resolve series and movies through TVDB, choose correct candidates, retrieve metadata, manage episode orders, specials, homonyms, and fallback titles. AI from Epic 3 helps rank candidates and reduce reliance on synthetic TVDB fixtures.
 **FRs covered:** FR15, FR16, FR17, FR18, FR19, FR20, FR21, FR22, FR23, FR24, FR25, FR26, FR27, FR31, FR74, FR77
 
-### Epic 4: Review, corrections et validation du pattern
-Users can inspect groups, ambiguities, duplicates, weak matches, and conflicts, correct assignments, and validate the detected pattern before final planning.
+### Epic 5: Review, corrections et validation du pattern
+Users can inspect groups, ambiguities, duplicates, weak matches, and conflicts, request AI explanations, correct assignments, and validate the detected pattern before final planning.
 **FRs covered:** FR29, FR30, FR40, FR41, FR42, FR43, FR44, FR45, FR46, FR47, FR48, FR49, FR50
 
-### Epic 5: Plan d'organisation Plex-compatible
+### Epic 6: Plan d'organisation Plex-compatible
 Users receive a complete readable source-to-destination plan that is workspace-bounded, Plex-compatible, conflict-checked, extension-preserving, existing-folder-aware, and Windows-path-safe.
 **FRs covered:** FR11, FR32, FR33, FR34, FR35, FR36, FR37, FR38, FR39, FR73, FR75
 
-### Epic 6: Exécution approuvée, récupération et recap
+### Epic 7: Exécution approuvée, récupération et recap
 Users can execute only a validated plan, create folders, move or rename approved files, handle per-file failures, recover after interruption, and see a clear recap.
 **FRs covered:** FR56, FR57, FR58, FR59, FR60, FR61, FR62, FR72, FR76
-
-### Epic 7: Assistance AI locale contrôlée
-Users can use local AI for pattern detection, proposal explanations, and ambiguity help, with runtime prerequisite checks and no AI authority over execution.
-**FRs covered:** FR14, FR51, FR52, FR53, FR54, FR55, FR68, FR69, FR70, FR71
 
 ## Epic 1: Configuration sure et workspace borne
 
@@ -347,7 +350,7 @@ So that blocked workflows and long-running operations are understandable.
 
 ## Epic 2: Inventaire media non destructif
 
-Users can select a valid folder, scan up to 2,000 files, and distinguish supported videos, sidecars, unsupported files, and mixed content without filesystem mutation.
+Users can select a valid folder, scan up to 2,000 files, and distinguish supported videos, sidecars, unsupported files, and mixed content without filesystem mutation. Grouping at this stage uses lightweight heuristics only; refined AI-assisted grouping arrives in Epic 3.
 
 ### Story 2.1: Supported Media File Detection
 
@@ -388,10 +391,11 @@ So that files from multiple series, movies, and ignored categories are not assum
 
 **Given** the selected folder contains files from multiple shows, movies, and ignored categories
 **When** inventory classification runs
-**Then** supported media files are assigned initial likely series, movie, or unknown group seeds
+**Then** supported media files are assigned initial likely series, movie, or unknown group seeds using lightweight heuristics only
 **And** ignored and unsupported items are grouped separately
 **And** the grouping model permits multiple series and movies in the same selected input scope
 **And** no TVDB identity is treated as final during this inventory step
+**And** the seeding output is shaped so Epic 3 AI-assisted refinement can replace heuristic decisions without restructuring
 
 ### Story 2.4: Large Inventory Progress and Result Summary
 
@@ -408,11 +412,77 @@ So that I can understand what Episort found before metadata matching begins.
 **And** scan completion never implies pattern validation or operation-plan approval
 **And** no filesystem mutation occurs during progress reporting or summary generation
 
-## Epic 3: Resolution TVDB et matching media
+## Epic 3: Assistance AI locale controlee
 
-Users can resolve series and movies through TVDB, choose correct candidates, retrieve metadata, manage episode orders, specials, homonyms, and fallback titles.
+Local AI runtime, bundled-model enforcement, and AI-assisted pattern, grouping, explanation, and correction suggestions land here so every later epic can rely on real AI output instead of hand-built fake datasets. AI remains advisory and has no authority over validation or execution.
 
-### Story 3.1: TVDB Series and Movie Candidate Search
+### Story 3.1: Local AI Runtime Prerequisite Check
+
+As a media library user,
+I want Episort to verify local AI prerequisites,
+So that AI-dependent workflows do not silently produce unreliable results.
+
+**Acceptance Criteria:**
+
+**Given** Episort starts or an AI-dependent workflow is requested
+**When** the local AI prerequisite check runs
+**Then** Episort verifies required runtime availability and hardware capability signals
+**And** missing GPU, VRAM, model, or runtime prerequisites block AI-dependent workflows with a recoverable explanation
+**And** non-AI workflows remain available when AI is unavailable where technically possible
+**And** prerequisite failures are logged without secrets or unnecessary private media metadata
+
+### Story 3.2: Single Bundled Model Enforcement
+
+As a media library user,
+I want Episort to use one bundled local AI model,
+So that I do not need to select, download, or manage models.
+
+**Acceptance Criteria:**
+
+**Given** local AI is enabled for V1
+**When** the AI runtime initializes
+**Then** Episort uses exactly one bundled model
+**And** no UI exists for selecting, downloading, importing, or managing external AI models
+**And** external model paths are not accepted as user configuration
+**And** the model identity and runtime status can be diagnosed without exposing private media metadata
+
+### Story 3.3: AI-Assisted Pattern Detection and Group Refinement
+
+As a media library user,
+I want local AI to refine groupings and suggest matching patterns from real inventory,
+So that downstream TVDB resolution starts from realistic groups instead of toy fixtures.
+
+**Acceptance Criteria:**
+
+**Given** Epic 2 inventory and heuristic group seeds exist
+**When** AI-assisted pattern detection runs against real inventory
+**Then** the AI can refine groupings and propose grouping or matching candidates using local context
+**And** AI output is marked as advisory and never treated as TVDB truth
+**And** AI suggestions cannot validate a pattern, validate an operation plan, or authorize execution
+**And** all AI-assisted suggestions remain reviewable and correctable by the user
+**And** integration tests exercise the bundled local AI runtime against representative inventories instead of large hand-built fake datasets
+
+### Story 3.4: Contextual AI Explanation and Correction Help
+
+As a media library user,
+I want AI help for a selected file, group, match, conflict, or ambiguity,
+So that I can understand why a suggestion exists and decide what to correct.
+
+**Acceptance Criteria:**
+
+**Given** the user selects a file, group, match, conflict, or ambiguity
+**When** they request AI assistance
+**Then** Episort provides only the relevant selected-item context to the local AI assistant
+**And** the assistant can explain why a grouping or match was proposed
+**And** the assistant can suggest corrections for ambiguous or weak matches
+**And** suggested corrections require normal user action and validation before affecting the plan
+**And** the assistant cannot execute filesystem operations or change validation gates
+
+## Epic 4: Resolution TVDB et matching media
+
+Users can resolve series and movies through TVDB, choose correct candidates, retrieve metadata, manage episode orders, specials, homonyms, and fallback titles. AI from Epic 3 helps rank candidates and reduces reliance on synthetic TVDB fixtures.
+
+### Story 4.1: TVDB Series and Movie Candidate Search
 
 As a media library user,
 I want Episort to search TVDB for likely series and movie candidates,
@@ -420,14 +490,16 @@ So that I can choose the correct official metadata identity.
 
 **Acceptance Criteria:**
 
-**Given** inventory groups or movie seeds exist
+**Given** AI-refined inventory groups or movie seeds exist
 **When** Episort searches TVDB for candidates
 **Then** candidate TV series and movie results are returned separately
 **And** homonymous results include enough TVDB-backed identity information to distinguish them
+**And** local AI from Epic 3 may rank or pre-order candidates, but the AI ranking is advisory and never replaces the TVDB-backed identity
 **And** transient TVDB failures are retried before a blocking error is shown
 **And** TVDB lookup does not mutate the filesystem
+**And** test coverage uses real TVDB calls plus thin smoke fixtures rather than large mock TVDB datasets
 
-### Story 3.2: User Selection of TVDB Series and Movie Identity
+### Story 4.2: User Selection of TVDB Series and Movie Identity
 
 As a media library user,
 I want to choose or correct the TVDB identity for a group or movie,
@@ -442,7 +514,7 @@ So that matching uses the right official metadata source.
 **And** groups resolving to the same final TVDB-backed identity can be merged
 **And** selecting an identity does not validate the pattern or authorize execution
 
-### Story 3.3: Series Metadata Retrieval and Episode Orders
+### Story 4.3: Series Metadata Retrieval and Episode Orders
 
 As a media library user,
 I want Episort to retrieve series seasons, episodes, titles, and supported order modes,
@@ -457,7 +529,7 @@ So that episode matching can follow the correct TVDB structure.
 **And** the user can review and change the selected episode order
 **And** the best available TVDB fallback title is used when English metadata is unavailable
 
-### Story 3.4: Movie Metadata Retrieval
+### Story 4.4: Movie Metadata Retrieval
 
 As a media library user,
 I want Episort to retrieve TVDB-backed movie names and release years,
@@ -471,7 +543,7 @@ So that movie files can be organized with official naming.
 **And** the best available TVDB fallback title is used when English metadata is unavailable
 **And** homonymous movies remain distinguishable using TVDB-backed identity information
 
-### Story 3.5: Episode and Movie Match Proposals
+### Story 4.5: Episode and Movie Match Proposals
 
 As a media library user,
 I want Episort to propose episode and movie matches from TVDB metadata,
@@ -486,8 +558,9 @@ So that I can review likely matches before approving a pattern.
 **And** specials or OVA files represented in TVDB can be proposed as specials
 **And** unmatched files remain visible as unknown, ignored, or unsupported candidates
 **And** no supported video file can be assigned to more than one episode or movie in V1
+**And** local AI from Epic 3 may contribute to confidence or tie-breaking but never overrides TVDB identity
 
-### Story 3.6: TVDB Authentication and Token Lifecycle
+### Story 4.6: TVDB Authentication and Token Lifecycle
 
 As a media library user,
 I want TVDB authentication to work reliably in the background,
@@ -503,11 +576,11 @@ So that metadata lookups fail clearly instead of silently corrupting matches.
 **And** invalid authentication blocks TVDB-dependent organization with a recoverable error
 **And** API keys, PINs, and bearer tokens are never logged
 
-## Epic 4: Review, corrections et validation du pattern
+## Epic 5: Review, corrections et validation du pattern
 
-Users can inspect groups, ambiguities, duplicates, weak matches, and conflicts, correct assignments, and validate the detected pattern before final planning.
+Users can inspect groups, ambiguities, duplicates, weak matches, and conflicts, request AI explanations, correct assignments, and validate the detected pattern before final planning.
 
-### Story 4.1: Review Screen for Groups and Match States
+### Story 5.1: Review Screen for Groups and Match States
 
 As a media library user,
 I want to review detected groups, matches, ignored files, unsupported files, and unknown items,
@@ -522,7 +595,7 @@ So that I can understand the proposed organization pattern before approving it.
 **And** the review UI remains usable for up to 2,000 supported media files
 **And** opening review does not validate the pattern or authorize execution
 
-### Story 4.2: Confidence, Ambiguity, Conflict, and Duplicate Visibility
+### Story 5.2: Confidence, Ambiguity, Conflict, and Duplicate Visibility
 
 As a media library user,
 I want uncertain and risky matches to be clearly surfaced,
@@ -537,7 +610,7 @@ So that I can focus review effort where mistakes are most likely.
 **And** confidence is shown separately from validation status
 **And** high confidence never automatically validates a pattern or enables execution
 
-### Story 4.3: Manual Match and Status Correction
+### Story 5.3: Manual Match and Status Correction
 
 As a media library user,
 I want to correct series, movie, season, episode, order, duplicate, ignored, and unsupported assignments,
@@ -551,8 +624,9 @@ So that the current session reflects my decisions without restarting the workflo
 **And** the correction updates affected review rows and validation readiness
 **And** one manual correction does not silently propagate to neighboring files
 **And** corrected items remain bounded by the one-file-to-one-episode-or-movie rule
+**And** users can request Epic 3 AI assistance on the selected row to explain or suggest a correction
 
-### Story 4.4: Pattern Validation Gate
+### Story 5.4: Pattern Validation Gate
 
 As a media library user,
 I want to explicitly validate the detected organization pattern,
@@ -567,7 +641,7 @@ So that final operation planning only starts from a reviewed grouping and matchi
 **And** unresolved blocking conflicts prevent pattern validation
 **And** pattern validation still does not authorize file execution
 
-### Story 4.5: Exact Plan Validation State Preparation
+### Story 5.5: Exact Plan Validation State Preparation
 
 As a media library user,
 I want the app to keep exact operation-plan validation separate from pattern validation,
@@ -582,11 +656,11 @@ So that I must approve final source-to-destination paths before execution.
 **And** validation state survives normal navigation within the current session
 **And** the UI can explain which validation gate is still blocking execution
 
-## Epic 5: Plan d'organisation Plex-compatible
+## Epic 6: Plan d'organisation Plex-compatible
 
 Users receive a complete readable source-to-destination plan that is workspace-bounded, Plex-compatible, conflict-checked, extension-preserving, existing-folder-aware, and Windows-path-safe.
 
-### Story 5.1: Series and Season Destination Naming
+### Story 6.1: Series and Season Destination Naming
 
 As a media library user,
 I want series episode destination paths to follow the approved English TVDB naming layout,
@@ -601,7 +675,7 @@ So that my Plex library is organized predictably.
 **And** filenames use `Series Name in English - SXXEXX - Episode Title in English.original-extension`
 **And** the original file extension is preserved exactly
 
-### Story 5.2: Specials and Movie Destination Naming
+### Story 6.2: Specials and Movie Destination Naming
 
 As a media library user,
 I want specials and movies to receive TVDB-backed destination names,
@@ -616,7 +690,7 @@ So that non-standard media still lands in a Plex-compatible structure.
 **And** any containing movie folder uses the same English title and release year identity when required
 **And** homonymous media remains distinguishable using TVDB-backed identity information
 
-### Story 5.3: Workspace-Bounded Operation Plan Generation
+### Story 6.3: Workspace-Bounded Operation Plan Generation
 
 As a media library user,
 I want a complete source-to-destination operation plan inside my workspace,
@@ -631,7 +705,7 @@ So that I can inspect every planned move before anything changes.
 **And** ignored, unsupported, duplicate-excluded, and unassigned files are excluded from executable operations
 **And** plan generation creates no folders and moves or renames no files
 
-### Story 5.4: Destination Conflict and Existing Folder Handling
+### Story 6.4: Destination Conflict and Existing Folder Handling
 
 As a media library user,
 I want destination conflicts and reusable folders to be detected before execution,
@@ -646,7 +720,7 @@ So that the final plan is clear and safe.
 **And** conflicts prevent exact plan validation until resolved or excluded
 **And** conflict detection does not mutate the filesystem
 
-### Story 5.5: Windows Path Safety and Exact Plan Review
+### Story 6.5: Windows Path Safety and Exact Plan Review
 
 As a media library user,
 I want generated paths to be Windows-safe and reviewable before approval,
@@ -662,11 +736,11 @@ So that execution cannot fail from predictable path problems.
 **And** the user can validate the exact operation plan only when no blocking conflicts remain
 **And** exact plan validation still does not move, rename, delete, or create files
 
-## Epic 6: Execution approuvee, recuperation et recap
+## Epic 7: Execution approuvee, recuperation et recap
 
 Users can execute only a validated plan, create folders, move or rename approved files, handle per-file failures, recover after interruption, and see a clear recap.
 
-### Story 6.1: Execution Eligibility and Approved Plan Locking
+### Story 7.1: Execution Eligibility and Approved Plan Locking
 
 As a media library user,
 I want execution to be possible only after both validation gates are complete,
@@ -681,7 +755,7 @@ So that files cannot be changed from an unapproved plan.
 **And** ignored, unsupported, duplicate-excluded, unassigned, and unapproved items are excluded
 **And** the UI explains which gate or blocker prevents execution
 
-### Story 6.2: Workspace-Bounded Folder Creation and File Moves
+### Story 7.2: Workspace-Bounded Folder Creation and File Moves
 
 As a media library user,
 I want approved folders created and approved files moved or renamed inside the workspace,
@@ -696,7 +770,7 @@ So that the validated plan becomes my organized library.
 **And** every execution path is revalidated through workspace boundary checks before mutation
 **And** no automatic deletion is performed
 
-### Story 6.3: Per-File Execution Results and Failure Handling
+### Story 7.3: Per-File Execution Results and Failure Handling
 
 As a media library user,
 I want file operation failures to be tracked individually,
@@ -711,7 +785,7 @@ So that one locked or failed file does not make the whole run look successful.
 **And** locked or temporarily unavailable files offer retry or continue options
 **And** ignored, unsupported, excluded, unassigned, and unapproved files remain untouched
 
-### Story 6.4: Execution Progress and Interrupt Recovery
+### Story 7.4: Execution Progress and Interrupt Recovery
 
 As a media library user,
 I want execution progress and interruption recovery,
@@ -726,7 +800,7 @@ So that I can understand what happened if the app closes or stops mid-run.
 **And** if execution is interrupted, Episort detects it on next launch
 **And** the user is shown the relevant diagnostic log location and previous execution state
 
-### Story 6.5: Post-Execution Recap
+### Story 7.5: Post-Execution Recap
 
 As a media library user,
 I want a clear recap after execution,
@@ -740,68 +814,3 @@ So that I know exactly which files moved, failed, were skipped, or remained unto
 **And** failures include recoverable next actions where possible
 **And** the recap never exposes TVDB credentials, tokens, or secrets
 **And** the recap can distinguish partial success from complete success
-
-## Epic 7: Assistance AI locale controlee
-
-Users can use local AI for pattern detection, proposal explanations, and ambiguity help, with runtime prerequisite checks and no AI authority over execution.
-
-### Story 7.1: Local AI Runtime Prerequisite Check
-
-As a media library user,
-I want Episort to verify local AI prerequisites,
-So that AI-dependent workflows do not silently produce unreliable results.
-
-**Acceptance Criteria:**
-
-**Given** Episort starts or an AI-dependent workflow is requested
-**When** the local AI prerequisite check runs
-**Then** Episort verifies required runtime availability and hardware capability signals
-**And** missing GPU, VRAM, model, or runtime prerequisites block AI-dependent workflows with a recoverable explanation
-**And** non-AI workflows remain available when AI is unavailable where technically possible
-**And** prerequisite failures are logged without secrets or unnecessary private media metadata
-
-### Story 7.2: Single Bundled Model Enforcement
-
-As a media library user,
-I want Episort to use one bundled local AI model,
-So that I do not need to select, download, or manage models.
-
-**Acceptance Criteria:**
-
-**Given** local AI is enabled for V1
-**When** the AI runtime initializes
-**Then** Episort uses exactly one bundled model
-**And** no UI exists for selecting, downloading, importing, or managing external AI models
-**And** external model paths are not accepted as user configuration
-**And** the model identity and runtime status can be diagnosed without exposing private media metadata
-
-### Story 7.3: AI-Assisted Pattern Detection Suggestions
-
-As a media library user,
-I want local AI to suggest grouping or matching patterns,
-So that ambiguous media folders are faster to review.
-
-**Acceptance Criteria:**
-
-**Given** media inventory exists
-**When** AI-assisted pattern detection runs
-**Then** the AI can propose grouping or matching candidates using local context
-**And** AI output is marked as advisory and never treated as TVDB truth
-**And** AI suggestions cannot validate a pattern, validate an operation plan, or authorize execution
-**And** all AI-assisted suggestions remain reviewable and correctable by the user
-
-### Story 7.4: Contextual AI Explanation and Correction Help
-
-As a media library user,
-I want AI help for a selected file, group, match, conflict, or ambiguity,
-So that I can understand why a suggestion exists and decide what to correct.
-
-**Acceptance Criteria:**
-
-**Given** the user selects a file, group, match, conflict, or ambiguity
-**When** they request AI assistance
-**Then** Episort provides only the relevant selected-item context to the local AI assistant
-**And** the assistant can explain why a grouping or match was proposed
-**And** the assistant can suggest corrections for ambiguous or weak matches
-**And** suggested corrections require normal user action and validation before affecting the plan
-**And** the assistant cannot execute filesystem operations or change validation gates

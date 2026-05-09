@@ -1,5 +1,5 @@
 # generated: 2026-05-08
-# last_updated: 2026-05-08
+# last_updated: 2026-05-09
 # project: episort
 # project_key: NOKEY
 # tracking_system: file-system
@@ -27,8 +27,14 @@
 #   - optional: Can be completed but not required
 #   - done: Retrospective has been completed
 
+# 2026-05-09 epic resequencing: Local AI moved from Epic 7 to Epic 3 so downstream
+# TVDB/review/planning/execution epics rely on real AI output instead of large fake
+# fixtures. Old 3-x (TVDB) -> 4-x, 4-x (review) -> 5-x, 5-x (plan) -> 6-x,
+# 6-x (execution) -> 7-x. Old 7-x stories renumbered to 3-x and re-scoped as the
+# primary matching/explanation brain.
+
 generated: 2026-05-08
-last_updated: 2026-05-08
+last_updated: 2026-05-09
 project: episort
 project_key: NOKEY
 tracking_system: file-system
@@ -42,44 +48,44 @@ development_status:
   1-4-workspace-bounded-input-folder-selection: review
   1-5-desktop-feedback-theme-and-diagnostic-logging-foundation: ready-for-dev
   epic-1-retrospective: optional
-  epic-2: in-progress
-  2-1-supported-media-file-detection: review
-  2-2-sidecar-and-unsupported-file-inventory: review
-  2-3-mixed-media-group-seed-classification: review
-  2-4-large-inventory-progress-and-result-summary: review
+  epic-2: done
+  2-1-supported-media-file-detection: done
+  2-2-sidecar-and-unsupported-file-inventory: done
+  2-3-mixed-media-group-seed-classification: done
+  2-4-large-inventory-progress-and-result-summary: done
   epic-2-retrospective: optional
   epic-3: backlog
-  3-1-tvdb-series-and-movie-candidate-search: ready-for-dev
-  3-2-user-selection-of-tvdb-series-and-movie-identity: ready-for-dev
-  3-3-series-metadata-retrieval-and-episode-orders: ready-for-dev
-  3-4-movie-metadata-retrieval: ready-for-dev
-  3-5-episode-and-movie-match-proposals: ready-for-dev
-  3-6-tvdb-authentication-and-token-lifecycle: ready-for-dev
+  3-1-local-ai-runtime-prerequisite-check: ready-for-dev
+  3-2-single-bundled-model-enforcement: ready-for-dev
+  3-3-ai-assisted-pattern-detection-suggestions: ready-for-dev
+  3-4-contextual-ai-explanation-and-correction-help: ready-for-dev
   epic-3-retrospective: optional
   epic-4: backlog
-  4-1-review-screen-for-groups-and-match-states: ready-for-dev
-  4-2-confidence-ambiguity-conflict-and-duplicate-visibility: ready-for-dev
-  4-3-manual-match-and-status-correction: ready-for-dev
-  4-4-pattern-validation-gate: ready-for-dev
-  4-5-exact-plan-validation-state-preparation: ready-for-dev
+  4-1-tvdb-series-and-movie-candidate-search: ready-for-dev
+  4-2-user-selection-of-tvdb-series-and-movie-identity: ready-for-dev
+  4-3-series-metadata-retrieval-and-episode-orders: ready-for-dev
+  4-4-movie-metadata-retrieval: ready-for-dev
+  4-5-episode-and-movie-match-proposals: ready-for-dev
+  4-6-tvdb-authentication-and-token-lifecycle: ready-for-dev
   epic-4-retrospective: optional
   epic-5: backlog
-  5-1-series-and-season-destination-naming: ready-for-dev
-  5-2-specials-and-movie-destination-naming: ready-for-dev
-  5-3-workspace-bounded-operation-plan-generation: ready-for-dev
-  5-4-destination-conflict-and-existing-folder-handling: ready-for-dev
-  5-5-windows-path-safety-and-exact-plan-review: ready-for-dev
+  5-1-review-screen-for-groups-and-match-states: ready-for-dev
+  5-2-confidence-ambiguity-conflict-and-duplicate-visibility: ready-for-dev
+  5-3-manual-match-and-status-correction: ready-for-dev
+  5-4-pattern-validation-gate: ready-for-dev
+  5-5-exact-plan-validation-state-preparation: ready-for-dev
   epic-5-retrospective: optional
   epic-6: backlog
-  6-1-execution-eligibility-and-approved-plan-locking: ready-for-dev
-  6-2-workspace-bounded-folder-creation-and-file-moves: ready-for-dev
-  6-3-per-file-execution-results-and-failure-handling: ready-for-dev
-  6-4-execution-progress-and-interrupt-recovery: ready-for-dev
-  6-5-post-execution-recap: ready-for-dev
+  6-1-series-and-season-destination-naming: ready-for-dev
+  6-2-specials-and-movie-destination-naming: ready-for-dev
+  6-3-workspace-bounded-operation-plan-generation: ready-for-dev
+  6-4-destination-conflict-and-existing-folder-handling: ready-for-dev
+  6-5-windows-path-safety-and-exact-plan-review: ready-for-dev
   epic-6-retrospective: optional
   epic-7: backlog
-  7-1-local-ai-runtime-prerequisite-check: ready-for-dev
-  7-2-single-bundled-model-enforcement: ready-for-dev
-  7-3-ai-assisted-pattern-detection-suggestions: ready-for-dev
-  7-4-contextual-ai-explanation-and-correction-help: ready-for-dev
+  7-1-execution-eligibility-and-approved-plan-locking: ready-for-dev
+  7-2-workspace-bounded-folder-creation-and-file-moves: ready-for-dev
+  7-3-per-file-execution-results-and-failure-handling: ready-for-dev
+  7-4-execution-progress-and-interrupt-recovery: ready-for-dev
+  7-5-post-execution-recap: ready-for-dev
   epic-7-retrospective: optional

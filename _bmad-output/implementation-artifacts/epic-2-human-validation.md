@@ -1,6 +1,6 @@
 # Epic 2 Human Validation Guide
 
-Status: ready-for-human-validation
+Status: validated
 
 ## Scope
 
@@ -132,6 +132,8 @@ Record observations here during review.
 - Realistic naming examples reviewed: movie year patterns and `SxxEyy` series patterns match the user's expected V1 naming inputs.
 - Ambiguous deterministic `UNKNOWN` classification accepted only with the explicit product expectation that local AI has a central first-scan triage role.
 - Current summary counters are sufficient for the deterministic inventory part of Epic 2.
+- Manual UI check passed after targeted fixes for independent Scan/History search state, hidden Settings search, and rounded table hover clipping.
+- Epic 2 accepted as validated; local AI ambiguity handling has been moved into the early Epic 3 sequence.
 
 ### Questions
 
@@ -159,4 +161,6 @@ Record observations here during review.
 
 ### Decision
 
-- Pending manual UI check and AI course correction. Current position: deterministic Epic 2 inventory and scan result display are technically acceptable, but product validation should not close until the team decides where early AI triage belongs in the story order.
+- Epic 2 validated and closed.
+- Deterministic inventory and scan result display are accepted for the non-destructive inventory scope.
+- Ambiguous local-AI triage is explicitly deferred to the resequenced Epic 3 so Epic 2 does not block on AI implementation.

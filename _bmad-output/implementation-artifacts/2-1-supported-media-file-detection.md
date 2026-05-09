@@ -1,6 +1,6 @@
 # Story 2.1: Supported Media File Detection
 
-Status: review
+Status: done
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -85,7 +85,7 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Anti-Patterns to Avoid
 
-- Do not rename, move, create, or delete media files unless this story is in Epic 6 and the approved operation-plan execution rules are satisfied.
+- Do not rename, move, create, or delete media files unless this story is in Epic 7 and the approved operation-plan execution rules are satisfied.
 - Do not let JavaFX controllers call TVDB, AI, persistence, or filesystem executors directly.
 - Do not infer validation from confidence.
 - Do not let AI output validate patterns, approve plans, or authorize filesystem operations.
