@@ -1,30 +1,25 @@
 package com.episort.filesystem;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
+import java.util.Optional;
 
 public final class WorkspaceBoundary {
     private final Path workspaceRoot;
 
-    public WorkspaceBoundary(Path workspaceRoot) {
-        this.workspaceRoot = realPath(workspaceRoot);
+    public WorkspaceBoundary(Path workspaceRoot) throws IOException {
+        Objects.requireNonNull(workspaceRoot, "workspaceRoot");
+        this.workspaceRoot = workspaceRoot.toRealPath();
     }
 
-    public boolean contains(Path candidate) {
-        try {
-            Path realCandidate = candidate.toRealPath();
-            return realCandidate.startsWith(workspaceRoot);
-        } catch (IOException exception) {
-            return false;
-        }
+    public Optional<Path> resolveInside(Path candidate) throws IOException {
+        Objects.requireNonNull(candidate, "candidate");
+        Path realCandidate = candidate.toRealPath();
+        return realCandidate.startsWith(workspaceRoot) ? Optional.of(realCandidate) : Optional.empty();
     }
 
-    private Path realPath(Path path) {
-        try {
-            return path.toRealPath();
-        } catch (IOException exception) {
-            return path.toAbsolutePath().normalize();
-        }
+    public boolean contains(Path candidate) throws IOException {
+        return resolveInside(candidate).isPresent();
     }
 }

@@ -5,16 +5,6 @@ public final class StartupWorkflow {
     private final TvdbCredentialConfigurationService tvdbCredentialConfigurationService;
     private final InputFolderSelectionService inputFolderSelectionService;
 
-    public StartupWorkflow() {
-        this.workspaceConfigurationService = null;
-        this.tvdbCredentialConfigurationService = null;
-        this.inputFolderSelectionService = null;
-    }
-
-    public StartupWorkflow(WorkspaceConfigurationService workspaceConfigurationService) {
-        this(workspaceConfigurationService, null);
-    }
-
     public StartupWorkflow(
             WorkspaceConfigurationService workspaceConfigurationService,
             TvdbCredentialConfigurationService tvdbCredentialConfigurationService) {
@@ -79,7 +69,7 @@ public final class StartupWorkflow {
                 inputFolder);
     }
 
-    public ApplicationError missingWorkspace() {
+    public static ApplicationError missingWorkspace() {
         return ApplicationError.recoverable(
                 "WORKSPACE_REQUIRED",
                 ErrorSeverity.BLOCKING,

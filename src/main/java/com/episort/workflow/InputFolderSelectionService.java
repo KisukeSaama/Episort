@@ -5,29 +5,39 @@ import com.episort.filesystem.WorkspaceBoundary;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 public final class InputFolderSelectionService {
     public InputFolderSelectionResult selectInputFolder(AppSettings settings, Path inputFolder) {
         if (settings.workspaceDirectory().isEmpty()) {
             return InputFolderSelectionResult.failure(workspaceRequired());
         }
-        if (inputFolder == null) {
+        if (inputFolder == null || inputFolder.toString().isBlank()) {
             return InputFolderSelectionResult.failure(inputRequired());
         }
         if (!Files.isDirectory(inputFolder)) {
             return InputFolderSelectionResult.failure(inputInvalid(inputFolder));
         }
 
-        WorkspaceBoundary boundary = new WorkspaceBoundary(settings.workspaceDirectory().orElseThrow());
-        if (!boundary.contains(inputFolder)) {
-            return InputFolderSelectionResult.failure(inputOutsideWorkspace(inputFolder));
+        Path workspace = settings.workspaceDirectory().orElseThrow();
+        WorkspaceBoundary boundary;
+        try {
+            boundary = new WorkspaceBoundary(workspace);
+        } catch (IOException exception) {
+            return InputFolderSelectionResult.failure(workspaceUnavailable(workspace));
         }
 
+        Optional<Path> resolved;
         try {
-            return InputFolderSelectionResult.success(inputFolder.toRealPath());
+            resolved = boundary.resolveInside(inputFolder);
         } catch (IOException exception) {
             return InputFolderSelectionResult.failure(inputInvalid(inputFolder));
         }
+
+        if (resolved.isEmpty()) {
+            return InputFolderSelectionResult.failure(inputOutsideWorkspace(inputFolder));
+        }
+        return InputFolderSelectionResult.success(resolved.get());
     }
 
     private ApplicationError workspaceRequired() {
@@ -36,6 +46,14 @@ public final class InputFolderSelectionService {
                 ErrorSeverity.BLOCKING,
                 "Choose a workspace directory before selecting an input folder.",
                 "No workspace is configured.");
+    }
+
+    private ApplicationError workspaceUnavailable(Path workspace) {
+        return ApplicationError.recoverable(
+                "WORKSPACE_UNAVAILABLE",
+                ErrorSeverity.BLOCKING,
+                "Re-check the configured workspace; it cannot be accessed.",
+                "Workspace path is unreachable: " + workspace);
     }
 
     private ApplicationError inputRequired() {
