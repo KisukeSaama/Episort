@@ -1,6 +1,6 @@
 # Story 3.4: Contextual AI Explanation and Correction Help
 
-Status: ready-for-dev
+Status: done
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -22,12 +22,12 @@ so that I can understand why a suggestion exists and decide what to correct.
 
 ## Tasks / Subtasks
 
-- [ ] Define an `AiContextualAssistant` port that takes only a single selected item context (file, group, match, conflict, ambiguity) and returns advisory explanation + optional suggested correction. (AC: #1)
-- [ ] Implement the assistant on top of the `AiPatternAssistant` runtime delivered in Story 3.3 (no second bundled model, no cloud calls). (AC: #1)
-- [ ] Add tests verifying selected-item context is the only payload sent (no whole-inventory leakage), advisory output handling, and refusal when AI runtime is unavailable. (AC: #1)
-- [ ] Expose the service via a workflow-layer API consumable by the future Epic 5 review surface (Story 5.3) without coupling to JavaFX. (AC: #1)
-- [ ] Ensure suggestions cannot validate patterns, approve plans, or change validation gates - they require explicit user action through normal correction flows. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Define an `AiContextualAssistant` port that takes only a single selected item context (file, group, match, conflict, ambiguity) and returns advisory explanation + optional suggested correction. (AC: #1)
+- [x] Implement the assistant on top of the `AiPatternAssistant` runtime delivered in Story 3.3 (no second bundled model, no cloud calls). (AC: #1)
+- [x] Add tests verifying selected-item context is the only payload sent (no whole-inventory leakage), advisory output handling, and refusal when AI runtime is unavailable. (AC: #1)
+- [x] Expose the service via a workflow-layer API consumable by the future Epic 5 review surface (Story 5.3) without coupling to JavaFX. (AC: #1)
+- [x] Ensure suggestions cannot validate patterns, approve plans, or change validation gates - they require explicit user action through normal correction flows. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
 
 ## Dev Notes
 
@@ -117,10 +117,46 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+Claude Opus 4.7 (Amelia, BMAD dev-story)
 
 ### Debug Log References
 
+- Red phase: wrote `BundledLocalAiContextualAssistantTest` and `AiContextualHelpServiceTest` covering each selection variant plus refusal path.
+- Green phase: added the sealed `AiContextualSelection` hierarchy, `AiContextualAssistant` port, advisory `AiExplanation`, `BundledLocalAiContextualAssistant` (delegates to `AiPatternAssistant` from 3-3), and the gated `AiContextualHelpService`. `.\gradlew.bat test --rerun-tasks` BUILD SUCCESSFUL.
+- Code review (3 layers — Blind Hunter, Edge Case Hunter, Acceptance Auditor): AC #1 verified satisfied. Applied 1 patch — format `Match.confidence` as a clamped 0–100% percentage to avoid raw-double rendering.
+
 ### Completion Notes List
 
+- Selected-item context is enforced at every switch branch: only the selected filename (File/Match/Conflict/Ambiguity) or only the group's filenames (Group) are forwarded to the underlying `AiPatternAssistant`. Tests assert no inventory-wide leakage.
+- `AiExplanation` rejects construction with any validation or execution authority, mirroring the invariant from `AiPatternSuggestion`.
+- `AiContextualHelpService` refuses without invoking the assistant when `AiWorkflowGate` blocks, returning an `AiContextualHelpResult` with `AI_PREREQUISITES_UNAVAILABLE`.
+- Production wiring intentionally deferred — per spec, the service is "consumable by the future Epic 5 review surface (Story 5.3)" and is exposed as a workflow-layer entry point with no JavaFX coupling.
+- Match confidence is now formatted as `xx%` (clamped to [0, 100]) instead of raw double output.
+
+### Review Findings
+
+- [x] [Review][Patch] Match confidence formatted as percentage instead of raw double [src/main/java/com/episort/ai/BundledLocalAiContextualAssistant.java]
+- [x] [Review][Defer] `Match.confidence` raw-double rendering hardened by patch above; remaining edge cases (NaN, infinity) treated as caller contract violations
+- [x] [Review][Defer] Hardcoded English strings — i18n is a project-wide concern outside this story's scope
+- [x] [Review][Defer] `AiContextualHelpResult.refused(null)` collapses to empty refusal reason — current invariant is that `AiWorkflowGate.blocked` always carries an error
+- [x] [Review][Defer] `AiContextualHelpService` not yet wired in `EpisortApplication` — by spec, consumed by future Epic 5.3
+- [x] [Review][Defer] Empty `Group.filenames()` / `Ambiguity.candidates()` produce "(0 item(s))" prose — caller contract; UI layer will gate empty selections
+
 ### File List
+
+- src/main/java/com/episort/ai/AiContextualAssistant.java
+- src/main/java/com/episort/ai/AiContextualHelpResult.java
+- src/main/java/com/episort/ai/AiContextualHelpService.java
+- src/main/java/com/episort/ai/AiContextualRequest.java
+- src/main/java/com/episort/ai/AiContextualSelection.java
+- src/main/java/com/episort/ai/AiExplanation.java
+- src/main/java/com/episort/ai/BundledLocalAiContextualAssistant.java
+- src/test/java/com/episort/ai/AiContextualHelpServiceTest.java
+- src/test/java/com/episort/ai/BundledLocalAiContextualAssistantTest.java
+- _bmad-output/implementation-artifacts/3-4-contextual-ai-explanation-and-correction-help.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+
+### Change Log
+
+- 2026-05-09: Added contextual AI explanation/correction surface — sealed selection hierarchy, advisory explanation type, bundled assistant on top of the 3.3 pattern assistant, and gated workflow-layer help service consumable by Epic 5.3 without JavaFX coupling.
+- 2026-05-09: Code review patch — format `Match.confidence` as clamped percentage.

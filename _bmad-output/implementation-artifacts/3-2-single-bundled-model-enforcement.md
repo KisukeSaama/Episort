@@ -1,6 +1,6 @@
 # Story 3.2: Single Bundled Model Enforcement
 
-Status: review
+Status: done
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -148,3 +148,12 @@ GPT-5 Codex (Amelia, BMAD dev-story)
 ### Change Log
 
 - 2026-05-09: Enforced single bundled AI model configuration, added runtime diagnostics without private media metadata, rejected external model paths, and validated advisory-only AI boundaries.
+- 2026-05-09: Code review (3 layers — Blind Hunter, Edge Case Hunter, Acceptance Auditor). AC #1 verified satisfied. Applied 1 patch: null-guard the `runtimeProbe` constructor argument and added regression test `constructorRejectsNullProbe`.
+
+### Review Findings
+
+- [x] [Review][Patch] Null-guard `AiPrerequisiteService` constructor against null probe [src/main/java/com/episort/ai/AiPrerequisiteService.java:12]
+- [x] [Review][Defer] `AiModelConfiguration.external()` is an unconditional-throw factory — intentional defensive surface, kept as a hard rejection point
+- [x] [Review][Defer] `AiPrerequisiteService` does not cache probe results — out of scope for 3-2; revisit if probing becomes expensive
+- [x] [Review][Defer] No test for `runtimeProbe.probe()` throwing — non-blocking; current contract treats probe failure as an unhandled bug
+- [x] [Review][Defer] `AiHardwareSignals` could be defensively guarded against null — internal contract, low risk
