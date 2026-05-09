@@ -1,12 +1,32 @@
 # Episort
 
-Episort is a Windows-first JavaFX desktop application for safely planning TVDB-backed media organization.
+Episort est une application desktop JavaFX, pensee pour Windows, qui aide a organiser des episodes de series TV depuis un dossier de travail. Elle scanne les fichiers video, regroupe les contenus probables, s'appuie sur TVDB pour les metadonnees, puis prepare un plan de rangement a valider avant toute operation fichier.
 
-## Requirements
+## Fonctionnalites
+
+- Scan des fichiers `.avi`, `.mp4` et `.mkv`.
+- Detection de dossiers mixtes pouvant contenir plusieurs series.
+- Recherche TVDB et prise en charge des ordres aired, DVD et absolute.
+- Validation en deux temps : motifs/groupes detectes, puis plan exact source -> destination.
+- Operations bornees au dossier de travail configure.
+- Assistant IA local optionnel pour suggerer ou expliquer des motifs, sans pouvoir approuver ni executer.
+
+Format cible :
+
+```text
+Series Name in English/
+  Season XX/
+    Series Name in English - SXXEXX - Episode Title in English.original-extension
+```
+
+## Stack
 
 - Java 21
+- JavaFX
+- Gradle
+- JUnit 5
 
-## Development Commands
+## Commandes
 
 ```bash
 ./gradlew run
@@ -14,7 +34,7 @@ Episort is a Windows-first JavaFX desktop application for safely planning TVDB-b
 ./gradlew build
 ```
 
-On Windows PowerShell, use:
+Sous Windows PowerShell :
 
 ```powershell
 .\gradlew.bat run
@@ -22,48 +42,26 @@ On Windows PowerShell, use:
 .\gradlew.bat build
 ```
 
-`run` launches the JavaFX application shell. `test` runs the JUnit 5 suite.
+## Configuration
 
-## Local AI runtime
+Les identifiants TVDB ne doivent pas etre versionnes. Utiliser une variable d'environnement ou un fichier de configuration ignore.
 
-Episort embeds its own local AI runtime (Qwen3 8B). No external software is
-installed on the user's machine: the runtime binaries ship inside the Episort
-distribution under `app/runtime/` and are extracted on first launch into
-`%LOCALAPPDATA%\Episort\runtime\`. The model file (`Qwen3-8B-Instruct-Q4_K_M.gguf`,
-~5 GB) is downloaded once into `%LOCALAPPDATA%\Episort\models\` with a
-progress dialog. Nothing leaves the machine and there is no model selection
-or configuration to manage — the bundled model is hardcoded.
+L'IA locale utilise Qwen3 8B via un runtime embarque llama.cpp. Le modele est telecharge une fois dans `%LOCALAPPDATA%\Episort\models\`. Si le runtime ou le modele est indisponible, l'application reste utilisable sans les fonctions IA.
 
-The application runs without local AI: if the binaries are missing, the model
-has not been downloaded, or the embedded server cannot start, the AI-dependent
-flows are skipped and every other workflow (scan, TVDB, plan, validation,
-execute) still works.
-
-AI suggestions are advisory only — they never validate patterns, approve plans,
-or execute filesystem operations.
-
-### Building with the bundled runtime
-
-The runtime binaries are not committed to the repo. Fetch them once before
-building a distribution:
+Pour preparer une distribution avec le runtime embarque :
 
 ```powershell
 .\gradlew.bat fetchLlamaRuntime
 .\gradlew.bat installDist
 ```
 
-`fetchLlamaRuntime` downloads the pinned llama.cpp release zips into
-`build/llama-runtime/` (~600 MB). `installDist` (or `distZip`/`distTar`)
-copies them into `build/install/Episort/runtime/`.
-
-### Running the LLM tests
-
-The default `test` task uses an in-process fake server, so it runs on any
-machine without GPU. To exercise the real bundled runtime against the model on
-your local machine (model + runtime binaries must already be on disk):
+Les tests LLM reels sont des smoke tests optionnels :
 
 ```powershell
 .\gradlew.bat test -PrunLocalLlm=true
 ```
 
-This runs the smoke tests tagged `local-llm` (skipped by default).
+## Documentation
+
+- Design system : `docs/design-system.md`
+- Artefacts BMAD : `_bmad-output/`
