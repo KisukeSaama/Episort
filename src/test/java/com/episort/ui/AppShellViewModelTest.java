@@ -21,8 +21,8 @@ class AppShellViewModelTest {
         AppShellViewModel viewModel = AppShellViewModel.initial();
 
         assertEquals("Episort", viewModel.title());
-        assertEquals("Settings required", viewModel.primaryStatus());
-        assertTrue(viewModel.description().contains("workspace"));
+        assertEquals("Choisis un workspace avant de scanner des fichiers.", viewModel.primaryStatus());
+        assertTrue(viewModel.description().contains("dossier racine"));
     }
 
     @Test
@@ -34,16 +34,16 @@ class AppShellViewModelTest {
                 "C:\\Users\\Jonathan\\PrivateMedia"));
 
         assertEquals("WORKSPACE_REQUIRED", viewModel.errorCode().orElseThrow());
-        assertEquals("Choose a workspace directory before scanning media.", viewModel.primaryStatus());
+        assertEquals("Choisis un workspace avant de scanner des fichiers.", viewModel.primaryStatus());
         assertTrue(viewModel.errorDetails().isEmpty());
     }
 
     @Test
     void canBeCreatedFromStartupWorkflowError() {
-        AppShellViewModel viewModel = AppShellViewModel.fromError(new StartupWorkflow().missingWorkspace());
+        AppShellViewModel viewModel = AppShellViewModel.fromError(StartupWorkflow.missingWorkspace());
 
         assertEquals("WORKSPACE_REQUIRED", viewModel.errorCode().orElseThrow());
-        assertEquals("Choose a workspace directory before scanning media.", viewModel.primaryStatus());
+        assertEquals("Choisis un workspace avant de scanner des fichiers.", viewModel.primaryStatus());
     }
 
     @Test
@@ -52,8 +52,8 @@ class AppShellViewModelTest {
 
         AppShellViewModel viewModel = AppShellViewModel.fromWorkspace(workspace);
 
-        assertEquals("Workspace configured", viewModel.primaryStatus());
-        assertTrue(viewModel.description().contains(workspace.toString()));
+        assertEquals("Choisis un workspace avant de scanner des fichiers.", viewModel.primaryStatus());
+        assertFalse(viewModel.description().contains(workspace.toString()));
     }
 
     @Test
@@ -67,12 +67,12 @@ class AppShellViewModelTest {
     void showsTvdbConnectionTestSuccess() {
         AppShellViewModel viewModel = AppShellViewModel.fromTvdbConfiguration(TvdbCredentialConfigurationResult.passed());
 
-        assertEquals("TVDB connection verified", viewModel.primaryStatus());
-        assertTrue(viewModel.description().contains("metadata-backed organization"));
+        assertEquals("Connexion TVDB vérifiée", viewModel.primaryStatus());
+        assertTrue(viewModel.description().contains("métadonnées"));
     }
 
     @Test
-    void startupStateShowsTvdbBlockerWhenWorkspaceIsReadyButTvdbIsMissing() {
+    void startupStateDoesNotBlockSettingsPageWhenTvdbIsMissing() {
         Path workspace = Path.of("C:", "Media").toAbsolutePath().normalize();
         WorkspaceConfigurationResult workspaceResult = WorkspaceConfigurationResult.success(new AppSettings(workspace));
         TvdbCredentialConfigurationResult tvdbResult = TvdbCredentialConfigurationResult.failure(ApplicationError.recoverable(
@@ -83,20 +83,83 @@ class AppShellViewModelTest {
 
         AppShellViewModel viewModel = AppShellViewModel.fromStartupPrerequisites(workspaceResult, tvdbResult);
 
-        assertEquals("TVDB_CONFIGURATION_REQUIRED", viewModel.errorCode().orElseThrow());
-        assertEquals("Enter and test TVDB access before metadata-backed organization.", viewModel.primaryStatus());
+        assertTrue(viewModel.errorCode().isEmpty());
+        assertEquals("Choisis un workspace avant de scanner des fichiers.", viewModel.primaryStatus());
     }
 
     @Test
-    void recoverableErrorIncludesRedactedCodeAndDetails() {
+    void recoverableErrorDoesNotExposeCodeOrDetailsInUserCopy() {
         AppShellViewModel viewModel = AppShellViewModel.fromError(ApplicationError.recoverable(
                 "TVDB_CREDENTIALS_UNAVAILABLE",
                 ErrorSeverity.BLOCKING,
                 "TVDB credentials are unavailable.",
                 "apiKey=secret-key could not be read."));
 
-        assertTrue(viewModel.description().contains("TVDB_CREDENTIALS_UNAVAILABLE"));
+        assertFalse(viewModel.description().contains("TVDB_CREDENTIALS_UNAVAILABLE"));
         assertFalse(viewModel.description().contains("secret-key"));
+        assertEquals("", viewModel.description());
+    }
+
+    @Test
+    void defaultsToDarkTheme() {
+        assertEquals(Theme.DARK, AppShellViewModel.initial().theme());
+        assertEquals(AppLanguage.FRENCH, AppShellViewModel.initial().language());
+    }
+
+    @Test
+    void withThemeReturnsNewViewModelInDarkTheme() {
+        AppShellViewModel light = AppShellViewModel.initial().withTheme(Theme.LIGHT);
+
+        AppShellViewModel dark = light.withTheme(Theme.DARK);
+
+        assertEquals(Theme.DARK, dark.theme());
+        assertEquals(Theme.LIGHT, light.theme());
+        assertEquals(light.title(), dark.title());
+        assertEquals(light.primaryStatus(), dark.primaryStatus());
+    }
+
+    @Test
+    void preservingThemeKeepsPreviousThemeOnNewState() {
+        AppShellViewModel previous = AppShellViewModel.initial().withTheme(Theme.DARK);
+        AppShellViewModel newState = AppShellViewModel.fromError(ApplicationError.recoverable(
+                "WORKSPACE_REQUIRED", ErrorSeverity.BLOCKING, "msg", "details"));
+
+        AppShellViewModel merged = AppShellViewModel.preservingTheme(previous, newState);
+
+        assertEquals(Theme.DARK, merged.theme());
+        assertEquals(newState.primaryStatus(), merged.primaryStatus());
+    }
+
+    @Test
+    void withThemeRejectsNull() {
+        org.junit.jupiter.api.Assertions.assertThrows(
+                NullPointerException.class,
+                () -> AppShellViewModel.initial().withTheme(null));
+    }
+
+    @Test
+    void fromErrorWithNullDetailsDoesNotLeakNullSentinel() {
+        AppShellViewModel viewModel = AppShellViewModel.fromError(new ApplicationError(
+                "PLAN_BLOCKED",
+                ErrorSeverity.BLOCKING,
+                "Plan blocked.",
+                true,
+                null));
+
+        assertFalse(viewModel.description().contains("null"));
+    }
+
+    @Test
+    void redactsSecretsLeakedThroughFilesystemErrorDetails() {
+        AppShellViewModel viewModel = AppShellViewModel.fromError(ApplicationError.recoverable(
+                "INPUT_FOLDER_INVALID",
+                ErrorSeverity.BLOCKING,
+                "Choose an existing readable input folder.",
+                "C:\\Users\\Jonathan\\Media token=eyJhbGciOi.bearer-leak ; apiKey=secret-from-path"));
+
+        assertFalse(viewModel.description().contains("secret-from-path"));
+        assertFalse(viewModel.description().contains("eyJhbGciOi.bearer-leak"));
+        assertFalse(viewModel.description().contains("[REDACTED]"));
     }
 
     @Test
@@ -105,7 +168,40 @@ class AppShellViewModelTest {
 
         AppShellViewModel viewModel = AppShellViewModel.fromInputFolderSelection(InputFolderSelectionResult.success(input));
 
-        assertEquals("Input folder accepted", viewModel.primaryStatus());
+        assertEquals("Dossier à scanner accepté", viewModel.primaryStatus());
         assertTrue(viewModel.description().contains(input.toString()));
+    }
+
+    @Test
+    void canSwitchInitialCopyToEnglish() {
+        AppShellViewModel viewModel = AppShellViewModel.initial().withLanguage(AppLanguage.ENGLISH);
+
+        assertEquals("Choose a workspace before scanning files.", viewModel.primaryStatus());
+        assertEquals("First define the authorized root folder.", viewModel.description());
+        assertEquals(AppLanguage.ENGLISH, viewModel.language());
+    }
+
+    @Test
+    void canSwitchInitialCopyBackToFrench() {
+        AppShellViewModel viewModel = AppShellViewModel.initial()
+                .withLanguage(AppLanguage.ENGLISH)
+                .withLanguage(AppLanguage.FRENCH);
+
+        assertEquals("Choisis un workspace avant de scanner des fichiers.", viewModel.primaryStatus());
+        assertEquals("Définis d'abord le dossier racine autorisé.", viewModel.description());
+        assertEquals(AppLanguage.FRENCH, viewModel.language());
+    }
+
+    @Test
+    void canSwitchErrorCopyToEnglish() {
+        AppShellViewModel viewModel = AppShellViewModel.fromError(ApplicationError.recoverable(
+                        "INPUT_OUTSIDE_WORKSPACE",
+                        ErrorSeverity.BLOCKING,
+                        "x",
+                        "private path"))
+                .withLanguage(AppLanguage.ENGLISH);
+
+        assertEquals("The selected folder is outside the workspace.", viewModel.primaryStatus());
+        assertEquals("Select a folder contained by the configured workspace.", viewModel.description());
     }
 }

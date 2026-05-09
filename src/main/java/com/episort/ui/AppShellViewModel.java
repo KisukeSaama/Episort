@@ -5,6 +5,7 @@ import com.episort.workflow.TvdbCredentialConfigurationResult;
 import com.episort.workflow.WorkspaceConfigurationResult;
 import com.episort.workflow.InputFolderSelectionResult;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.Optional;
 
 public record AppShellViewModel(
@@ -12,30 +13,60 @@ public record AppShellViewModel(
         String primaryStatus,
         String description,
         Optional<String> errorCode,
-        Optional<String> errorDetails) {
+        Optional<String> errorDetails,
+        Theme theme,
+        AppLanguage language) {
+    public AppShellViewModel {
+        Objects.requireNonNull(theme, "theme");
+        Objects.requireNonNull(language, "language");
+    }
+
+    private static AppShellViewModel of(
+            String title,
+            String primaryStatus,
+            String description,
+            Optional<String> errorCode,
+            Optional<String> errorDetails) {
+        return new AppShellViewModel(title, primaryStatus, description, errorCode, errorDetails, Theme.DARK, AppLanguage.FRENCH);
+    }
+
+    public AppShellViewModel withTheme(Theme newTheme) {
+        Objects.requireNonNull(newTheme, "newTheme");
+        return new AppShellViewModel(title, primaryStatus, description, errorCode, errorDetails, newTheme, language);
+    }
+
+    public AppShellViewModel withLanguage(AppLanguage newLanguage) {
+        Objects.requireNonNull(newLanguage, "newLanguage");
+        if (errorCode.isPresent()) {
+            return fromErrorCode(errorCode.orElseThrow(), newLanguage).withTheme(theme);
+        }
+        return fromKnownState(primaryStatus, description, newLanguage).withTheme(theme);
+    }
+
+    public static AppShellViewModel preservingTheme(AppShellViewModel previous, AppShellViewModel newState) {
+        Objects.requireNonNull(previous, "previous");
+        Objects.requireNonNull(newState, "newState");
+        return newState.withTheme(previous.theme()).withLanguage(previous.language());
+    }
+
     public static AppShellViewModel initial() {
-        return new AppShellViewModel(
+        return of(
                 "Episort",
-                "Settings required",
-                "Choose a trusted workspace before scanning media. TVDB setup is required before organization workflows.",
+                UiText.settingsRequiredStatus(AppLanguage.FRENCH),
+                UiText.settingsRequiredDescription(AppLanguage.FRENCH),
                 Optional.empty(),
                 Optional.empty());
     }
 
     public static AppShellViewModel fromError(ApplicationError error) {
-        return new AppShellViewModel(
-                "Episort",
-                error.safeMessage(),
-                "Error " + error.code() + ": " + new com.episort.logging.SecretRedactor().redact(error.details()),
-                Optional.of(error.code()),
-                Optional.empty());
+        return fromErrorCode(error.code(), AppLanguage.FRENCH);
     }
 
     public static AppShellViewModel fromWorkspace(Path workspaceDirectory) {
-        return new AppShellViewModel(
+        return of(
                 "Episort",
-                "Workspace configured",
-                "Current workspace: " + workspaceDirectory.toAbsolutePath().normalize(),
+                UiText.settingsRequiredStatus(AppLanguage.FRENCH),
+                UiText.settingsRequiredDescription(AppLanguage.FRENCH),
                 Optional.empty(),
                 Optional.empty());
     }
@@ -45,7 +76,7 @@ public record AppShellViewModel(
             return AppShellViewModel.fromError(ApplicationError.recoverable(
                     "WORKSPACE_REQUIRED",
                     com.episort.workflow.ErrorSeverity.BLOCKING,
-                    "Choose a workspace directory before scanning media.",
+                    UiText.settingsRequiredStatus(AppLanguage.FRENCH),
                     "Workspace configuration result was successful without a workspace directory."));
         }
 
@@ -58,12 +89,12 @@ public record AppShellViewModel(
 
     public static AppShellViewModel fromTvdbConfiguration(TvdbCredentialConfigurationResult result) {
         if (result.success()) {
-            return new AppShellViewModel(
-                    "Episort",
-                    "TVDB connection verified",
-                    "TVDB access is ready for metadata-backed organization.",
-                    Optional.empty(),
-                    Optional.empty());
+            return of(
+                "Episort",
+                "Connexion TVDB vérifiée",
+                "L'accès TVDB est prêt pour l'organisation basée sur les métadonnées.",
+                Optional.empty(),
+                Optional.empty());
         }
 
         return AppShellViewModel.fromError(result.error().orElseThrow());
@@ -75,22 +106,93 @@ public record AppShellViewModel(
         if (!workspaceResult.success()) {
             return fromWorkspaceConfiguration(workspaceResult);
         }
-        if (!tvdbResult.organizationAllowed()) {
-            return fromTvdbConfiguration(tvdbResult);
-        }
         return fromWorkspace(workspaceResult.settings().workspaceDirectory().orElseThrow());
     }
 
     public static AppShellViewModel fromInputFolderSelection(InputFolderSelectionResult result) {
         if (result.success()) {
-            return new AppShellViewModel(
-                    "Episort",
-                    "Input folder accepted",
-                    "Input folder: " + result.inputFolder().orElseThrow(),
-                    Optional.empty(),
-                    Optional.empty());
+            return of(
+                "Episort",
+                "Dossier à scanner accepté",
+                "Dossier à scanner : " + result.inputFolder().orElseThrow(),
+                Optional.empty(),
+                Optional.empty());
         }
 
         return fromError(result.error().orElseThrow());
+    }
+
+    private static AppShellViewModel fromErrorCode(String code, AppLanguage language) {
+        return new AppShellViewModel(
+                "Episort",
+                UiText.errorStatus(code, language),
+                UiText.errorDescription(code, language),
+                Optional.of(code),
+                Optional.empty(),
+                Theme.DARK,
+                language);
+    }
+
+    private static AppShellViewModel fromKnownState(String status, String description, AppLanguage language) {
+        if (language == AppLanguage.ENGLISH) {
+            if (status.equals("Configuration requise")
+                    || status.equals("Settings required")
+                    || status.equals(UiText.settingsRequiredStatus(AppLanguage.FRENCH))
+                    || status.equals(UiText.settingsRequiredStatus(AppLanguage.ENGLISH))) {
+                return new AppShellViewModel(
+                        "Episort",
+                        UiText.settingsRequiredStatus(language),
+                        UiText.settingsRequiredDescription(language),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Theme.DARK,
+                        language);
+            }
+            if (status.equals("Workspace configuré")
+                    || status.equals(UiText.workspaceConfiguredStatus(AppLanguage.FRENCH))
+                    || status.equals(UiText.workspaceConfiguredStatus(AppLanguage.ENGLISH))
+                    || status.equals("Workspace configured")) {
+                return new AppShellViewModel(
+                        "Episort",
+                        UiText.workspaceConfiguredStatus(language),
+                        translateWorkspaceDescription(description, language),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Theme.DARK,
+                        language);
+            }
+        } else if (status.equals("Settings required")
+                || status.equals("Configuration requise")
+                || status.equals(UiText.settingsRequiredStatus(AppLanguage.FRENCH))
+                || status.equals(UiText.settingsRequiredStatus(AppLanguage.ENGLISH))
+                || status.equals("Choose a workspace before scanning media.")) {
+            return initial();
+        } else if (status.equals("Workspace configured")
+                || status.equals("Workspace configuré")
+                || status.equals(UiText.workspaceConfiguredStatus(AppLanguage.FRENCH))
+                || status.equals(UiText.workspaceConfiguredStatus(AppLanguage.ENGLISH))) {
+            return new AppShellViewModel(
+                    "Episort",
+                    UiText.workspaceConfiguredStatus(language),
+                    translateWorkspaceDescription(description, language),
+                    Optional.empty(),
+                    Optional.empty(),
+                    Theme.DARK,
+                    language);
+        }
+        return new AppShellViewModel("Episort", status, description, Optional.empty(), Optional.empty(), Theme.DARK, language);
+    }
+
+    private static String translateWorkspaceDescription(String description, AppLanguage language) {
+        String workspace = description
+                .replace("Workspace sélectionné :", "")
+                .replace("Selected workspace:", "")
+                .replace("Workspace actuel :", "")
+                .replace("Current workspace:", "")
+                .trim();
+        if (workspace.isBlank()) {
+            return language == AppLanguage.ENGLISH ? "No workspace selected" : "Aucun workspace sélectionné";
+        }
+        return (language == AppLanguage.ENGLISH ? "Selected workspace: " : "Workspace sélectionné : ") + workspace;
     }
 }

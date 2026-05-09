@@ -1,0 +1,121 @@
+.app-shell.theme-dark {
+    -fx-background-color: #090b0f;
+}
+
+.app-shell.theme-light {
+    -fx-background-color: #f8fafc;
+}
+
+.app-title {
+    -fx-font-size: 30px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f8fafc;
+}
+
+.app-status {
+    -fx-font-size: 18px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #f8fafc;
+}
+
+.app-description {
+    -fx-font-size: 15px;
+    -fx-text-fill: #a7b0bd;
+}
+
+.label {
+    -fx-text-fill: #f8fafc;
+}
+
+.language-label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #f5f7fb;
+}
+
+.settings-section {
+    -fx-padding: 18px;
+    -fx-background-color: #11151c;
+    -fx-border-color: #242a35;
+    -fx-border-width: 1px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+}
+
+.settings-section-title {
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #ff9f43;
+}
+
+.settings-section-description {
+    -fx-font-size: 14px;
+    -fx-text-fill: #b8c0cc;
+}
+
+.workspace-value {
+    -fx-font-size: 13px;
+    -fx-text-fill: #fbbf77;
+}
+
+.button {
+    -fx-font-size: 14px;
+    -fx-padding: 9px 14px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-background-color: #f97316;
+    -fx-text-fill: #111827;
+    -fx-font-weight: 700;
+}
+
+.button:hover {
+    -fx-background-color: #fb923c;
+}
+
+.button:disabled {
+    -fx-background-color: #303540;
+    -fx-text-fill: #7b8492;
+    -fx-opacity: 1;
+}
+
+.text-field,
+.password-field,
+.combo-box {
+    -fx-font-size: 14px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-border-color: #f97316;
+}
+
+.combo-box .list-cell {
+    -fx-text-fill: #161a20;
+}
+
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.theme-light .app-title,
+.theme-light .app-status {
+    -fx-text-fill: #161a20;
+}
+
+.theme-light .app-description {
+    -fx-text-fill: #3d4652;
+}
+
+.theme-light .label {
+    -fx-text-fill: #161a20;
+}
+
+.theme-light .language-label,
+.theme-light .settings-section-title {
+    -fx-text-fill: #161a20;
+}
+
+.theme-light .settings-section-description {
+    -fx-text-fill: #3d4652;
+}
+
+.theme-light .workspace-value {
+    -fx-text-fill: #3d4652;
+}

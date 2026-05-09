@@ -22,7 +22,23 @@ tasks.test {
     useJUnitPlatform()
 }
 
+tasks.register("prepareLocalTvdbCredentials") {
+    val generated = layout.projectDirectory.file("src/main/java/com/episort/config/BuildTvdbCredentials.java")
+    val example = layout.projectDirectory.file("src/main/java/com/episort/config/BuildTvdbCredentials.java.example")
+    outputs.file(generated)
+    doLast {
+        if (!generated.asFile.exists()) {
+            generated.asFile.writeText(example.asFile.readText())
+        }
+    }
+}
+
+tasks.named("compileJava") {
+    dependsOn("prepareLocalTvdbCredentials")
+}
+
 dependencies {
+    implementation("net.java.dev.jna:jna:5.18.1")
     testImplementation(platform("org.junit:junit-bom:5.12.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
