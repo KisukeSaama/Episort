@@ -13,6 +13,7 @@ import java.util.Properties;
 
 public final class FileSettingsStore implements SettingsStore {
     private static final String WORKSPACE_DIRECTORY = "workspaceDirectory";
+    private static final String LANGUAGE = "language";
 
     private final Path settingsFile;
 
@@ -79,10 +80,46 @@ public final class FileSettingsStore implements SettingsStore {
 
     @Override
     public void save(AppSettings settings) {
-        Properties properties = new Properties();
+        Properties properties = readExistingProperties();
+        properties.remove(WORKSPACE_DIRECTORY);
         settings.workspaceDirectory()
                 .ifPresent(workspace -> properties.setProperty(WORKSPACE_DIRECTORY, workspace.toString()));
+        writeProperties(properties);
+    }
 
+    public Optional<String> loadLanguage() {
+        if (!Files.exists(settingsFile)) {
+            return Optional.empty();
+        }
+        Properties properties = readExistingProperties();
+        String value = properties.getProperty(LANGUAGE);
+        return (value == null || value.isBlank()) ? Optional.empty() : Optional.of(value);
+    }
+
+    public void saveLanguage(String language) {
+        Properties properties = readExistingProperties();
+        if (language == null || language.isBlank()) {
+            properties.remove(LANGUAGE);
+        } else {
+            properties.setProperty(LANGUAGE, language);
+        }
+        writeProperties(properties);
+    }
+
+    private Properties readExistingProperties() {
+        Properties properties = new Properties();
+        if (!Files.exists(settingsFile)) {
+            return properties;
+        }
+        try (InputStream inputStream = Files.newInputStream(settingsFile)) {
+            properties.load(inputStream);
+        } catch (IOException exception) {
+            throw new SettingsStoreException("Unable to load Episort settings.", exception);
+        }
+        return properties;
+    }
+
+    private void writeProperties(Properties properties) {
         try {
             Files.createDirectories(settingsFile.getParent());
             Path temporaryFile = Files.createTempFile(settingsFile.getParent(), "settings", ".tmp");

@@ -37,6 +37,7 @@ public final class SettingsPane {
     @SuppressWarnings("unused")
     private final Runnable onClose;
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
+    private Consumer<AppLanguage> extraSectionLanguageHook;
 
     public SettingsPane(
             Function<Path, AppShellViewModel> configureWorkspace,
@@ -105,7 +106,7 @@ public final class SettingsPane {
         preferencesDescription.getStyleClass().add("settings-section-description");
         preferencesDescription.setWrapText(true);
 
-        languageCombo = new ComboBox<>(FXCollections.observableArrayList(AppLanguage.FRENCH, AppLanguage.ENGLISH));
+        languageCombo = new ComboBox<>(FXCollections.observableArrayList(AppLanguage.values()));
         languageCombo.setConverter(new javafx.util.StringConverter<>() {
             @Override
             public String toString(AppLanguage value) {
@@ -114,7 +115,12 @@ public final class SettingsPane {
 
             @Override
             public AppLanguage fromString(String value) {
-                return AppLanguage.FRENCH.displayName().equals(value) ? AppLanguage.FRENCH : AppLanguage.ENGLISH;
+                for (AppLanguage candidate : AppLanguage.values()) {
+                    if (candidate.displayName().equals(value)) {
+                        return candidate;
+                    }
+                }
+                return AppLanguage.DEFAULT;
             }
         });
         languageCombo.setOnAction(event -> {
@@ -143,8 +149,22 @@ public final class SettingsPane {
         return root;
     }
 
+    public void attachExtraSection(Region section, Consumer<AppLanguage> applyLanguageHook) {
+        if (section == null) {
+            return;
+        }
+        root.getChildren().add(section);
+        if (applyLanguageHook != null) {
+            extraSectionLanguageHook = applyLanguageHook;
+            applyLanguageHook.accept(currentLanguage);
+        }
+    }
+
     public void applyLanguage(AppLanguage language) {
         currentLanguage = language;
+        if (extraSectionLanguageHook != null) {
+            extraSectionLanguageHook.accept(language);
+        }
         pageEyebrow.setText(UiText.settingsHeading(language));
         pageTitle.setText(UiText.settingsPageTitle(language));
         pageSubtitle.setText(UiText.settingsPageSubtitle(language));

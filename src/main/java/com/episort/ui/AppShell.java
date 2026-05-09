@@ -16,6 +16,8 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
@@ -45,6 +47,14 @@ public final class AppShell {
     private Optional<Path> lastInputFolder = Optional.empty();
     private String scanSearchQuery = "";
     private String historySearchQuery = "";
+    private java.util.function.BooleanSupplier localAiReady = () -> true;
+    private java.util.function.Consumer<AppLanguage> languageChangeListener = lang -> {};
+    private VBox prereqOverlay;
+    private Label prereqOverlayTitle;
+    private Label prereqOverlaySubtitle;
+    private VBox prereqOverlayList;
+    private Button prereqOverlayButton;
+    private Region currentScreenRoot;
 
     public AppShell() {
         this(AppShellViewModel.initial());
@@ -163,6 +173,7 @@ public final class AppShell {
 
         viewHost = new StackPane();
         viewHost.getStyleClass().add("view-host");
+        buildPrereqOverlay();
 
         root = new BorderPane();
         root.getStyleClass().add("app-shell");
@@ -187,6 +198,79 @@ public final class AppShell {
         return root;
     }
 
+    public SettingsPane settingsPane() {
+        return settingsPane;
+    }
+
+    public ScanScreen scanScreen() {
+        return scanScreen;
+    }
+
+    public void setLocalAiReadiness(java.util.function.BooleanSupplier supplier) {
+        this.localAiReady = supplier == null ? () -> true : supplier;
+        refreshPrerequisitesGate();
+    }
+
+    public void refreshPrerequisitesGate() {
+        boolean workspaceMissing = currentWorkspace.get().isEmpty();
+        boolean aiMissing = !localAiReady.getAsBoolean();
+        boolean show = (workspaceMissing || aiMissing) && currentView != AppView.SETTINGS;
+
+        prereqOverlayList.getChildren().clear();
+        AppLanguage language = currentViewModel.language();
+        if (workspaceMissing) {
+            prereqOverlayList.getChildren().add(bullet(UiText.prereqMissingWorkspace(language)));
+        }
+        if (aiMissing) {
+            prereqOverlayList.getChildren().add(bullet(UiText.prereqMissingLocalAi(language)));
+        }
+        prereqOverlayTitle.setText(UiText.prereqOverlayTitle(language));
+        prereqOverlaySubtitle.setText(UiText.prereqOverlaySubtitle(language));
+        prereqOverlayButton.setText(UiText.prereqOpenSettings(language));
+
+        prereqOverlay.setVisible(show);
+        prereqOverlay.setManaged(show);
+        if (currentScreenRoot != null) {
+            currentScreenRoot.setMouseTransparent(show);
+            currentScreenRoot.setOpacity(show ? 0.35 : 1.0);
+        }
+    }
+
+    private void buildPrereqOverlay() {
+        prereqOverlayTitle = new Label();
+        prereqOverlayTitle.setStyle("-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #f1f5f9;");
+        prereqOverlaySubtitle = new Label();
+        prereqOverlaySubtitle.setStyle("-fx-font-size: 14px; -fx-text-fill: #cbd5e1;");
+        prereqOverlaySubtitle.setWrapText(true);
+        prereqOverlayList = new VBox(6);
+        prereqOverlayButton = new Button();
+        prereqOverlayButton.getStyleClass().add("primary");
+        prereqOverlayButton.setOnAction(event -> showView(AppView.SETTINGS));
+
+        VBox card = new VBox(14, prereqOverlayTitle, prereqOverlaySubtitle, prereqOverlayList, prereqOverlayButton);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setPadding(new Insets(28));
+        card.setMaxWidth(520);
+        card.setStyle(
+                "-fx-background-color: rgba(15,18,24,0.92);"
+                        + " -fx-background-radius: 14;"
+                        + " -fx-border-color: rgba(249,115,22,0.35);"
+                        + " -fx-border-radius: 14; -fx-border-width: 1;");
+
+        prereqOverlay = new VBox(card);
+        prereqOverlay.setAlignment(Pos.CENTER);
+        prereqOverlay.setStyle("-fx-background-color: rgba(7,8,11,0.55);");
+        prereqOverlay.setVisible(false);
+        prereqOverlay.setManaged(false);
+    }
+
+    private static Label bullet(String text) {
+        Label l = new Label("•  " + text);
+        l.setStyle("-fx-font-size: 14px; -fx-text-fill: #f1f5f9;");
+        l.setWrapText(true);
+        return l;
+    }
+
     private ScrollPane buildSettingsView() {
         Region content = settingsPane == null ? new VBox() : settingsPane.root();
         StackPane host = new StackPane(content);
@@ -207,7 +291,9 @@ public final class AppShell {
             case HISTORY -> historyScreen.root();
             case SETTINGS -> settingsScroll;
         };
-        viewHost.getChildren().setAll(screenRoot);
+        currentScreenRoot = screenRoot;
+        viewHost.getChildren().setAll(screenRoot, prereqOverlay);
+        refreshPrerequisitesGate();
 
         if (view == AppView.HISTORY) {
             historyScreen.refresh();
@@ -335,7 +421,7 @@ public final class AppShell {
                 currentViewModel.language()));
     }
 
-    private void reanalyzeLastFolder() {
+    public void reanalyzeLastFolder() {
         if (selectInputFolder == null || lastInputFolder.isEmpty()) {
             return;
         }
@@ -378,6 +464,7 @@ public final class AppShell {
             historyScreen.refresh();
         }
         refreshPrimaryAction();
+        refreshPrerequisitesGate();
     }
 
     private void refreshPrimaryAction() {
@@ -430,6 +517,11 @@ public final class AppShell {
     private void applyLanguage(AppLanguage language) {
         currentViewModel = currentViewModel.withLanguage(language);
         applyLanguageInternal(language);
+        languageChangeListener.accept(language);
+    }
+
+    public void setLanguageChangeListener(java.util.function.Consumer<AppLanguage> listener) {
+        this.languageChangeListener = listener == null ? lang -> {} : listener;
     }
 
     private void applyLanguageInternal(AppLanguage language) {
@@ -443,6 +535,7 @@ public final class AppShell {
             settingsPane.applyLanguage(language);
         }
         refreshPrimaryAction();
+        refreshPrerequisitesGate();
     }
 
     private void onSettingsClose() {

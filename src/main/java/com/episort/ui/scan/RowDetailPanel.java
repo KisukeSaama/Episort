@@ -5,7 +5,10 @@ import com.episort.ui.UiText;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.function.BiConsumer;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
@@ -32,6 +35,14 @@ public final class RowDetailPanel {
     private final Label confidenceValue;
     private final Label seasonEpisodeValue;
 
+    private final Label tvdbSeedValue;
+    private final Label tvdbTypeValue;
+    private final Label tvdbStatusValue;
+    private final ComboBox<String> tvdbCandidate = new ComboBox<>();
+    private final ComboBox<String> tvdbOrder = new ComboBox<>();
+    private final Button tvdbApply = new Button();
+    private final Button tvdbReset = new Button();
+
     private final Label proposedValue;
     private final Label destinationValue;
     private final Label conflictValue;
@@ -40,6 +51,7 @@ public final class RowDetailPanel {
 
     private final Label sourceHeading;
     private final Label detectionHeading;
+    private final Label tvdbHeading;
     private final Label destinationHeading;
     private final Label notesHeading;
 
@@ -50,6 +62,9 @@ public final class RowDetailPanel {
     private final Label statusLabel;
     private final Label confidenceLabel;
     private final Label seasonEpisodeLabel;
+    private final Label tvdbSeedLabel;
+    private final Label tvdbTypeLabel;
+    private final Label tvdbStatusLabel;
     private final Label proposedLabel;
     private final Label destinationLabel;
     private final Label conflictLabel;
@@ -57,6 +72,10 @@ public final class RowDetailPanel {
     private final Label noteLabel;
 
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
+    private ScanRow currentRow;
+    private BatchTvdbMatch currentGroupMatch;
+    private BiConsumer<ScanRow, String> onApplyCandidate = (r, c) -> {};
+    private java.util.function.Consumer<ScanRow> onResetMatch = r -> {};
 
     public RowDetailPanel() {
         Label emptyIcon = new Label("◌");
@@ -73,6 +92,7 @@ public final class RowDetailPanel {
 
         sourceHeading = sectionHeading();
         detectionHeading = sectionHeading();
+        tvdbHeading = sectionHeading();
         destinationHeading = sectionHeading();
         notesHeading = sectionHeading();
 
@@ -83,6 +103,9 @@ public final class RowDetailPanel {
         statusLabel = fieldLabel();
         confidenceLabel = fieldLabel();
         seasonEpisodeLabel = fieldLabel();
+        tvdbSeedLabel = fieldLabel();
+        tvdbTypeLabel = fieldLabel();
+        tvdbStatusLabel = fieldLabel();
         proposedLabel = fieldLabel();
         destinationLabel = fieldLabel();
         conflictLabel = fieldLabel();
@@ -96,11 +119,31 @@ public final class RowDetailPanel {
         statusValue = proseValue();
         confidenceValue = monoValue();
         seasonEpisodeValue = monoValue();
+        tvdbSeedValue = monoValue();
+        tvdbTypeValue = proseValue();
+        tvdbStatusValue = proseValue();
         proposedValue = monoValue();
         destinationValue = monoValue();
         conflictValue = proseValue();
         alertValue = proseValue();
         noteValue = proseValue();
+
+        tvdbCandidate.setMaxWidth(Double.MAX_VALUE);
+        tvdbApply.getStyleClass().add("primary");
+        tvdbReset.getStyleClass().add("ghost");
+        tvdbApply.setOnAction(e -> {
+            String selected = tvdbCandidate.getValue();
+            if (selected != null && !selected.isBlank() && currentRow != null) {
+                onApplyCandidate.accept(currentRow, selected);
+            }
+        });
+        tvdbReset.setOnAction(e -> {
+            if (currentRow != null) {
+                onResetMatch.accept(currentRow);
+            }
+        });
+        HBox tvdbControls = new HBox(8, tvdbApply, tvdbReset);
+        tvdbControls.setAlignment(Pos.CENTER_LEFT);
 
         VBox sourceSection = new VBox(6,
                 sourceHeading,
@@ -117,6 +160,16 @@ public final class RowDetailPanel {
                 fieldRow(seasonEpisodeLabel, seasonEpisodeValue));
         detectionSection.getStyleClass().add("detail-panel-section");
 
+        VBox tvdbSection = new VBox(6,
+                tvdbHeading,
+                fieldRow(tvdbSeedLabel, tvdbSeedValue),
+                fieldRow(tvdbTypeLabel, tvdbTypeValue),
+                fieldRow(tvdbStatusLabel, tvdbStatusValue),
+                tvdbCandidate,
+                tvdbOrder,
+                tvdbControls);
+        tvdbSection.getStyleClass().add("detail-panel-section");
+
         VBox destinationSection = new VBox(6,
                 destinationHeading,
                 fieldRow(proposedLabel, proposedValue),
@@ -130,7 +183,7 @@ public final class RowDetailPanel {
                 fieldRow(noteLabel, noteValue));
         notesSection.getStyleClass().add("detail-panel-section");
 
-        content = new VBox(12, sourceSection, detectionSection, destinationSection, notesSection);
+        content = new VBox(12, sourceSection, detectionSection, tvdbSection, destinationSection, notesSection);
         content.setVisible(false);
         content.setManaged(false);
 
@@ -147,6 +200,14 @@ public final class RowDetailPanel {
         return root;
     }
 
+    public void setOnApplyCandidate(BiConsumer<ScanRow, String> handler) {
+        this.onApplyCandidate = handler == null ? (r, c) -> {} : handler;
+    }
+
+    public void setOnResetMatch(java.util.function.Consumer<ScanRow> handler) {
+        this.onResetMatch = handler == null ? r -> {} : handler;
+    }
+
     public void applyLanguage(AppLanguage language) {
         currentLanguage = language;
         emptyTitle.setText(UiText.detailEmptyTitle(language));
@@ -154,6 +215,7 @@ public final class RowDetailPanel {
 
         sourceHeading.setText(UiText.detailSectionSource(language));
         detectionHeading.setText(UiText.detailSectionDetection(language));
+        tvdbHeading.setText(UiText.detailSectionTvdb(language));
         destinationHeading.setText(UiText.detailSectionDestination(language));
         notesHeading.setText(UiText.detailSectionNotes(language));
 
@@ -164,18 +226,36 @@ public final class RowDetailPanel {
         statusLabel.setText(UiText.detailFieldStatus(language));
         confidenceLabel.setText(UiText.detailFieldConfidence(language));
         seasonEpisodeLabel.setText(UiText.detailFieldSeasonEpisode(language));
+        tvdbSeedLabel.setText(language == AppLanguage.ENGLISH ? "Group" : "Groupe");
+        tvdbTypeLabel.setText(UiText.detailFieldMediaType(language));
+        tvdbStatusLabel.setText(UiText.detailFieldStatus(language));
         proposedLabel.setText(UiText.detailFieldProposed(language));
         destinationLabel.setText(UiText.detailFieldDestination(language));
         conflictLabel.setText(UiText.detailFieldConflict(language));
         alertLabel.setText(UiText.detailFieldAlert(language));
         noteLabel.setText(UiText.detailFieldNote(language));
+
+        tvdbCandidate.setPromptText(UiText.scanBatchTvdbCandidatePlaceholder(language));
+        tvdbOrder.setPromptText(UiText.scanBatchTvdbOrderPlaceholder(language));
+        tvdbOrder.getItems().setAll(
+                UiText.scanBatchTvdbOrderAired(language),
+                UiText.scanBatchTvdbOrderDvd(language),
+                UiText.scanBatchTvdbOrderAbsolute(language));
+        tvdbApply.setText(UiText.scanBatchTvdbApply(language));
+        tvdbReset.setText(UiText.scanBatchTvdbReset(language));
     }
 
     public void show(ScanRow row) {
+        show(row, null);
+    }
+
+    public void show(ScanRow row, BatchTvdbMatch groupMatch) {
         if (row == null) {
             clear();
             return;
         }
+        currentRow = row;
+        currentGroupMatch = groupMatch;
         emptyState.setVisible(false);
         emptyState.setManaged(false);
         content.setVisible(true);
@@ -194,7 +274,24 @@ public final class RowDetailPanel {
         mediaTypeValue.setText(mediaTypeText(row.mediaType(), currentLanguage));
         statusValue.setText(statusText(row.status(), currentLanguage));
         confidenceValue.setText(confidenceText(row.confidence()));
-        seasonEpisodeValue.setText(EMPTY);
+        seasonEpisodeValue.setText(row.order().orElse(EMPTY));
+
+        if (groupMatch == null) {
+            tvdbSeedValue.setText(EMPTY);
+            tvdbTypeValue.setText(EMPTY);
+            tvdbStatusValue.setText(EMPTY);
+        } else {
+            tvdbSeedValue.setText(groupMatch.seedName());
+            tvdbTypeValue.setText(groupMatch.typeText(currentLanguage));
+            tvdbStatusValue.setText(groupMatch.statusText(currentLanguage));
+        }
+        String currentMatch = row.tvdbMatch().orElse(null);
+        if (currentMatch != null && !tvdbCandidate.getItems().contains(currentMatch)) {
+            tvdbCandidate.getItems().add(currentMatch);
+        }
+        tvdbCandidate.setValue(currentMatch);
+        tvdbReset.setDisable(row.tvdbMatch().isEmpty());
+
         proposedValue.setText(row.proposedFilename().orElse(EMPTY));
         destinationValue.setText(destinationText(row.destination()));
         conflictValue.setText(row.conflictText().orElse(EMPTY));
@@ -203,6 +300,8 @@ public final class RowDetailPanel {
     }
 
     public void clear() {
+        currentRow = null;
+        currentGroupMatch = null;
         emptyState.setVisible(true);
         emptyState.setManaged(true);
         content.setVisible(false);

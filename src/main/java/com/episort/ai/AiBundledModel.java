@@ -1,15 +1,21 @@
 package com.episort.ai;
 
 public enum AiBundledModel {
-    EPISORT_PATTERN_ASSISTANT_V1("episort-pattern-assistant-v1");
+    QWEN3_8B("qwen3:8b", true);
 
     private final String identity;
+    private final boolean requiresGpu;
 
-    AiBundledModel(String identity) {
+    AiBundledModel(String identity, boolean requiresGpu) {
         this.identity = identity;
+        this.requiresGpu = requiresGpu;
     }
 
     public String identity() {
         return identity;
+    }
+
+    public boolean requiresGpu() {
+        return requiresGpu;
     }
 }

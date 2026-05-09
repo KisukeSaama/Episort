@@ -388,6 +388,22 @@ Each component is documented as **Anatomy → Class → Rules**.
     Never replace the table with the detail panel — the user must always
     see context.
 
+### 4.12a AI chat panel
+
+- **Anatomy:** section heading -> target breadcrumb -> scrollable message
+  stack -> multiline input + primary send button. Assistant messages may
+  contain a minimal Markdown subset rendered as JavaFX nodes.
+- **Classes:** `.ai-chat-panel`, `.ai-chat-scroll`, `.ai-chat-messages`,
+  `.ai-chat-message`, `.ai-chat-message-user`, `.ai-chat-message-assistant`,
+  `.ai-chat-markdown`, `.ai-chat-md-heading`, `.ai-chat-md-paragraph`,
+  `.ai-chat-md-bullet`, `.ai-chat-md-code`, `.ai-chat-tool-card`.
+- **Rules:**
+  - Do not use `WebView` or HTML for AI content; render the supported
+    Markdown subset directly in JavaFX controls.
+  - Empty or whitespace-only messages are never displayed.
+  - Tool-call cards remain explicit confirmation points before any row data
+    changes.
+
 ### 4.13 Filter chip
 
 - **Anatomy:** `ToggleButton` arranged in an `HBox`. Exactly one button
@@ -477,3 +493,4 @@ rejected on review.
 - Scan extensions render as `.extension-badge` plus `.mkv`, `.mp4`, `.avi`, `.srt`, or `.fallback`; new extensions must use tokenized CSS colors, not inline hex literals in Java.
 - Batch-level TVDB controls live in `.batch-tvdb-section` below the scan table. Candidate/order controls may be disabled until real TVDB candidate data exists, and labels must come from `UiText`.
 - `.preview-table` owns complete dark scrollbar styling for bars, tracks, buttons, thumbs, and corners.
+- App-level modals (e.g. local-AI bootstrap) use `.modal-overlay` (dimmed backplate), `.modal-card` (glass card with orange border), `.modal-header` + `.modal-header-icon` + `.modal-title-block` (`.modal-title` Inter / `.modal-subtitle` Inter muted), `.modal-body` containing `.modal-info-row`s (`.modal-info-label` JetBrains Mono caption + `.modal-info-value` Inter, or `.modal-info-value-mono` for technical values), `.modal-progress` (orange-filled `.progress-bar` + `.modal-progress-status` mono), and `.modal-footer` aligned right with `.button.ghost` then `.button.primary`. Hosted in a `StageStyle.TRANSPARENT` window sized to the owner so the overlay actually dims the app — never use a native `Alert`/`Dialog`.

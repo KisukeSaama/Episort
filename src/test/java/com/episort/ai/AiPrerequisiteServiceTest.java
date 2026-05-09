@@ -11,17 +11,22 @@ import org.junit.jupiter.api.Test;
 
 class AiPrerequisiteServiceTest {
     @Test
+    void constructorRejectsNullProbe() {
+        assertThrows(NullPointerException.class, () -> new AiPrerequisiteService(null));
+    }
+
+    @Test
     void availableRuntimeAllowsAiWorkflow() {
         AiPrerequisiteService service = new AiPrerequisiteService(() -> AiRuntimeStatus.available(
                 new AiHardwareSignals(true, 8_192),
-                AiBundledModel.EPISORT_PATTERN_ASSISTANT_V1,
+                AiBundledModel.QWEN3_8B,
                 "local-runtime"));
 
         AiPrerequisiteCheckResult result = service.check();
 
         assertTrue(result.aiWorkflowsAvailable());
         assertTrue(result.error().isEmpty());
-        assertEquals(AiBundledModel.EPISORT_PATTERN_ASSISTANT_V1, result.model());
+        assertEquals(AiBundledModel.QWEN3_8B, result.model());
     }
 
     @Test
@@ -47,10 +52,12 @@ class AiPrerequisiteServiceTest {
     }
 
     @Test
-    void vramBelowMinimumBlocksAiEvenWhenGpuAndRuntimeExist() {
+    void vramBelowMinimumBlocksAiWhenModelIsUnknownAndConservativeGatingApplies() {
+        // When the probe cannot identify the bundled model the service falls back
+        // to conservative GPU/VRAM gating to avoid admitting an unknown runtime.
         AiPrerequisiteService service = new AiPrerequisiteService(() -> AiRuntimeStatus.unavailable(
                 new AiHardwareSignals(true, 3_000),
-                true,
+                false,
                 "VRAM below required minimum"));
 
         AiPrerequisiteCheckResult result = service.check();
@@ -62,14 +69,14 @@ class AiPrerequisiteServiceTest {
     @Test
     void onlyOneBundledModelIsSupported() {
         assertEquals(1, AiBundledModel.values().length);
-        assertEquals(AiBundledModel.EPISORT_PATTERN_ASSISTANT_V1, AiBundledModel.values()[0]);
+        assertEquals(AiBundledModel.QWEN3_8B, AiBundledModel.values()[0]);
     }
 
     @Test
     void defaultConfigurationUsesOnlyBundledModelAndRejectsExternalModelPath() {
         AiModelConfiguration configuration = AiModelConfiguration.bundledOnly();
 
-        assertEquals(AiBundledModel.EPISORT_PATTERN_ASSISTANT_V1, configuration.model());
+        assertEquals(AiBundledModel.QWEN3_8B, configuration.model());
         assertTrue(configuration.externalModelPath().isEmpty());
         assertThrows(IllegalArgumentException.class, () -> AiModelConfiguration.external(
                 Path.of("C:\\Users\\private\\models\\external.gguf")));
@@ -80,13 +87,13 @@ class AiPrerequisiteServiceTest {
         AiPrerequisiteService service = new AiPrerequisiteService(() -> new AiRuntimeStatus(
                 true,
                 new AiHardwareSignals(true, 8_192),
-                java.util.Optional.of(AiBundledModel.EPISORT_PATTERN_ASSISTANT_V1),
+                java.util.Optional.of(AiBundledModel.QWEN3_8B),
                 "local-runtime",
                 "C:\\Users\\private\\Videos\\Show\\episode01.mkv"));
 
         AiRuntimeDiagnostic diagnostic = service.diagnostic();
 
-        assertEquals(AiBundledModel.EPISORT_PATTERN_ASSISTANT_V1.identity(), diagnostic.modelIdentity());
+        assertEquals(AiBundledModel.QWEN3_8B.identity(), diagnostic.modelIdentity());
         assertTrue(diagnostic.runtimeAvailable());
         assertEquals("local-runtime", diagnostic.runtimeName());
         assertFalse(diagnostic.details().contains("episode01.mkv"));

@@ -581,6 +581,137 @@
     -fx-padding: 10 0 0 0;
 }
 
+/* ---- 9b. App modal (overlay + glass card) ---------------------------- */
+
+.modal-overlay {
+    -fx-background-color: rgba(4, 5, 8, 0.62);
+}
+
+.modal-card {
+    -fx-padding: 22 24 20 24;
+    -fx-spacing: 16;
+    -fx-min-width: 420;
+    -fx-max-width: 560;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-border-color: rgba(249,115,22,0.32);
+    -fx-border-width: 1;
+    -fx-background-color:
+        radial-gradient(center 14% 8%, radius 60%, rgba(249,115,22,0.10), transparent),
+        linear-gradient(to bottom, #0b0d12, #07080b);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.78), 38, 0.14, 0, 14);
+}
+
+.modal-header {
+    -fx-spacing: 12;
+    -fx-alignment: center-left;
+}
+
+.modal-header-icon {
+    -fx-min-width: 32;
+    -fx-pref-width: 32;
+    -fx-min-height: 32;
+    -fx-pref-height: 32;
+    -fx-alignment: center;
+    -fx-background-radius: 10;
+    -fx-background-color: rgba(249,115,22,0.14);
+    -fx-border-color: rgba(249,115,22,0.45);
+    -fx-border-width: 1;
+    -fx-border-radius: 10;
+    -fx-text-fill: #fb923c;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+}
+
+.modal-title-block {
+    -fx-spacing: 2;
+}
+
+.modal-title {
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-size: 17px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #f5f7fb;
+}
+
+.modal-subtitle {
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-size: 12.5px;
+    -fx-text-fill: #8a93a3;
+}
+
+.modal-body {
+    -fx-spacing: 8;
+}
+
+.modal-info-row {
+    -fx-padding: 10 14 10 14;
+    -fx-spacing: 4;
+    -fx-background-color: rgba(20,23,30,0.55);
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: rgba(249,115,22,0.16);
+    -fx-border-width: 1;
+}
+
+.modal-info-label {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 10.5px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #5a6271;
+}
+
+.modal-info-value {
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #f5f7fb;
+}
+
+.modal-info-value-mono {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12.5px;
+    -fx-text-fill: #fb923c;
+}
+
+.modal-progress {
+    -fx-padding: 4 0 0 0;
+    -fx-spacing: 6;
+}
+
+.modal-progress .progress-bar {
+    -fx-pref-height: 6;
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
+}
+
+.modal-progress .progress-bar > .track {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
+    -fx-border-color: transparent;
+}
+
+.modal-progress .progress-bar > .bar {
+    -fx-background-color: #f97316;
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
+    -fx-padding: 0;
+}
+
+.modal-progress-status {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 11.5px;
+    -fx-text-fill: #8a93a3;
+}
+
+.modal-footer {
+    -fx-padding: 6 0 0 0;
+    -fx-spacing: 10;
+    -fx-alignment: center-right;
+}
+
 /* ---- 10. Buttons ----------------------------------------------------- */
 
 .button {
@@ -1495,4 +1626,138 @@
 
 .preview-table .table-cell.proposed-name-cell.cell-muted {
     -fx-text-fill: #5a6271;
+}
+
+/* ---- AI Chat Panel --------------------------------------------------- */
+.ai-chat-panel {
+    -fx-background-color: rgba(15,18,24,0.72);
+    -fx-background-radius: 14;
+    -fx-border-color: rgba(249,115,22,0.22);
+    -fx-border-radius: 14;
+    -fx-border-width: 1;
+    -fx-padding: 14 16 14 16;
+}
+.ai-chat-breadcrumb {
+    -fx-text-fill: #94a3b8;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 11px;
+}
+.ai-chat-unavailable {
+    -fx-text-fill: #f97316;
+    -fx-font-size: 12px;
+    -fx-font-style: italic;
+}
+.ai-chat-scroll {
+    -fx-background-color: rgba(7,8,11,0.55);
+    -fx-background-radius: 10;
+    -fx-border-color: rgba(255,255,255,0.05);
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+    -fx-padding: 0;
+}
+.ai-chat-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+.ai-chat-scroll .scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+.ai-chat-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(249,115,22,0.35);
+    -fx-background-radius: 6;
+}
+.ai-chat-messages {
+    -fx-padding: 10 12 10 12;
+}
+.ai-chat-message {
+    -fx-padding: 8 12 8 12;
+    -fx-background-radius: 12;
+    -fx-text-fill: #f1f5f9;
+    -fx-font-size: 13px;
+    -fx-max-width: 540;
+}
+.ai-chat-message-text {
+    -fx-text-fill: #f1f5f9;
+    -fx-font-size: 13px;
+}
+.ai-chat-message-user {
+    -fx-background-color: rgba(249,115,22,0.18);
+    -fx-border-color: rgba(249,115,22,0.32);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+}
+.ai-chat-message-assistant {
+    -fx-background-color: rgba(255,255,255,0.04);
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+}
+.ai-chat-markdown {
+    -fx-spacing: 4;
+}
+.ai-chat-md-heading {
+    -fx-text-fill: rgba(248,250,252,1);
+    -fx-font-weight: 700;
+    -fx-font-size: 14px;
+}
+.ai-chat-md-paragraph,
+.ai-chat-md-bullet {
+    -fx-text-fill: rgba(241,245,249,1);
+    -fx-font-size: 13px;
+}
+.ai-chat-md-code {
+    -fx-text-fill: rgba(203,213,225,1);
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+    -fx-background-color: rgba(15,23,42,0.72);
+    -fx-background-radius: 6;
+    -fx-padding: 6 8 6 8;
+}
+.ai-chat-input,
+.ai-chat-input .content {
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-background-radius: 8;
+    -fx-text-fill: #f5f7fb;
+    -fx-prompt-text-fill: #5a6271;
+}
+.ai-chat-input {
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-background-radius: 8;
+    -fx-border-color: rgba(249,115,22,0.25);
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-padding: 4;
+}
+.ai-chat-input:focused {
+    -fx-border-color: #f97316;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 14, 0, 0, 0);
+}
+.ai-chat-input .scroll-pane,
+.ai-chat-input .scroll-pane .viewport,
+.ai-chat-input .scroll-pane > .corner {
+    -fx-background-color: transparent;
+}
+.ai-chat-tool-card {
+    -fx-background-color: rgba(74,222,128,0.08);
+    -fx-border-color: rgba(74,222,128,0.35);
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-border-width: 1;
+    -fx-padding: 10 12 10 12;
+}
+.ai-chat-tool-title {
+    -fx-text-fill: #4ade80;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-weight: 700;
+    -fx-font-size: 11px;
+}
+.ai-chat-tool-desc {
+    -fx-text-fill: #f1f5f9;
+    -fx-font-size: 13px;
+}
+.ai-chat-tool-outcome {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 12px;
+    -fx-font-style: italic;
 }

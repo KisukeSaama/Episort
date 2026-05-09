@@ -4,13 +4,14 @@ import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ErrorSeverity;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public final class AiPrerequisiteService {
     private final AiRuntimeProbe runtimeProbe;
 
     public AiPrerequisiteService(AiRuntimeProbe runtimeProbe) {
-        this.runtimeProbe = runtimeProbe;
+        this.runtimeProbe = Objects.requireNonNull(runtimeProbe, "runtimeProbe is required");
     }
 
     public AiPrerequisiteCheckResult check() {
@@ -22,7 +23,7 @@ public final class AiPrerequisiteService {
                     true,
                     List.of(),
                     Optional.empty(),
-                    status.model().orElse(AiBundledModel.EPISORT_PATTERN_ASSISTANT_V1));
+                    status.model().orElse(AiBundledModel.QWEN3_8B));
         }
 
         return new AiPrerequisiteCheckResult(
@@ -34,13 +35,13 @@ public final class AiPrerequisiteService {
                         ErrorSeverity.BLOCKING,
                         "Local AI is unavailable. Non-AI workflows remain available.",
                         safeDiagnostic(missing, status))),
-                AiBundledModel.EPISORT_PATTERN_ASSISTANT_V1);
+                AiBundledModel.QWEN3_8B);
     }
 
     public AiRuntimeDiagnostic diagnostic() {
         AiRuntimeStatus status = runtimeProbe.probe();
         return new AiRuntimeDiagnostic(
-                AiBundledModel.EPISORT_PATTERN_ASSISTANT_V1.identity(),
+                AiBundledModel.QWEN3_8B.identity(),
                 status.runtimeAvailable(),
                 status.runtimeName(),
                 safeDiagnostic(missingPrerequisites(status), status));
@@ -51,11 +52,16 @@ public final class AiPrerequisiteService {
         if (!status.runtimeAvailable()) {
             missing.add(AiPrerequisite.RUNTIME);
         }
-        if (!status.hardwareSignals().gpuAvailable()) {
-            missing.add(AiPrerequisite.GPU);
-        }
-        if (!status.hardwareSignals().minimumVramAvailable()) {
-            missing.add(AiPrerequisite.VRAM);
+        // GPU/VRAM are only required when the bundled model declares GPU dependency.
+        // When the model is unknown (probe reports none), be conservative and still require them.
+        boolean requiresGpu = status.model().map(AiBundledModel::requiresGpu).orElse(true);
+        if (requiresGpu) {
+            if (!status.hardwareSignals().gpuAvailable()) {
+                missing.add(AiPrerequisite.GPU);
+            }
+            if (!status.hardwareSignals().minimumVramAvailable()) {
+                missing.add(AiPrerequisite.VRAM);
+            }
         }
         if (status.model().isEmpty()) {
             missing.add(AiPrerequisite.MODEL);
@@ -68,6 +74,6 @@ public final class AiPrerequisiteService {
                 + "; runtimeAvailable=" + status.runtimeAvailable()
                 + "; gpuAvailable=" + status.hardwareSignals().gpuAvailable()
                 + "; vramMegabytes=" + status.hardwareSignals().vramMegabytes()
-                + "; bundledModel=" + AiBundledModel.EPISORT_PATTERN_ASSISTANT_V1;
+                + "; bundledModel=" + AiBundledModel.QWEN3_8B;
     }
 }

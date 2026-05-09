@@ -17,9 +17,10 @@ public final class ScanRow {
     private final Path sourcePath;
     private final String originalFilename;
     private final String extension;
-    private final ScanMediaType mediaType;
+    private ScanMediaType mediaType;
     private ScanRowStatus status;
     private Optional<String> proposedFilename;
+    private Optional<String> pattern;
     private Optional<String> tvdbMatch;
     private Optional<String> order;
     private Optional<Path> destination;
@@ -40,6 +41,7 @@ public final class ScanRow {
         this.mediaType = Objects.requireNonNull(mediaType, "mediaType");
         this.status = Objects.requireNonNull(status, "status");
         this.proposedFilename = Optional.empty();
+        this.pattern = Optional.empty();
         this.tvdbMatch = Optional.empty();
         this.order = Optional.empty();
         this.destination = Optional.empty();
@@ -77,6 +79,10 @@ public final class ScanRow {
         return mediaType;
     }
 
+    public void setMediaType(ScanMediaType mediaType) {
+        this.mediaType = Objects.requireNonNull(mediaType, "mediaType");
+    }
+
     public ScanRowStatus status() {
         return status;
     }
@@ -91,6 +97,14 @@ public final class ScanRow {
 
     public void setProposedFilename(Optional<String> proposedFilename) {
         this.proposedFilename = Objects.requireNonNull(proposedFilename, "proposedFilename");
+    }
+
+    public Optional<String> pattern() {
+        return pattern;
+    }
+
+    public void setPattern(Optional<String> pattern) {
+        this.pattern = Objects.requireNonNull(pattern, "pattern");
     }
 
     public Optional<String> tvdbMatch() {

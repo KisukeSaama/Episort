@@ -31,7 +31,7 @@ public record AiRuntimeStatus(
         return new AiRuntimeStatus(
                 false,
                 hardwareSignals,
-                modelAvailable ? Optional.of(AiBundledModel.EPISORT_PATTERN_ASSISTANT_V1) : Optional.empty(),
+                modelAvailable ? Optional.of(AiBundledModel.QWEN3_8B) : Optional.empty(),
                 "",
                 diagnostic);
     }

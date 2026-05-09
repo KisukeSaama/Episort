@@ -12,6 +12,7 @@ import com.episort.scanner.InventoryScanResult;
 import com.episort.scanner.InventorySummary;
 import java.nio.file.Path;
 import java.util.List;
+import javafx.scene.input.KeyCode;
 import org.junit.jupiter.api.Test;
 
 class ScanRowFactoryTest {
@@ -36,7 +37,8 @@ class ScanRowFactoryTest {
         assertSame(ScanRowStatus.PREVIEW, row.status());
         assertTrue(row.proposedFilename().isEmpty());
         assertTrue(row.tvdbMatch().isEmpty());
-        assertTrue(row.order().isEmpty());
+        assertEquals("S01E01", row.order().orElseThrow());
+        assertEquals(0.9, row.confidence().orElseThrow(), 1e-9);
         assertTrue(row.destination().isEmpty());
         assertTrue(row.alertText().isEmpty());
         assertTrue(row.noteText().isEmpty());
@@ -127,6 +129,67 @@ class ScanRowFactoryTest {
         ScanRow row = ScanRowFactory.from(result).get(0);
 
         assertEquals("MP4", row.extension());
+    }
+
+    @Test
+    void patternFormatterGeneratesProposedNameFromAvailableMetadata() {
+        ScanRow row = new ScanRow(
+                Path.of("C:/Media/Ma Serie - 01x02 - Titre.mkv"),
+                "Ma Serie - 01x02 - Titre.mkv",
+                "MKV",
+                ScanMediaType.SERIES,
+                ScanRowStatus.PREVIEW);
+
+        String proposed = ScanPatternFormatter.format(
+                row,
+                "{series}/Season {season}/{series} - S{season}E{episode} - {title}")
+                .orElseThrow();
+
+        assertEquals("Ma Serie/Season 01/Ma Serie - S01E02 - Titre.mkv", proposed);
+    }
+
+    @Test
+    void applyingPatternStoresPatternAndUpdatesProposedName() {
+        ScanRow row = new ScanRow(
+                Path.of("C:/Media/Show.S01E03.Name.mp4"),
+                "Show.S01E03.Name.mp4",
+                "MP4",
+                ScanMediaType.SERIES,
+                ScanRowStatus.PREVIEW);
+
+        ScanRowToolbox.applyPattern(row, "{series} - S{season}E{episode} - {title}");
+
+        assertEquals("{series} - S{season}E{episode} - {title}", row.pattern().orElseThrow());
+        assertEquals("Show - S01E03 - Name.mp4", row.proposedFilename().orElseThrow());
+    }
+
+    @Test
+    void markdownRendererCreatesBlocksForSupportedSubsetAndIgnoresBlankInput() {
+        assertTrue(AiChatMarkdownRenderer.blocks("   ").isEmpty());
+
+        var blocks = AiChatMarkdownRenderer.blocks("""
+                # Title
+                - **Bold** item
+                Plain *italic*
+                ```
+                code();
+                ```
+                """);
+
+        assertEquals("heading", blocks.get(0).type());
+        assertEquals("Title", blocks.get(0).text());
+        assertEquals("bullet", blocks.get(1).type());
+        assertEquals("• Bold item", blocks.get(1).text());
+        assertEquals("paragraph", blocks.get(2).type());
+        assertEquals("Plain italic", blocks.get(2).text());
+        assertEquals("code", blocks.get(3).type());
+        assertEquals("code();", blocks.get(3).text());
+    }
+
+    @Test
+    void chatEnterSendsAndShiftEnterKeepsNewline() {
+        assertTrue(AiChatPanel.shouldSendOnEnter(KeyCode.ENTER, false));
+        assertEquals(false, AiChatPanel.shouldSendOnEnter(KeyCode.ENTER, true));
     }
 
     private static InventorySummary summary(
