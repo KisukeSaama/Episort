@@ -1,6 +1,6 @@
 # Story 2.1: Supported Media File Detection
 
-Status: ready-for-dev
+Status: review
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -20,12 +20,12 @@ so that only valid organization candidates enter the workflow.
 
 ## Tasks / Subtasks
 
-- [ ] Add inventory/scanner tests using temporary directories only. (AC: #1)
-- [ ] Implement supported, sidecar, unsupported, ignored, and group-seed models needed by this story. (AC: #1)
-- [ ] Ensure scan and classification perform no create, move, rename, or delete operations. (AC: #1)
-- [ ] Report progress/results through workflow state rather than direct UI mutation. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Add inventory/scanner tests using temporary directories only. (AC: #1)
+- [x] Implement supported, sidecar, unsupported, ignored, and group-seed models needed by this story. (AC: #1)
+- [x] Ensure scan and classification perform no create, move, rename, or delete operations. (AC: #1)
+- [x] Report progress/results through workflow state rather than direct UI mutation. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
 
 ## Dev Notes
 
@@ -115,10 +115,32 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex as Amelia, BMAD Senior Software Engineer.
 
 ### Debug Log References
 
+- `gradlew.bat test --tests com.episort.scanner.MediaInventoryScannerTest --tests com.episort.workflow.InventoryWorkflowServiceTest` - passed.
+- `gradlew.bat test` - passed.
+
 ### Completion Notes List
 
+- Added non-mutating `MediaInventoryScanner` support for `.avi`, `.mp4`, and `.mkv`.
+- Supported items record source path, filename, extension, parent folder, type, and operation-candidate status.
+- Scanner tests use JUnit temporary directories and snapshot the folder before/after scan.
+
 ### File List
+
+- `src/main/java/com/episort/scanner/InventoryGroup.java`
+- `src/main/java/com/episort/scanner/InventoryGroupType.java`
+- `src/main/java/com/episort/scanner/InventoryItem.java`
+- `src/main/java/com/episort/scanner/InventoryItemType.java`
+- `src/main/java/com/episort/scanner/InventoryProgressListener.java`
+- `src/main/java/com/episort/scanner/InventoryScanProgress.java`
+- `src/main/java/com/episort/scanner/InventoryScanResult.java`
+- `src/main/java/com/episort/scanner/InventorySummary.java`
+- `src/main/java/com/episort/scanner/MediaInventoryScanner.java`
+- `src/main/java/com/episort/workflow/InventoryScanWorkflowResult.java`
+- `src/main/java/com/episort/workflow/InventoryWorkflowException.java`
+- `src/main/java/com/episort/workflow/InventoryWorkflowService.java`
+- `src/test/java/com/episort/scanner/MediaInventoryScannerTest.java`
+- `src/test/java/com/episort/workflow/InventoryWorkflowServiceTest.java`

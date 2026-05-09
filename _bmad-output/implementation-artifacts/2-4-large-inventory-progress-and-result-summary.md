@@ -1,6 +1,6 @@
 # Story 2.4: Large Inventory Progress and Result Summary
 
-Status: ready-for-dev
+Status: review
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -21,12 +21,12 @@ so that I can understand what Episort found before metadata matching begins.
 
 ## Tasks / Subtasks
 
-- [ ] Add inventory/scanner tests using temporary directories only. (AC: #1)
-- [ ] Implement supported, sidecar, unsupported, ignored, and group-seed models needed by this story. (AC: #1)
-- [ ] Ensure scan and classification perform no create, move, rename, or delete operations. (AC: #1)
-- [ ] Report progress/results through workflow state rather than direct UI mutation. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Add inventory/scanner tests using temporary directories only. (AC: #1)
+- [x] Implement supported, sidecar, unsupported, ignored, and group-seed models needed by this story. (AC: #1)
+- [x] Ensure scan and classification perform no create, move, rename, or delete operations. (AC: #1)
+- [x] Report progress/results through workflow state rather than direct UI mutation. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
 
 ## Dev Notes
 
@@ -116,10 +116,48 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex as Amelia, BMAD Senior Software Engineer.
 
 ### Debug Log References
 
+- `gradlew.bat test --tests com.episort.scanner.MediaInventoryScannerTest --tests com.episort.workflow.InventoryWorkflowServiceTest` - passed.
+- `gradlew.bat test` - passed.
+
 ### Completion Notes List
 
+- Added progress snapshots with processed file count, total file count, and completion marker.
+- Added inventory summary counts for supported videos, sidecars, unsupported files, ignored files, likely series groups, likely movie groups, and unknown items.
+- Added `InventoryWorkflowService` that runs scanning on an injected `Executor` and returns workflow state through `CompletableFuture`.
+- Summary explicitly keeps pattern validation and operation-plan approval false.
+- Added a user-visible scan summary surface in the JavaFX shell so the selected folder, inventory counts, and probable groups can be validated manually.
+- Fixed scan view state preservation so the inventory result remains visible after the view model preserves theme/language.
+- Reworked the scan surface into a FileBot-inspired before/after layout: scanned source files on the left, future AI-generated names on the right.
+- The right column remains empty with a placeholder after scan and will only be populated after local AI analysis produces real suggestions.
+- File columns now use JavaFX `ListView` to keep large inventories virtualized and scrollable.
+- Reworked the screen hierarchy so the before/after workbench is the central surface instead of a small lower card.
+- Added a narrow central action column for Analyser, Renommer, and Reinitialiser.
+- Java compilation now uses UTF-8 and French UI copy uses accents again.
+- Stabilized the scan/rename layout with a non-scrollable header, minimum desktop window size, balanced left/right panels, and wider action buttons.
+- `Réinitialiser` now clears list selections, empties the AI result column, and disables renaming again.
+- Updated `Réinitialiser` to fully reset the workbench lists after scan: both columns are emptied, selections are cleared, and action buttons return to their initial disabled state.
+- Renamed the right panel to `Fichiers renommés`.
+- Settings now open in a modal popup using the existing `SettingsPane`, preserving the main scan screen state.
+- Styled ListView scrollbar/corner surfaces to remove the white scrollbar intersection artifact.
+
 ### File List
+
+- `src/main/java/com/episort/scanner/InventoryScanProgress.java`
+- `src/main/java/com/episort/scanner/InventorySummary.java`
+- `src/main/java/com/episort/scanner/MediaInventoryScanner.java`
+- `src/main/java/com/episort/workflow/InventoryScanWorkflowResult.java`
+- `src/main/java/com/episort/workflow/InventoryWorkflowException.java`
+- `src/main/java/com/episort/workflow/InventoryWorkflowService.java`
+- `src/main/java/com/episort/EpisortApplication.java`
+- `src/main/java/com/episort/ui/AppShell.java`
+- `src/main/java/com/episort/ui/AppShellViewModel.java`
+- `src/main/resources/styles/app.css`
+- `docs/design-system.md`
+- `build.gradle.kts`
+- `src/test/java/com/episort/scanner/MediaInventoryScannerTest.java`
+- `src/test/java/com/episort/workflow/InventoryWorkflowServiceTest.java`
+- `src/test/java/com/episort/ui/AppShellViewModelTest.java`

@@ -42,11 +42,11 @@ development_status:
   1-4-workspace-bounded-input-folder-selection: review
   1-5-desktop-feedback-theme-and-diagnostic-logging-foundation: ready-for-dev
   epic-1-retrospective: optional
-  epic-2: backlog
-  2-1-supported-media-file-detection: ready-for-dev
-  2-2-sidecar-and-unsupported-file-inventory: ready-for-dev
-  2-3-mixed-media-group-seed-classification: ready-for-dev
-  2-4-large-inventory-progress-and-result-summary: ready-for-dev
+  epic-2: in-progress
+  2-1-supported-media-file-detection: review
+  2-2-sidecar-and-unsupported-file-inventory: review
+  2-3-mixed-media-group-seed-classification: review
+  2-4-large-inventory-progress-and-result-summary: review
   epic-2-retrospective: optional
   epic-3: backlog
   3-1-tvdb-series-and-movie-candidate-search: ready-for-dev

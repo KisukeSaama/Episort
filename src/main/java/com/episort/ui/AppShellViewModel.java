@@ -1,5 +1,6 @@
 package com.episort.ui;
 
+import com.episort.scanner.InventoryScanResult;
 import com.episort.workflow.ApplicationError;
 import com.episort.workflow.TvdbCredentialConfigurationResult;
 import com.episort.workflow.WorkspaceConfigurationResult;
@@ -14,9 +15,13 @@ public record AppShellViewModel(
         String description,
         Optional<String> errorCode,
         Optional<String> errorDetails,
+        Optional<InventoryScanResult> inventoryScanResult,
         Theme theme,
         AppLanguage language) {
     public AppShellViewModel {
+        Objects.requireNonNull(errorCode, "errorCode");
+        Objects.requireNonNull(errorDetails, "errorDetails");
+        Objects.requireNonNull(inventoryScanResult, "inventoryScanResult");
         Objects.requireNonNull(theme, "theme");
         Objects.requireNonNull(language, "language");
     }
@@ -27,18 +32,48 @@ public record AppShellViewModel(
             String description,
             Optional<String> errorCode,
             Optional<String> errorDetails) {
-        return new AppShellViewModel(title, primaryStatus, description, errorCode, errorDetails, Theme.DARK, AppLanguage.FRENCH);
+        return of(title, primaryStatus, description, errorCode, errorDetails, Optional.empty());
+    }
+
+    private static AppShellViewModel of(
+            String title,
+            String primaryStatus,
+            String description,
+            Optional<String> errorCode,
+            Optional<String> errorDetails,
+            Optional<InventoryScanResult> inventoryScanResult) {
+        return new AppShellViewModel(
+                title,
+                primaryStatus,
+                description,
+                errorCode,
+                errorDetails,
+                inventoryScanResult,
+                Theme.DARK,
+                AppLanguage.FRENCH);
     }
 
     public AppShellViewModel withTheme(Theme newTheme) {
         Objects.requireNonNull(newTheme, "newTheme");
-        return new AppShellViewModel(title, primaryStatus, description, errorCode, errorDetails, newTheme, language);
+        return new AppShellViewModel(
+                title, primaryStatus, description, errorCode, errorDetails, inventoryScanResult, newTheme, language);
     }
 
     public AppShellViewModel withLanguage(AppLanguage newLanguage) {
         Objects.requireNonNull(newLanguage, "newLanguage");
         if (errorCode.isPresent()) {
             return fromErrorCode(errorCode.orElseThrow(), newLanguage).withTheme(theme);
+        }
+        if (inventoryScanResult.isPresent()) {
+            return new AppShellViewModel(
+                    title,
+                    primaryStatus,
+                    description,
+                    errorCode,
+                    errorDetails,
+                    inventoryScanResult,
+                    theme,
+                    newLanguage);
         }
         return fromKnownState(primaryStatus, description, newLanguage).withTheme(theme);
     }
@@ -122,12 +157,25 @@ public record AppShellViewModel(
         return fromError(result.error().orElseThrow());
     }
 
+    public static AppShellViewModel fromInventoryScan(Path inputFolder, InventoryScanResult result) {
+        Objects.requireNonNull(inputFolder, "inputFolder");
+        Objects.requireNonNull(result, "result");
+        return of(
+                "Episort",
+                "Scan terminé",
+                "Dossier scanné : " + inputFolder.toAbsolutePath().normalize(),
+                Optional.empty(),
+                Optional.empty(),
+                Optional.of(result));
+    }
+
     private static AppShellViewModel fromErrorCode(String code, AppLanguage language) {
         return new AppShellViewModel(
                 "Episort",
                 UiText.errorStatus(code, language),
                 UiText.errorDescription(code, language),
                 Optional.of(code),
+                Optional.empty(),
                 Optional.empty(),
                 Theme.DARK,
                 language);
@@ -145,6 +193,7 @@ public record AppShellViewModel(
                         UiText.settingsRequiredDescription(language),
                         Optional.empty(),
                         Optional.empty(),
+                        Optional.empty(),
                         Theme.DARK,
                         language);
             }
@@ -156,6 +205,7 @@ public record AppShellViewModel(
                         "Episort",
                         UiText.workspaceConfiguredStatus(language),
                         translateWorkspaceDescription(description, language),
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty(),
                         Theme.DARK,
@@ -177,10 +227,12 @@ public record AppShellViewModel(
                     translateWorkspaceDescription(description, language),
                     Optional.empty(),
                     Optional.empty(),
+                    Optional.empty(),
                     Theme.DARK,
                     language);
         }
-        return new AppShellViewModel("Episort", status, description, Optional.empty(), Optional.empty(), Theme.DARK, language);
+        return new AppShellViewModel(
+                "Episort", status, description, Optional.empty(), Optional.empty(), Optional.empty(), Theme.DARK, language);
     }
 
     private static String translateWorkspaceDescription(String description, AppLanguage language) {

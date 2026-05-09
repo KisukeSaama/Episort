@@ -12,15 +12,15 @@ public final class UiText {
     }
 
     public static String prerequisitesHeading(AppLanguage language) {
-        return language == AppLanguage.ENGLISH ? "// PREREQUISITES" : "// PRÉREQUIS";
+        return language == AppLanguage.ENGLISH ? "// PREREQUISITES" : "// PR\u00c9REQUIS";
     }
 
     public static String preferencesHeading(AppLanguage language) {
-        return language == AppLanguage.ENGLISH ? "// PREFERENCES" : "// PRÉFÉRENCES";
+        return language == AppLanguage.ENGLISH ? "// PREFERENCES" : "// PR\u00c9F\u00c9RENCES";
     }
 
     public static String settingsButton(AppLanguage language) {
-        return language == AppLanguage.ENGLISH ? "Settings" : "Paramètres";
+        return language == AppLanguage.ENGLISH ? "Settings" : "Param\u00e8tres";
     }
 
     public static String closeSettingsButton(AppLanguage language) {
@@ -40,15 +40,15 @@ public final class UiText {
     public static String settingsRequiredDescription(AppLanguage language) {
         return language == AppLanguage.ENGLISH
                 ? "First define the authorized root folder."
-                : "Définis d'abord le dossier racine autorisé.";
+                : "D\u00e9finis d'abord le dossier racine autoris\u00e9.";
     }
 
     public static String workspaceConfiguredStatus(AppLanguage language) {
-        return language == AppLanguage.ENGLISH ? "Workspace configured" : "Workspace configuré";
+        return language == AppLanguage.ENGLISH ? "Workspace configured" : "Workspace configur\u00e9";
     }
 
     public static String workspaceConfiguredDescription(AppLanguage language, Path workspace) {
-        return (language == AppLanguage.ENGLISH ? "Selected workspace: " : "Workspace sélectionné : ")
+        return (language == AppLanguage.ENGLISH ? "Selected workspace: " : "Workspace s\u00e9lectionn\u00e9 : ")
                 + workspace.toAbsolutePath().normalize();
     }
 
@@ -59,7 +59,7 @@ public final class UiText {
     public static String workspaceSectionDescription(AppLanguage language) {
         return language == AppLanguage.ENGLISH
                 ? "Please select the folder that defines Episort's allowed working area."
-                : "Veuillez sélectionner le dossier qui définit l'espace de travail autorisé d'Episort.";
+                : "Veuillez s\u00e9lectionner le dossier qui d\u00e9finit l'espace de travail autoris\u00e9 d'Episort.";
     }
 
     public static String chooseWorkspaceButton(AppLanguage language) {
@@ -72,11 +72,11 @@ public final class UiText {
 
     public static String workspaceValue(AppLanguage language, Optional<Path> workspace) {
         return workspace
-                .map(path -> (language == AppLanguage.ENGLISH ? "Selected workspace: " : "Workspace sélectionné : ")
+                .map(path -> (language == AppLanguage.ENGLISH ? "Selected workspace: " : "Workspace s\u00e9lectionn\u00e9 : ")
                         + path)
                 .orElseGet(() -> language == AppLanguage.ENGLISH
                         ? "No workspace selected"
-                        : "Aucun workspace sélectionné");
+                        : "Aucun workspace s\u00e9lectionn\u00e9");
     }
 
     public static String errorStatus(String code, AppLanguage language) {
@@ -94,8 +94,8 @@ public final class UiText {
             case "WORKSPACE_REQUIRED" -> "Choisis un workspace avant de scanner des fichiers.";
             case "INPUT_OUTSIDE_WORKSPACE" -> "Le dossier choisi est en dehors du workspace.";
             case "INPUT_FOLDER_INVALID" -> "Choisis un dossier existant et lisible.";
-            case "INPUT_FOLDER_REQUIRED" -> "Choisis un dossier situé dans le workspace.";
-            case "WORKSPACE_UNAVAILABLE" -> "Vérifie le workspace configuré ; il est inaccessible.";
+            case "INPUT_FOLDER_REQUIRED" -> "Choisis un dossier situ\u00e9 dans le workspace.";
+            case "WORKSPACE_UNAVAILABLE" -> "V\u00e9rifie le workspace configur\u00e9 ; il est inaccessible.";
             default -> "Episort ne peut pas encore continuer.";
         };
     }
@@ -109,8 +109,8 @@ public final class UiText {
             };
         }
         return switch (code) {
-            case "INPUT_OUTSIDE_WORKSPACE" -> "Sélectionne un dossier contenu dans le workspace configuré.";
-            case "WORKSPACE_REQUIRED" -> "Définis d'abord le dossier racine autorisé.";
+            case "INPUT_OUTSIDE_WORKSPACE" -> "S\u00e9lectionne un dossier contenu dans le workspace configur\u00e9.";
+            case "WORKSPACE_REQUIRED" -> "D\u00e9finis d'abord le dossier racine autoris\u00e9.";
             default -> "";
         };
     }

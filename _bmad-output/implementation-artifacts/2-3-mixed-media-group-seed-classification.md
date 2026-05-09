@@ -1,6 +1,6 @@
 # Story 2.3: Mixed Media Group Seed Classification
 
-Status: ready-for-dev
+Status: review
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -21,12 +21,12 @@ so that files from multiple series, movies, and ignored categories are not assum
 
 ## Tasks / Subtasks
 
-- [ ] Add inventory/scanner tests using temporary directories only. (AC: #1)
-- [ ] Implement supported, sidecar, unsupported, ignored, and group-seed models needed by this story. (AC: #1)
-- [ ] Ensure scan and classification perform no create, move, rename, or delete operations. (AC: #1)
-- [ ] Report progress/results through workflow state rather than direct UI mutation. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Add inventory/scanner tests using temporary directories only. (AC: #1)
+- [x] Implement supported, sidecar, unsupported, ignored, and group-seed models needed by this story. (AC: #1)
+- [x] Ensure scan and classification perform no create, move, rename, or delete operations. (AC: #1)
+- [x] Report progress/results through workflow state rather than direct UI mutation. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
 
 ## Dev Notes
 
@@ -116,10 +116,22 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex as Amelia, BMAD Senior Software Engineer.
 
 ### Debug Log References
 
+- `gradlew.bat test --tests com.episort.scanner.MediaInventoryScannerTest --tests com.episort.workflow.InventoryWorkflowServiceTest` - passed.
+- `gradlew.bat test` - passed.
+
 ### Completion Notes List
 
+- Added group seed model for likely series, likely movie, unknown, sidecar, unsupported, and ignored groups.
+- Series seeds are derived from `SxxEyy` and `1x02` style local filename patterns.
+- Movie seeds are derived from filename year patterns; all group seeds keep `tvdbIdentityFinal=false`.
+
 ### File List
+
+- `src/main/java/com/episort/scanner/InventoryGroup.java`
+- `src/main/java/com/episort/scanner/InventoryGroupType.java`
+- `src/main/java/com/episort/scanner/MediaInventoryScanner.java`
+- `src/test/java/com/episort/scanner/MediaInventoryScannerTest.java`

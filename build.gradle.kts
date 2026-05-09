@@ -22,6 +22,10 @@ tasks.test {
     useJUnitPlatform()
 }
 
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+}
+
 tasks.register("prepareLocalTvdbCredentials") {
     val generated = layout.projectDirectory.file("src/main/java/com/episort/config/BuildTvdbCredentials.java")
     val example = layout.projectDirectory.file("src/main/java/com/episort/config/BuildTvdbCredentials.java.example")

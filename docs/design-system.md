@@ -210,14 +210,18 @@ Each component is documented as **Anatomy → Class → Rules**.
     timestamps unless backed by a real signal.
   - Stay at ≤ 4 lines per widget; if you need more, split into two widgets.
 
-### 4.5 Activity table
+### 4.5 Activity table / list
 
-- **Anatomy:** `TableView` with mono uppercase column headers and prose cells.
+- **Anatomy:** `TableView` with mono uppercase column headers and prose cells, or `ListView` for virtualized one-dimensional file lists.
 - **Classes:** `.activity-table`, cells may opt into `.mono`.
 - **Rules:**
   - Empty state must use `setPlaceholder(...)` with neutral text. Never
     populate with fake rows.
   - Column resize policy: `CONSTRAINED_RESIZE_POLICY_SUBSEQUENT_COLUMNS`.
+  - For scan/rename before-after views, use two `ListView` instances with `.activity-table` so large file lists stay virtualized and scrollable.
+  - Do not populate the proposed-name column with speculative or fake data before AI analysis produces real suggestions.
+  - The scan/rename workbench uses a narrow `.rename-action-column` between the two lists for Match/Analyse, Renommer, and Réinitialiser actions; keep this column visually secondary to the two file panels.
+  - File rows may use `.extension-badge` at the row end to show the extension without leaving the virtualized `ListView` model.
 
 ### 4.6 Settings section
 
@@ -227,6 +231,7 @@ Each component is documented as **Anatomy → Class → Rules**.
 - **Rules:**
   - Reuse `SettingsPane` rather than re-implementing the layout per story.
   - The workspace path always uses `.workspace-value` (mono, accent-hover color).
+  - When displayed from the main screen, settings use the `.settings-dialog` modal shell instead of replacing the main page.
 
 ### 4.7 Buttons
 

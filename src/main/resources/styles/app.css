@@ -47,6 +47,14 @@
 
 .theme-light .brand-title { -fx-text-fill: #161a20; }
 
+.rename-header {
+    -fx-padding: 12 20 12 20;
+    -fx-spacing: 16;
+    -fx-background-color: rgba(13,15,20,0.72);
+    -fx-border-color: transparent transparent rgba(249,115,22,0.10) transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
 /* ---- 2. Top bar ---------------------------------------------------------- */
 
 .top-bar {
@@ -389,6 +397,107 @@
 .activity-table .placeholder .label {
     -fx-text-fill: #5a6271;
     -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+
+.activity-table.list-view {
+    -fx-background-color: rgba(20,23,30,0.55);
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: rgba(249,115,22,0.16);
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.05, 0, 6);
+}
+
+.activity-table.list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #b8c0cc;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+    -fx-padding: 6 10 6 10;
+}
+
+.activity-table.list-view .list-cell:odd {
+    -fx-background-color: rgba(255,255,255,0.02);
+}
+
+.activity-table.list-view .list-cell:hover,
+.activity-table.list-view .list-cell:selected {
+    -fx-background-color: rgba(249,115,22,0.12);
+    -fx-text-fill: #f5f7fb;
+}
+
+.activity-table.list-view .file-row-name {
+    -fx-text-fill: #b8c0cc;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
+}
+
+.activity-table.list-view .list-cell:hover .file-row-name,
+.activity-table.list-view .list-cell:selected .file-row-name {
+    -fx-text-fill: #f5f7fb;
+}
+
+.extension-badge {
+    -fx-min-width: 42;
+    -fx-alignment: center;
+    -fx-padding: 2 7 2 7;
+    -fx-background-color: rgba(249,115,22,0.10);
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-border-color: rgba(249,115,22,0.25);
+    -fx-border-width: 1;
+    -fx-text-fill: #fb923c;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+}
+
+.activity-table.list-view .placeholder .label {
+    -fx-text-fill: #5a6271;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+}
+
+.activity-table.list-view .virtual-flow,
+.activity-table.list-view .virtual-flow > .corner,
+.activity-table.list-view .corner,
+.activity-table.list-view .scroll-bar,
+.activity-table.list-view .scroll-bar:vertical,
+.activity-table.list-view .scroll-bar:horizontal {
+    -fx-background-color: rgba(20,23,30,0.55);
+}
+
+.activity-table.list-view .scroll-bar .track,
+.activity-table.list-view .scroll-bar .track-background,
+.activity-table.list-view .scroll-bar .increment-button,
+.activity-table.list-view .scroll-bar .decrement-button {
+    -fx-background-color: rgba(20,23,30,0.55);
+}
+
+.activity-table.list-view .scroll-bar .thumb {
+    -fx-background-color: rgba(249,115,22,0.25);
+    -fx-background-radius: 999;
+}
+
+.rename-action-column {
+    -fx-padding: 14 8 14 8;
+    -fx-spacing: 10;
+}
+
+.rename-action-column .button {
+    -fx-min-width: 128;
+    -fx-pref-width: 128;
+}
+
+.settings-dialog {
+    -fx-padding: 22;
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-border-color: rgba(249,115,22,0.25);
+    -fx-border-width: 1;
+    -fx-background-color:
+        radial-gradient(center 12% 10%, radius 55%, rgba(249,115,22,0.10), transparent),
+        linear-gradient(to bottom, #07080b, #0a0c11);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.70), 32, 0.10, 0, 10);
 }
 
 /* ---- 10. Buttons ----------------------------------------------------- */

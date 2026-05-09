@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.episort.config.AppSettings;
+import com.episort.scanner.InventoryScanResult;
+import com.episort.scanner.InventorySummary;
 import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ErrorSeverity;
 import com.episort.workflow.StartupWorkflow;
@@ -13,6 +15,7 @@ import com.episort.workflow.TvdbCredentialConfigurationResult;
 import com.episort.workflow.WorkspaceConfigurationResult;
 import com.episort.workflow.InputFolderSelectionResult;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AppShellViewModelTest {
@@ -203,5 +206,21 @@ class AppShellViewModelTest {
 
         assertEquals("The selected folder is outside the workspace.", viewModel.primaryStatus());
         assertEquals("Select a folder contained by the configured workspace.", viewModel.description());
+    }
+
+    @Test
+    void exposesInventoryScanResultForManualReviewSurface() {
+        Path input = Path.of("C:", "Media", "Inbox").toAbsolutePath().normalize();
+        InventoryScanResult scanResult = new InventoryScanResult(
+                List.of(),
+                List.of(),
+                new InventorySummary(3, 2, 1, 1, 2, 1, 0, false, false));
+
+        AppShellViewModel viewModel = AppShellViewModel.fromInventoryScan(input, scanResult);
+
+        assertEquals("Scan terminé", viewModel.primaryStatus());
+        assertTrue(viewModel.description().contains(input.toString()));
+        assertTrue(viewModel.inventoryScanResult().isPresent());
+        assertEquals(3, viewModel.inventoryScanResult().orElseThrow().summary().supportedVideoCount());
     }
 }
