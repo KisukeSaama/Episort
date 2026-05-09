@@ -1,68 +1,57 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+Episort is a JavaFX desktop app that sorts TV series episodes (`.avi`, `.mp4`, `.mkv`) using TVDB references — aired, DVD, and absolute orders — from a user-selected working directory that may mix several series.
 
-Episort is a cross-platform desktop application for sorting TV series episodes using TVDB references: aired order, DVD order, and absolute order. The application works from a user-selected working directory that may contain files from multiple TV series. The first scope is metadata lookup, series grouping, season folder creation, and safe planning for `.avi`, `.mp4`, and especially `.mkv` files.
+Stack: Java 21, JavaFX, Gradle, JUnit 5. Layout: `src/main/`, `src/test/`, `docs/`, `assets/`. Keep TVDB access, episode matching, filesystem ops, and UI in separate packages.
 
-Use this structure unless the chosen desktop framework requires a small variation:
-
-```text
-src/main/        application code
-src/test/        automated tests
-docs/            design notes and TVDB behavior notes
-assets/          icons and bundled UI assets
-```
-
-Preferred stack: Java 21, JavaFX for the desktop UI, Gradle for builds, JUnit 5 for tests, and Spotless or Checkstyle for formatting.
-
-## Build, Test, and Development Commands
-
-Document final commands in `README.md` once Gradle is initialized. Expected commands:
+## Commands
 
 ```bash
-./gradlew run          # launch the app locally
-./gradlew test         # run unit tests
-./gradlew build        # compile, test, and package artifacts
-./gradlew spotlessApply # format code, if Spotless is enabled
+./gradlew run     # launch the app
+./gradlew test    # run unit tests
+./gradlew build   # compile, test, package
 ```
 
-Do not add new build tools without updating this guide.
+## Coding & Tests
 
-## Coding Style & Naming Conventions
+Standard Java conventions (4-space indent, `PascalCase`/`camelCase`, lowercase packages). Prefer explicit domain names (`EpisodeOrder`, `SeasonFolderPlanner`, `TvdbClient`).
 
-Use standard Java conventions: 4-space indentation, `PascalCase` classes, `camelCase` methods and fields, and lowercase package names. Keep TVDB API access, episode matching, filesystem operations, and UI code in separate packages.
+JUnit 5, test files end with `Test`. Filesystem tests must use temporary directories — never real media folders. Default to TDD: failing test → minimal implementation → refactor. For UI-only changes, document manual verification and add lower-level tests for any extracted logic.
 
-Prefer explicit domain names such as `EpisodeOrder`, `SeasonFolderPlanner`, and `TvdbClient`. Avoid mixing UI logic with file-moving or metadata logic.
+## Security
 
-## Testing Guidelines
+TVDB API keys live outside source control (env var or ignored config file). Never commit keys, tokens, real media paths, or private library metadata.
 
-Use JUnit 5. Prioritize tests for ordering conversion, filename detection, season folder planning, and TVDB response mapping. Test files should end with `Test`, for example `EpisodeOrderMapperTest`.
+All scans, folder creation, renaming, and moving operations must stay inside the configured working directory. Never touch files outside it.
 
-Filesystem tests must use temporary directories. Do not run tests against real media folders.
+## BMAD Workflow
 
-Development must follow TDD by default:
+Epics, stories, implementation, and code review are driven by the BMAD dev agent **Amelia**.
 
-1. Add or update a failing test that describes the expected behavior.
-2. Implement the smallest production change that makes the test pass.
-3. Refactor while keeping the test suite green.
+- BMAD config: `_bmad/`
+- Planning artifacts (story contexts, etc.): `_bmad-output/planning-artifacts/`
+- Implementation artifacts: `_bmad-output/implementation-artifacts/`
+- Brainstorming notes: `_bmad-output/brainstorming/`
 
-For UI-only changes where automated testing is not practical yet, document the manual verification steps and add lower-level tests for any extracted logic.
+Read the relevant story context before coding, write implementation notes back to `implementation-artifacts/`, and keep changes scoped to the story under review so Amelia can verify them.
 
-## Security & Configuration
+## UI / Design System
 
-TVDB access must use an API key stored outside source control, preferably through environment variables or an ignored local config file. Never commit API keys, generated tokens, real media paths, or private library metadata.
+All UI work follows `docs/design-system.md` — the source of truth for tokens, layout, components, and do/don't rules.
 
-The application must include settings for selecting the working directory. All scans, pattern analysis, folder creation, renaming, and moving operations must be limited to the configured working directory. Never modify files outside that directory.
+- Reuse existing classes (`.card`, `.widget`, `.button`, `.section-heading`, `SettingsPane`, …); no parallel styles.
+- No hex literals in new code — go through tokens defined in `src/main/resources/styles/app.css`.
+- New component → edit `app.css` first, then update `docs/design-system.md` (§2 tokens + §4 anatomy/class/rules) in the same change.
+- "No fabricated state": every label/value comes from a real view-model signal or shows `—`.
 
-## Episode Identification Workflow
+## Media Operations Guardrails
 
-Episort should support working directories that contain multiple TV series mixed together. The application must group files by likely series before proposing episode matches. Grouping may use file names, parent folders, media metadata, duration, file ordering, TVDB data, and user answers.
+Do not rename, move, or delete media files without explicit user confirmation. Two validation steps are required:
 
-Local AI may be used as an optional assistant to detect patterns and resolve ambiguous groups, but it must not be the only source of truth. The AI should ask the user questions as often as needed before actions are planned, especially when a folder contains multiple series, specials, bonus files, duplicate episodes, unclear seasons, or weak naming patterns.
+1. Validate the detected pattern (series grouping, season assignment, ordering, ignored/ambiguous files).
+2. Validate the exact file operation plan (every source and destination path).
 
-After the user validates a pattern, Episort should connect to TVDB, resolve the official English series name, season data, episode numbers, and English episode titles, then produce a file operation plan.
-
-The target layout is:
+Never assume all files in a working directory belong to the same show — surface the proposed series groups for validation before producing the TVDB-backed rename/move plan. Target layout:
 
 ```text
 Series Name in English/
@@ -70,39 +59,14 @@ Series Name in English/
     Series Name in English - SXXEXX - Episode Title in English.original-extension
 ```
 
-The original file extension must be preserved.
+Original file extension is preserved.
 
-## Commit & Pull Request Guidelines
+## Commits & Git Flow
 
-Use English Conventional Commits:
+English Conventional Commits (`feat:`, `fix:`, `docs:`, …). PRs include a summary, test evidence, linked issues, and screenshots for UI changes.
 
-```text
-feat: add TVDB aired order mapping
-fix: handle missing season numbers
-docs: update setup instructions
-```
-
-Pull requests should include a summary, test evidence, linked issues when relevant, and screenshots for UI changes.
-
-Use Git Flow for development:
-
-- `main` contains production-ready code only.
-- `develop` is the integration branch for completed work.
-- New features must be developed on `feature/<short-description>` branches created from `develop`.
-- Release stabilization should happen on `release/<version>` branches.
-- Production fixes should happen on `hotfix/<short-description>` branches created from `main`.
-- Merge completed feature branches back into `develop` after tests pass.
-- Do not commit directly to `main` or `develop` unless the user explicitly asks for it.
-
-## Agent-Specific Instructions
-
-Do not rename, move, or delete media files without explicit user confirmation. Current scope allows creating `Season XX` folders, planning organization, and renaming/moving only after the user explicitly validates the exact source-to-destination plan.
-
-Use two separate validation steps for media operations:
-
-1. Validate the detected pattern, including series grouping, season assignment, ordering, ignored files, and ambiguous files.
-2. Validate the exact file operation plan, including every source path and destination path.
-
-For multi-series working directories, never assume all files belong to the same show. Always surface the proposed series groups and require user validation before producing the final TVDB-backed rename/move plan.
-
-Keep changes small and testable. When modifying sorting or filesystem behavior, add or update tests before considering the task complete.
+- `main`: production-ready only.
+- `develop`: integration branch.
+- Features: `feature/<short-description>` from `develop`.
+- Releases: `release/<version>`. Hotfixes: `hotfix/<short-description>` from `main`.
+- Never commit directly to `main` or `develop` unless the user explicitly asks.

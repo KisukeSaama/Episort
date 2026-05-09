@@ -1,28 +1,41 @@
 package com.episort.ui;
 
 import com.episort.ui.settings.SettingsPane;
+import java.io.File;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
-import javafx.scene.control.ComboBox;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.DirectoryChooser;
+import javafx.stage.Window;
 
 public final class AppShell {
     private final BorderPane root;
-    private final Label status;
-    private final Label description;
+    private final StackPane viewHost;
+    private final Parent mainView;
+    private final Parent settingsView;
+    private final Label brandTitle;
+    private final Label mainStatus;
+    private final Label mainDescription;
+    private final Button loadFolderButton;
+    private final Button settingsButton;
     private final SettingsPane settingsPane;
+    private final Function<Path, AppShellViewModel> selectInputFolder;
+    private final Supplier<Optional<Path>> currentWorkspace;
     private AppShellViewModel currentViewModel;
 
     public AppShell() {
@@ -70,41 +83,53 @@ public final class AppShell {
             Supplier<Optional<Path>> currentWorkspace,
             BooleanSupplier canContinue,
             Runnable onContinue) {
+        Fonts.loadAll();
         this.currentViewModel = viewModel;
+        this.selectInputFolder = selectInputFolder;
+        this.currentWorkspace = currentWorkspace == null ? Optional::empty : currentWorkspace;
+
         ImageView logo = new ImageView(logoImage());
-        logo.setFitWidth(48);
-        logo.setFitHeight(48);
+        logo.setFitWidth(96);
+        logo.setFitHeight(96);
         logo.setPreserveRatio(true);
 
-        Label title = new Label(viewModel.title());
-        title.getStyleClass().add("app-title");
+        brandTitle = new Label("Episort");
+        brandTitle.getStyleClass().add("brand-title");
 
-        status = new Label(viewModel.primaryStatus());
-        status.getStyleClass().add("app-status");
+        mainStatus = new Label();
+        mainStatus.setWrapText(true);
+        mainStatus.getStyleClass().add("app-status");
 
-        description = new Label(viewModel.description());
-        description.setWrapText(true);
-        description.getStyleClass().add("app-description");
+        mainDescription = new Label();
+        mainDescription.setWrapText(true);
+        mainDescription.getStyleClass().add("app-description");
 
-        SettingsPane pane = null;
-        HBox brand = new HBox(12, logo, title);
-        brand.setAlignment(Pos.CENTER_LEFT);
+        loadFolderButton = new Button();
+        loadFolderButton.getStyleClass().add("primary");
+        loadFolderButton.setOnAction(event -> openLoadFolderDialog());
 
-        VBox content = new VBox(12, brand, status, description);
+        settingsButton = new Button();
+        settingsButton.getStyleClass().add("ghost");
+        settingsButton.setOnAction(event -> showSettings());
+
         if (configureWorkspace != null) {
-            pane = new SettingsPane(
-                            configureWorkspace,
-                            currentWorkspace,
-                            canContinue,
-                            onContinue,
-                            this::apply);
-            content.getChildren().add(pane.root());
+            settingsPane = new SettingsPane(
+                    configureWorkspace,
+                    this.currentWorkspace,
+                    this::applyLanguage,
+                    this::showMain,
+                    this::apply);
+        } else {
+            settingsPane = null;
         }
-        settingsPane = pane;
-        content.setPadding(new Insets(24));
 
-        root = new BorderPane(content);
-        root.setTop(languageSelector());
+        mainView = buildMainView(logo);
+        settingsView = settingsPane == null ? new VBox() : buildSettingsView();
+
+        viewHost = new StackPane();
+        viewHost.getStyleClass().add("view-host");
+
+        root = new BorderPane(viewHost);
         root.getStyleClass().add("app-shell");
         root.getStylesheets().add(
                 java.util.Objects.requireNonNull(
@@ -112,58 +137,123 @@ public final class AppShell {
                                 "Missing stylesheet /styles/app.css")
                         .toExternalForm());
         root.getStyleClass().add(currentViewModel.theme() == Theme.DARK ? "theme-dark" : "theme-light");
+
+        refreshLocalizedText();
+        refreshShellText();
+        refreshLoadFolderState();
+
+        if (settingsPane != null && this.currentWorkspace.get().isEmpty()) {
+            showSettings();
+        } else {
+            showMain();
+        }
     }
 
     public Parent root() {
         return root;
     }
 
+    private Parent buildMainView(ImageView logo) {
+        HBox brandRow = new HBox(14, logo, brandTitle);
+        brandRow.setAlignment(Pos.CENTER);
+
+        VBox statusBlock = new VBox(4, mainStatus, mainDescription);
+        statusBlock.setAlignment(Pos.CENTER);
+        statusBlock.setMaxWidth(520);
+
+        HBox actions = new HBox(12, loadFolderButton, settingsButton);
+        actions.setAlignment(Pos.CENTER);
+
+        VBox column = new VBox(22, brandRow, statusBlock, actions);
+        column.setAlignment(Pos.CENTER);
+        column.setPadding(new Insets(40));
+        column.getStyleClass().add("main-view");
+
+        StackPane wrapper = new StackPane(column);
+        StackPane.setAlignment(column, Pos.CENTER);
+        return wrapper;
+    }
+
+    private Parent buildSettingsView() {
+        VBox content = new VBox(settingsPane.root());
+        content.setPadding(new Insets(28, 32, 28, 32));
+        content.setMaxWidth(720);
+        content.getStyleClass().add("settings-view");
+
+        StackPane centered = new StackPane(content);
+        StackPane.setAlignment(content, Pos.TOP_CENTER);
+
+        ScrollPane scroll = new ScrollPane(centered);
+        scroll.getStyleClass().add("content-scroll");
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        return scroll;
+    }
+
+    private void showMain() {
+        viewHost.getChildren().setAll(mainView);
+    }
+
+    private void showSettings() {
+        if (settingsPane == null) {
+            return;
+        }
+        settingsPane.refreshWorkspace();
+        viewHost.getChildren().setAll(settingsView);
+    }
+
+    private void openLoadFolderDialog() {
+        if (selectInputFolder == null) {
+            return;
+        }
+        Optional<Path> workspace = currentWorkspace.get();
+        if (workspace.isEmpty()) {
+            return;
+        }
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Choose folder to load");
+        File initial = workspace.get().toFile();
+        if (initial.isDirectory()) {
+            chooser.setInitialDirectory(initial);
+        }
+        Window owner = loadFolderButton.getScene() == null ? null : loadFolderButton.getScene().getWindow();
+        File selected = chooser.showDialog(owner);
+        if (selected != null) {
+            apply(selectInputFolder.apply(selected.toPath()));
+        }
+    }
+
     private void apply(AppShellViewModel viewModel) {
         currentViewModel = AppShellViewModel.preservingTheme(currentViewModel, viewModel);
         refreshShellText();
+        refreshLoadFolderState();
     }
 
     private void refreshShellText() {
-        status.setText(currentViewModel.primaryStatus());
-        description.setText(currentViewModel.description());
+        mainStatus.setText(currentViewModel.primaryStatus());
+        mainDescription.setText(currentViewModel.description());
         root.getStyleClass().removeAll("theme-dark", "theme-light");
         root.getStyleClass().add(currentViewModel.theme() == Theme.DARK ? "theme-dark" : "theme-light");
     }
 
+    private void refreshLoadFolderState() {
+        boolean enabled = selectInputFolder != null && currentWorkspace.get().isPresent();
+        loadFolderButton.setDisable(!enabled);
+    }
+
+    private void refreshLocalizedText() {
+        AppLanguage language = currentViewModel.language();
+        loadFolderButton.setText(UiText.loadFolderButton(language));
+        settingsButton.setText(UiText.settingsButton(language));
+    }
+
     private void applyLanguage(AppLanguage language) {
         currentViewModel = currentViewModel.withLanguage(language);
+        refreshLocalizedText();
         refreshShellText();
         if (settingsPane != null) {
             settingsPane.applyLanguage(language);
         }
-    }
-
-    private HBox languageSelector() {
-        Label languageLabel = new Label();
-        languageLabel.getStyleClass().add("language-label");
-        ComboBox<AppLanguage> language = new ComboBox<>(FXCollections.observableArrayList(AppLanguage.FRENCH, AppLanguage.ENGLISH));
-        language.setValue(currentViewModel.language());
-        language.setConverter(new javafx.util.StringConverter<>() {
-            @Override
-            public String toString(AppLanguage value) {
-                return value == null ? "" : value.displayName();
-            }
-
-            @Override
-            public AppLanguage fromString(String value) {
-                return AppLanguage.FRENCH.displayName().equals(value) ? AppLanguage.FRENCH : AppLanguage.ENGLISH;
-            }
-        });
-        Runnable updateLabel = () -> languageLabel.setText(UiText.languageLabel(language.getValue()));
-        updateLabel.run();
-        language.setOnAction(event -> {
-            updateLabel.run();
-            applyLanguage(language.getValue());
-        });
-        HBox bar = new HBox(8, languageLabel, language);
-        bar.setAlignment(Pos.CENTER_RIGHT);
-        bar.setPadding(new Insets(12, 24, 0, 24));
-        return bar;
     }
 
     public static Image logoImage() {

@@ -11,6 +11,26 @@ public final class UiText {
         return language == AppLanguage.ENGLISH ? "Language" : "Langue";
     }
 
+    public static String prerequisitesHeading(AppLanguage language) {
+        return language == AppLanguage.ENGLISH ? "// PREREQUISITES" : "// PRÉREQUIS";
+    }
+
+    public static String preferencesHeading(AppLanguage language) {
+        return language == AppLanguage.ENGLISH ? "// PREFERENCES" : "// PRÉFÉRENCES";
+    }
+
+    public static String settingsButton(AppLanguage language) {
+        return language == AppLanguage.ENGLISH ? "Settings" : "Paramètres";
+    }
+
+    public static String closeSettingsButton(AppLanguage language) {
+        return language == AppLanguage.ENGLISH ? "Close" : "Fermer";
+    }
+
+    public static String loadFolderButton(AppLanguage language) {
+        return language == AppLanguage.ENGLISH ? "Load folder" : "Charger un dossier";
+    }
+
     public static String settingsRequiredStatus(AppLanguage language) {
         return language == AppLanguage.ENGLISH
                 ? "Choose a workspace before scanning files."
