@@ -81,6 +81,8 @@ public final class UiText {
 
     public static String scanHeading(AppLanguage language) { return t(language, "scan.heading"); }
     public static String scanSafetyBanner(AppLanguage language) { return t(language, "scan.safety.banner"); }
+    public static String loadingStartup(AppLanguage language) { return t(language, "loading.startup"); }
+    public static String loadingScan(AppLanguage language) { return t(language, "loading.scan"); }
 
     public static String[] scanWorkflowSteps(AppLanguage language) {
         return t(language, "scan.workflow.steps").split("\\|");
@@ -106,17 +108,34 @@ public final class UiText {
     public static String scanColumnConfidence(AppLanguage language) { return t(language, "scan.column.confidence"); }
     public static String scanColumnStatus(AppLanguage language) { return t(language, "scan.column.status"); }
     public static String scanColumnOrder(AppLanguage language) { return t(language, "scan.column.order"); }
+    public static String scanFilterAll(AppLanguage language) { return t(language, "scan.filter.all"); }
+    public static String scanFilterMovies(AppLanguage language) { return t(language, "scan.filter.movies"); }
+    public static String scanFilterSeries(AppLanguage language) { return t(language, "scan.filter.series"); }
+    public static String scanFilterUnknown(AppLanguage language) { return t(language, "scan.filter.unknown"); }
 
     public static String scanMediaTypeSeries(AppLanguage language) { return t(language, "scan.media.type.series"); }
     public static String scanMediaTypeMovie(AppLanguage language) { return t(language, "scan.media.type.movie"); }
     public static String scanMediaTypeUnknown(AppLanguage language) { return t(language, "scan.media.type.unknown"); }
     public static String scanMediaTypeIgnored(AppLanguage language) { return t(language, "scan.media.type.ignored"); }
 
-    public static String scanRowStatusPreview(AppLanguage language) { return t(language, "scan.row.status.preview"); }
-    public static String scanRowStatusReady(AppLanguage language) { return t(language, "scan.row.status.ready"); }
-    public static String scanRowStatusWarning(AppLanguage language) { return t(language, "scan.row.status.warning"); }
+    public static String scanRowStatusOk(AppLanguage language) { return t(language, "scan.row.status.ok"); }
+    public static String scanRowStatusReview(AppLanguage language) { return t(language, "scan.row.status.review"); }
+    public static String scanRowStatusAi(AppLanguage language) { return t(language, "scan.row.status.ai"); }
+    public static String scanRowStatusTvdb(AppLanguage language) { return t(language, "scan.row.status.tvdb"); }
+    public static String scanRowStatusType(AppLanguage language) { return t(language, "scan.row.status.type"); }
+    public static String scanRowStatusExt(AppLanguage language) { return t(language, "scan.row.status.ext"); }
+    public static String scanRowStatusPattern(AppLanguage language) { return t(language, "scan.row.status.pattern"); }
+    public static String scanRowStatusMeta(AppLanguage language) { return t(language, "scan.row.status.meta"); }
     public static String scanRowStatusConflict(AppLanguage language) { return t(language, "scan.row.status.conflict"); }
+    public static String scanRowStatusDuplicate(AppLanguage language) { return t(language, "scan.row.status.duplicate"); }
+    public static String scanRowStatusPath(AppLanguage language) { return t(language, "scan.row.status.path"); }
+    public static String scanRowStatusError(AppLanguage language) { return t(language, "scan.row.status.error"); }
     public static String scanRowStatusIgnored(AppLanguage language) { return t(language, "scan.row.status.ignored"); }
+    public static String scanOrderToDefine(AppLanguage language) { return t(language, "scan.order.toDefine"); }
+    public static String scanOrderUnavailable(AppLanguage language) { return t(language, "scan.order.unavailable"); }
+    public static String scanRowStatusPreview(AppLanguage language) { return scanRowStatusReview(language); }
+    public static String scanRowStatusReady(AppLanguage language) { return scanRowStatusOk(language); }
+    public static String scanRowStatusWarning(AppLanguage language) { return scanRowStatusReview(language); }
 
     public static String scanTablePlaceholder(AppLanguage language) { return t(language, "scan.table.placeholder"); }
 

@@ -30,6 +30,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.geometry.Pos;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Button;
@@ -39,13 +40,15 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.SelectionMode;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.Tooltip;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
@@ -83,6 +86,10 @@ public final class ScanScreen {
     private final TableView<ScanRow> table = new TableView<>();
     private final ObservableList<ScanRow> rows = FXCollections.observableArrayList();
     private final FilteredList<ScanRow> filtered = new FilteredList<>(rows, row -> true);
+    private final SortedList<ScanRow> sorted = new SortedList<>(filtered);
+    private final HBox filterBar = new HBox(8);
+    private final ToggleGroup filterGroup = new ToggleGroup();
+    private final Map<ScanRowFilter, ToggleButton> filterButtons = new HashMap<>();
     private final TableColumn<ScanRow, Boolean> selectionColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> originalColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> arrowColumn = new TableColumn<>();
@@ -90,13 +97,12 @@ public final class ScanScreen {
     private final TableColumn<ScanRow, String> patternColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> extensionColumn = new TableColumn<>();
     private final TableColumn<ScanRow, ScanMediaType> typeColumn = new TableColumn<>();
-    private final TableColumn<ScanRow, String> tvdbColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> orderColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> confidenceColumn = new TableColumn<>();
     private final TableColumn<ScanRow, ScanRowStatus> statusColumn = new TableColumn<>();
 
     private final RowDetailPanel detailPanel = new RowDetailPanel();
-    private final ScrollPane detailScroll;
+    private final Region detailRoot;
     private final AiChatPanel aiChatPanel = new AiChatPanel();
     private final Map<ScanRow, BatchTvdbMatch> rowToGroupMatch = new HashMap<>();
     private final Map<ScanRow, InventoryGroup> rowToGroup = new HashMap<>();
@@ -106,6 +112,9 @@ public final class ScanScreen {
     private final SimpleObjectProperty<ScanRow> selectedRow = new SimpleObjectProperty<>(null);
     private final SimpleBooleanProperty syncingSelection = new SimpleBooleanProperty(false);
     private boolean loadedFolder;
+    private boolean loading;
+    private String searchQuery = "";
+    private ScanRowFilter activeFilter = ScanRowFilter.ALL;
 
     private Pane currentBody;
     private boolean stackedLayout = false;
@@ -144,23 +153,19 @@ public final class ScanScreen {
         detailPanel.setOnApplyCandidate(this::applyTvdbCandidate);
         detailPanel.setOnResetMatch(this::resetTvdbMatch);
         detailPanel.setOnApplyInputPattern(this::applyInputPatternToSelection);
-        detailScroll = new ScrollPane(detailPanel.root());
-        detailScroll.setFitToWidth(true);
-        detailScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        detailScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        detailScroll.getStyleClass().add("detail-scroll");
-        detailScroll.setMinWidth(320);
-        detailScroll.setPrefWidth(380);
-        detailScroll.setMaxWidth(420);
+        detailRoot = detailPanel.root();
+        detailRoot.setMinWidth(320);
+        detailRoot.setPrefWidth(380);
+        detailRoot.setMaxWidth(420);
         aiChatPanel.setApplyHandler(this::applyToolCall);
 
-        VBox tableStack = new VBox(12, table, aiChatPanel.root());
+        VBox tableStack = new VBox(12, filterBar, table, aiChatPanel.root());
         VBox.setVgrow(table, Priority.ALWAYS);
-        HBox initialBody = new HBox(16, tableStack, detailScroll);
+        HBox initialBody = new HBox(16, tableStack, detailRoot);
         HBox.setHgrow(tableStack, Priority.ALWAYS);
         HBox.setHgrow(table, Priority.ALWAYS);
-        HBox.setHgrow(detailScroll, Priority.NEVER);
-        VBox.setVgrow(detailScroll, Priority.ALWAYS);
+        HBox.setHgrow(detailRoot, Priority.NEVER);
+        VBox.setVgrow(detailRoot, Priority.ALWAYS);
         currentBody = initialBody;
 
         root = new VBox(14, heading, workflow, metricGrid, currentBody);
@@ -197,10 +202,13 @@ public final class ScanScreen {
         patternColumn.setText(UiText.scanColumnPattern(language));
         extensionColumn.setText(UiText.scanColumnExtension(language));
         typeColumn.setText(UiText.scanColumnType(language));
-        tvdbColumn.setText(UiText.scanColumnTvdb(language));
         orderColumn.setText(UiText.scanColumnOrder(language));
         confidenceColumn.setText(UiText.scanColumnConfidence(language));
         statusColumn.setText(UiText.scanColumnStatus(language));
+        setFilterButtonText(ScanRowFilter.ALL, UiText.scanFilterAll(language));
+        setFilterButtonText(ScanRowFilter.MOVIES, UiText.scanFilterMovies(language));
+        setFilterButtonText(ScanRowFilter.SERIES, UiText.scanFilterSeries(language));
+        setFilterButtonText(ScanRowFilter.UNKNOWN, UiText.scanFilterUnknown(language));
 
         table.setPlaceholder(buildEmptyState(
                 "◫",
@@ -218,6 +226,11 @@ public final class ScanScreen {
 
     public void refreshAiChatAvailability() {
         aiChatPanel.refreshAvailability();
+    }
+
+    public void setLoading(boolean loading) {
+        this.loading = loading;
+        updateWorkflowActiveStep();
     }
 
     private void rebuildWorkflowSteps(AppLanguage language) {
@@ -239,9 +252,9 @@ public final class ScanScreen {
     }
 
     private void updateWorkflowActiveStep() {
-        int activeIndex = loadedFolder ? 1 : 0;
+        int activeIndex = loading || loadedFolder ? 1 : 0;
         for (int index = 0; index < steps.size(); index++) {
-            steps.get(index).setState(index, activeIndex);
+            steps.get(index).setState(index, activeIndex, loading && index == activeIndex);
         }
     }
 
@@ -262,14 +275,8 @@ public final class ScanScreen {
 
     public void setSearchFilter(String query) {
         String normalized = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
-        if (normalized.isEmpty()) {
-            filtered.setPredicate(row -> true);
-            updateSelectAllCheckbox();
-            return;
-        }
-        filtered.setPredicate(row ->
-                row.originalFilename().toLowerCase(Locale.ROOT).contains(normalized)
-                        || row.extension().toLowerCase(Locale.ROOT).contains(normalized));
+        searchQuery = normalized;
+        updateFilterPredicate();
         updateSelectAllCheckbox();
     }
 
@@ -279,6 +286,7 @@ public final class ScanScreen {
             return;
         }
         InventoryScanResult scan = result.orElseThrow();
+        loading = false;
         loadedFolder = true;
         updateWorkflowActiveStep();
         rows.setAll(ScanRowFactory.from(scan));
@@ -326,6 +334,7 @@ public final class ScanScreen {
     public void clear() {
         rows.clear();
         loadedFolder = false;
+        loading = false;
         updateWorkflowActiveStep();
         rowToGroup.clear();
         rowToGroupMatch.clear();
@@ -382,7 +391,6 @@ public final class ScanScreen {
                         .ifPresent(parse -> {
                             row.setInputParse(Optional.of(parse));
                             row.setInputPattern(Optional.of(parse.summary().isBlank() ? parse.label() : parse.summary()));
-                            parse.normalizedOrder().ifPresent(order -> row.setOrder(Optional.of(order)));
                             if (parse.confidence().isPresent()) {
                                 row.setConfidence(parse.confidence());
                             }
@@ -390,6 +398,13 @@ public final class ScanScreen {
             }
         }
         table.refresh();
+    }
+
+    private void setFilterButtonText(ScanRowFilter filter, String text) {
+        ToggleButton button = filterButtons.get(filter);
+        if (button != null) {
+            button.setText(text);
+        }
     }
 
     private static boolean canAcceptAiParse(ScanRow row) {
@@ -460,23 +475,23 @@ public final class ScanScreen {
 
         Pane next;
         if (stacked) {
-            detailScroll.setMaxWidth(Double.MAX_VALUE);
-            VBox tableStack = new VBox(12, table, aiChatPanel.root());
+            detailRoot.setMaxWidth(Double.MAX_VALUE);
+            VBox tableStack = new VBox(12, filterBar, table, aiChatPanel.root());
             VBox.setVgrow(table, Priority.ALWAYS);
-            VBox stack = new VBox(16, tableStack, detailScroll);
+            VBox stack = new VBox(16, tableStack, detailRoot);
             VBox.setVgrow(tableStack, Priority.ALWAYS);
             VBox.setVgrow(table, Priority.ALWAYS);
-            VBox.setVgrow(detailScroll, Priority.ALWAYS);
+            VBox.setVgrow(detailRoot, Priority.ALWAYS);
             next = stack;
         } else {
-            detailScroll.setMaxWidth(420);
-            detailScroll.setPrefWidth(380);
-            VBox tableStack = new VBox(12, table, aiChatPanel.root());
+            detailRoot.setMaxWidth(420);
+            detailRoot.setPrefWidth(380);
+            VBox tableStack = new VBox(12, filterBar, table, aiChatPanel.root());
             VBox.setVgrow(table, Priority.ALWAYS);
-            HBox row = new HBox(16, tableStack, detailScroll);
+            HBox row = new HBox(16, tableStack, detailRoot);
             HBox.setHgrow(tableStack, Priority.ALWAYS);
-            HBox.setHgrow(detailScroll, Priority.NEVER);
-            VBox.setVgrow(detailScroll, Priority.ALWAYS);
+            HBox.setHgrow(detailRoot, Priority.NEVER);
+            VBox.setVgrow(detailRoot, Priority.ALWAYS);
             next = row;
         }
         replaceCurrentBody(next);
@@ -514,7 +529,8 @@ public final class ScanScreen {
         RoundedClip.install(table, 14);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_SUBSEQUENT_COLUMNS);
         table.setEditable(true);
-        table.setItems(filtered);
+        sorted.comparatorProperty().bind(table.comparatorProperty());
+        table.setItems(sorted);
         table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         table.getSelectionModel().getSelectedItems().addListener((ListChangeListener<ScanRow>) change -> {
             if (syncingSelection.get()) {
@@ -540,10 +556,10 @@ public final class ScanScreen {
         configurePatternColumn();
         configureExtensionColumn();
         configureTypeColumn();
-        configureTvdbColumn();
         configureOrderColumn();
         configureConfidenceColumn();
         configureStatusColumn();
+        configureFilterBar();
 
         table.getColumns().setAll(
                 selectionColumn,
@@ -553,7 +569,6 @@ public final class ScanScreen {
                 patternColumn,
                 extensionColumn,
                 typeColumn,
-                tvdbColumn,
                 orderColumn,
                 confidenceColumn,
                 statusColumn);
@@ -629,6 +644,7 @@ public final class ScanScreen {
         originalColumn.setPrefWidth(430);
         originalColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().originalFilename()));
         originalColumn.setCellFactory(monoEllipsisCellFactory());
+        originalColumn.setComparator(ScanRowTableSupport.NATURAL_TEXT);
     }
 
     private void configureArrowColumn() {
@@ -675,6 +691,7 @@ public final class ScanScreen {
             }
             updateAiChatTargetFromSelection(true);
         });
+        proposedColumn.setComparator(ScanRowTableSupport.NATURAL_TEXT);
     }
 
     private void configurePatternColumn() {
@@ -713,6 +730,7 @@ public final class ScanScreen {
             }
         });
         patternColumn.setOnEditCommit(event -> applyInputPatternToSelection(event.getRowValue(), event.getNewValue()));
+        patternColumn.setComparator(ScanRowTableSupport.NATURAL_TEXT);
     }
 
     private void configureExtensionColumn() {
@@ -741,6 +759,7 @@ public final class ScanScreen {
                 setGraphic(badge);
             }
         });
+        extensionColumn.setComparator(ScanRowTableSupport.NATURAL_TEXT);
     }
 
     private void configureTypeColumn() {
@@ -785,20 +804,15 @@ public final class ScanScreen {
                 setGraphic(picker);
             }
         });
-    }
-
-    private void configureTvdbColumn() {
-        tvdbColumn.setMinWidth(140);
-        tvdbColumn.setPrefWidth(180);
-        tvdbColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().tvdbMatch().orElse(EMPTY)));
-        tvdbColumn.setCellFactory(monoEllipsisCellFactory());
+        typeColumn.setComparator(ScanRowTableSupport.MEDIA_TYPE);
     }
 
     private void configureOrderColumn() {
         orderColumn.setMinWidth(92);
         orderColumn.setPrefWidth(112);
-        orderColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().order().orElse(EMPTY)));
+        orderColumn.setCellValueFactory(data -> new SimpleStringProperty(orderText(data.getValue().order().orElse(""))));
         orderColumn.setCellFactory(monoEllipsisCellFactory());
+        orderColumn.setComparator(ScanRowTableSupport.NATURAL_TEXT);
     }
 
     private static String extensionStyle(String extension) {
@@ -816,6 +830,7 @@ public final class ScanScreen {
         confidenceColumn.setPrefWidth(80);
         confidenceColumn.setCellValueFactory(data -> new SimpleStringProperty(formatConfidence(data.getValue().confidence())));
         confidenceColumn.setCellFactory(monoEllipsisCellFactory());
+        confidenceColumn.setComparator(ScanRowTableSupport.CONFIDENCE_PERCENT);
     }
 
     private void configureStatusColumn() {
@@ -839,18 +854,65 @@ public final class ScanScreen {
                 }
                 pill.getStyleClass().setAll("row-status", styleClassFor(item));
                 pill.setText(RowDetailPanel.statusText(item, currentLanguage));
+                ScanRow row = getTableRow() == null ? null : getTableRow().getItem();
+                if (row != null && !row.statusReasons().isEmpty()) {
+                    Tooltip tooltip = new Tooltip(String.join("\n", row.statusReasons()));
+                    tooltip.setWrapText(true);
+                    tooltip.setMaxWidth(420);
+                    pill.setTooltip(tooltip);
+                } else {
+                    pill.setTooltip(null);
+                }
                 setGraphic(pill);
             }
         });
+        statusColumn.setComparator(ScanRowTableSupport.STATUS);
+    }
+
+    private void configureFilterBar() {
+        filterBar.getStyleClass().add("scan-filter-bar");
+        filterBar.setAlignment(Pos.CENTER_LEFT);
+        addFilterButton(ScanRowFilter.ALL);
+        addFilterButton(ScanRowFilter.MOVIES);
+        addFilterButton(ScanRowFilter.SERIES);
+        addFilterButton(ScanRowFilter.UNKNOWN);
+        filterGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null) {
+                filterGroup.selectToggle(filterButtons.get(activeFilter));
+                return;
+            }
+            activeFilter = (ScanRowFilter) newValue.getUserData();
+            updateFilterPredicate();
+            updateFilterButtonStyles();
+        });
+        filterGroup.selectToggle(filterButtons.get(ScanRowFilter.ALL));
+    }
+
+    private void addFilterButton(ScanRowFilter filter) {
+        ToggleButton button = new ToggleButton();
+        button.setUserData(filter);
+        button.setToggleGroup(filterGroup);
+        button.getStyleClass().add("filter-chip");
+        filterButtons.put(filter, button);
+        filterBar.getChildren().add(button);
     }
 
     private static String styleClassFor(ScanRowStatus status) {
         return switch (status) {
-            case PREVIEW -> "preview";
-            case READY -> "ready";
-            case WARNING -> "warning";
+            case OK -> "ready";
+            case REVIEW -> "warning";
+            case AI, TVDB, TYPE, EXT, PATTERN, META, PATH, ERROR -> "warning";
             case CONFLICT -> "conflict";
+            case DUPLICATE -> "conflict";
             case IGNORED -> "ignored";
+        };
+    }
+
+    private String orderText(String order) {
+        return switch (order) {
+            case "TO_DEFINE" -> UiText.scanOrderToDefine(currentLanguage);
+            case "UNAVAILABLE" -> UiText.scanOrderUnavailable(currentLanguage);
+            default -> order == null || order.isBlank() ? EMPTY : order;
         };
     }
 
@@ -897,6 +959,29 @@ public final class ScanScreen {
             return EMPTY;
         }
         return String.format("%.0f%%", confidence.orElseThrow() * 100.0);
+    }
+
+    private void updateFilterPredicate() {
+        filtered.setPredicate(row -> matchesSearch(row) && ScanRowTableSupport.matchesFilter(row, activeFilter));
+        updateSelectAllCheckbox();
+    }
+
+    private boolean matchesSearch(ScanRow row) {
+        if (searchQuery.isBlank()) {
+            return true;
+        }
+        return row.originalFilename().toLowerCase(Locale.ROOT).contains(searchQuery)
+                || row.extension().toLowerCase(Locale.ROOT).contains(searchQuery);
+    }
+
+    private void updateFilterButtonStyles() {
+        for (Map.Entry<ScanRowFilter, ToggleButton> entry : filterButtons.entrySet()) {
+            ToggleButton button = entry.getValue();
+            button.getStyleClass().remove("active");
+            if (entry.getKey() == activeFilter && !button.getStyleClass().contains("active")) {
+                button.getStyleClass().add("active");
+            }
+        }
     }
 
     private StringConverter<ScanMediaType> mediaTypeConverter() {
@@ -970,7 +1055,6 @@ public final class ScanScreen {
                 .map(parse -> parse.withLabel(firstLine(value)).withSource(ScanInputParseSource.USER))
                 .ifPresent(parse -> {
                     row.setInputParse(Optional.of(parse));
-                    parse.normalizedOrder().ifPresent(order -> row.setOrder(Optional.of(order)));
                     if (parse.confidence().isPresent()) {
                         row.setConfidence(parse.confidence());
                     }
@@ -1001,7 +1085,7 @@ public final class ScanScreen {
                     table.getSelectionModel().select(row);
                 }
             } else {
-                int visibleIndex = filtered.indexOf(row);
+                int visibleIndex = sorted.indexOf(row);
                 if (visibleIndex >= 0) {
                     table.getSelectionModel().clearSelection(visibleIndex);
                 }
@@ -1084,8 +1168,8 @@ public final class ScanScreen {
                     .append(parse.positionsSummary())
                     .append(" | source=")
                     .append(parse.source()));
-            selected.order().ifPresent(order -> {
-                sb.append(" | ordre=").append(order);
+            selected.inputParse().flatMap(ScanInputParse::normalizedOrder).ifPresent(order -> {
+                sb.append(" | ordreEpisode=").append(order);
                 sb.append(" | saison=").append(seasonFromOrder(order));
                 sb.append(" | episode=").append(episodeFromOrder(order));
             });
@@ -1116,7 +1200,9 @@ public final class ScanScreen {
         sb.append("Titre détecté depuis le fichier : ").append(inferredTitle(row)).append('\n');
         row.proposedFilename().ifPresent(p -> sb.append("Nom proposé actuel : ").append(p).append('\n'));
         row.tvdbMatch().ifPresent(m -> sb.append("Correspondance TVDB actuelle : ").append(m).append('\n'));
-        row.order().ifPresent(o -> sb.append("Ordre : ").append(o).append('\n'));
+        row.order().ifPresent(o -> sb.append("Ordre TVDB/configuration : ").append(orderText(o)).append('\n'));
+        row.inputParse().flatMap(ScanInputParse::normalizedOrder)
+                .ifPresent(o -> sb.append("Ordre episode detecte : ").append(o).append('\n'));
         BatchTvdbMatch match = rowToGroupMatch.get(row);
         if (match != null) {
             sb.append("Groupe : ").append(match.seedName())
@@ -1339,14 +1425,20 @@ public final class ScanScreen {
     private static final class WorkflowStep {
         private final HBox root;
         private final Label number;
+        private final ProgressIndicator loader;
         private final Label label;
 
         WorkflowStep(int stepNumber, String text) {
             number = new Label(String.valueOf(stepNumber));
             number.getStyleClass().add("workflow-step-number");
+            loader = new ProgressIndicator();
+            loader.getStyleClass().add("workflow-step-loader");
+            loader.setMaxSize(22, 22);
+            loader.setVisible(false);
+            loader.setManaged(false);
             label = new Label(text);
             label.getStyleClass().add("workflow-step-label");
-            root = new HBox(8, number, label);
+            root = new HBox(8, number, loader, label);
             root.getStyleClass().add("workflow-step");
             root.setAlignment(Pos.CENTER_LEFT);
         }
@@ -1355,10 +1447,17 @@ public final class ScanScreen {
             return root;
         }
 
-        void setState(int index, int activeIndex) {
+        void setState(int index, int activeIndex, boolean loading) {
             root.getStyleClass().setAll("workflow-step");
+            number.setVisible(!loading);
+            number.setManaged(!loading);
+            loader.setVisible(loading);
+            loader.setManaged(loading);
             if (index == activeIndex) {
                 root.getStyleClass().add("active");
+                if (loading) {
+                    root.getStyleClass().add("loading");
+                }
             } else if (index < activeIndex) {
                 root.getStyleClass().add("complete");
             } else {

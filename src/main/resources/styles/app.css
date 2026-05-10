@@ -915,6 +915,10 @@
     -fx-text-fill: #fb923c;
 }
 
+.workflow-step.loading .workflow-step-loader {
+    -fx-progress-color: rgba(249,115,22,0.92);
+}
+
 .workflow-step.complete .workflow-step-number {
     -fx-background-color: rgba(74,222,128,0.16);
     -fx-text-fill: #4ade80;
@@ -1220,16 +1224,59 @@
 .detail-scroll {
     -fx-background-color: transparent;
     -fx-background: transparent;
-    -fx-padding: 0;
+    -fx-padding: 0 -8 0 0;
 }
 
 .detail-scroll > .viewport {
     -fx-background-color: transparent;
 }
 
+.detail-scroll .scroll-bar,
+.detail-scroll .scroll-bar:vertical,
+.detail-scroll .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+
+.detail-scroll .scroll-bar .track,
+.detail-scroll .scroll-bar .track-background,
+.detail-scroll .scroll-bar .increment-button,
+.detail-scroll .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+}
+
+.detail-scroll .scroll-bar .increment-arrow,
+.detail-scroll .scroll-bar .decrement-arrow {
+    -fx-background-color: rgba(90,98,113,1);
+}
+
 .detail-scroll .scroll-bar .thumb {
     -fx-background-color: rgba(249,115,22,0.36);
     -fx-background-radius: 999;
+}
+
+.app-loader-overlay {
+    -fx-background-color: rgba(7,8,11,0.58);
+}
+
+.app-loader-card {
+    -fx-padding: 24 28 24 28;
+    -fx-background-color: rgba(15,18,24,0.92);
+    -fx-background-radius: 14;
+    -fx-border-color: rgba(249,115,22,0.35);
+    -fx-border-radius: 14;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.05, 0, 6);
+}
+
+.app-loader-spinner {
+    -fx-progress-color: rgba(249,115,22,0.92);
+}
+
+.app-loader-text {
+    -fx-text-fill: rgba(241,245,249,1);
+    -fx-font-size: 13.5px;
+    -fx-font-weight: 700;
+    -fx-alignment: center;
 }
 
 .detail-panel-section {
@@ -1292,6 +1339,12 @@
 }
 
 /* ---- 19. Filter chips -------------------------------------------------- */
+
+.scan-filter-bar {
+    -fx-padding: 0 0 2 0;
+    -fx-spacing: 8;
+    -fx-alignment: center-left;
+}
 
 .filter-chip {
     -fx-font-family: "Inter", "Segoe UI", sans-serif;
