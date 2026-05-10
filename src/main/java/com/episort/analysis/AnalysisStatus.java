@@ -1,6 +1,6 @@
-package com.episort.ui.scan;
+package com.episort.analysis;
 
-public enum ScanRowStatus {
+public enum AnalysisStatus {
     OK,
     REVIEW,
     AI,

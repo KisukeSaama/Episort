@@ -34,12 +34,13 @@ class ScanRowFactoryTest {
         assertEquals("Show.S01E01.mkv", row.originalFilename());
         assertEquals("MKV", row.extension());
         assertSame(ScanMediaType.SERIES, row.mediaType());
-        assertSame(ScanRowStatus.PREVIEW, row.status());
-        assertTrue(row.proposedFilename().isEmpty());
+        assertSame(ScanRowStatus.OK, row.status());
+        assertEquals("Show - S01E01.mkv", row.proposedFilename().orElseThrow());
+        assertContainsNoPathSeparator(row.proposedFilename().orElseThrow());
         assertEquals("Series: Show | S:01 | E:01 | Ext:mkv", row.inputPattern().orElseThrow());
         assertEquals("SxxExx", row.inputParse().orElseThrow().label());
         assertTrue(row.tvdbMatch().isEmpty());
-        assertEquals("S01E01", row.order().orElseThrow());
+        assertEquals("TO_DEFINE", row.order().orElseThrow());
         assertEquals(0.9, row.confidence().orElseThrow(), 1e-9);
         assertTrue(row.destination().isEmpty());
         assertTrue(row.alertText().isEmpty());
@@ -79,7 +80,10 @@ class ScanRowFactoryTest {
         List<ScanRow> rows = ScanRowFactory.from(result);
 
         assertSame(ScanMediaType.MOVIE, rows.get(0).mediaType());
-        assertSame(ScanRowStatus.PREVIEW, rows.get(0).status());
+        assertSame(ScanRowStatus.OK, rows.get(0).status());
+        assertEquals("N/A", rows.get(0).order().orElseThrow());
+        assertEquals("Movie (2025).mkv", rows.get(0).proposedFilename().orElseThrow());
+        assertContainsNoPathSeparator(rows.get(0).proposedFilename().orElseThrow());
     }
 
     @Test
@@ -146,7 +150,7 @@ class ScanRowFactoryTest {
         ScanRow row = ScanRowFactory.from(result).get(0);
 
         assertEquals("Series: Show | S:01 | E:02 | Title: Title | Ext:mkv", row.inputPattern().orElseThrow());
-        assertEquals("S01E02", row.order().orElseThrow());
+        assertEquals("TO_DEFINE", row.order().orElseThrow());
     }
 
     @Test
@@ -189,7 +193,7 @@ class ScanRowFactoryTest {
                 "Ma Serie - 01x02 - Titre.mkv",
                 "MKV",
                 ScanMediaType.SERIES,
-                ScanRowStatus.PREVIEW);
+                ScanRowStatus.REVIEW);
 
         String proposed = ScanPatternFormatter.format(
                 row,
@@ -200,13 +204,28 @@ class ScanRowFactoryTest {
     }
 
     @Test
+    void scanRowProposedFilenameStoresOnlyFileNameForTableDisplay() {
+        ScanRow row = new ScanRow(
+                Path.of("C:/Media/Show.S01E02.Name.mkv"),
+                "Show.S01E02.Name.mkv",
+                "MKV",
+                ScanMediaType.SERIES,
+                ScanRowStatus.REVIEW);
+
+        row.setProposedFilename(java.util.Optional.of("Show/Season 01/Show - S01E02 - Name.mkv"));
+
+        assertEquals("Show - S01E02 - Name.mkv", row.proposedFilename().orElseThrow());
+        assertContainsNoPathSeparator(row.proposedFilename().orElseThrow());
+    }
+
+    @Test
     void applyingPatternStoresPatternAndUpdatesProposedName() {
         ScanRow row = new ScanRow(
                 Path.of("C:/Media/Show.S01E03.Name.mp4"),
                 "Show.S01E03.Name.mp4",
                 "MP4",
                 ScanMediaType.SERIES,
-                ScanRowStatus.PREVIEW);
+                ScanRowStatus.REVIEW);
         row.setInputParse(ScanInputPatternParser.parse(row.originalFilename()));
 
         ScanRowToolbox.applyPattern(row, "{series} - S{season}E{episode} - {title}");
@@ -222,7 +241,7 @@ class ScanRowFactoryTest {
                 "Show.S01E04.Title.mkv",
                 "MKV",
                 ScanMediaType.SERIES,
-                ScanRowStatus.PREVIEW);
+                ScanRowStatus.REVIEW);
         row.setInputParse(ScanInputPatternParser.parse(row.originalFilename()));
 
         ScanRowToolbox.applyPattern(row, "SxxExx");
@@ -264,5 +283,10 @@ class ScanRowFactoryTest {
             int supported, int sidecar, int unsupported, int ignored,
             int series, int movies, int unknown) {
         return new InventorySummary(supported, sidecar, unsupported, ignored, series, movies, unknown, false, false);
+    }
+
+    private static void assertContainsNoPathSeparator(String value) {
+        assertTrue(!value.contains("/"), value);
+        assertTrue(!value.contains("\\"), value);
     }
 }

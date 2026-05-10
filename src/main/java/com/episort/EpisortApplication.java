@@ -103,11 +103,13 @@ public class EpisortApplication extends Application {
         this.appShellRef = appShell;
         stage.setTitle("Episort");
         stage.getIcons().add(AppShell.logoImage());
+        appShell.setLoading(true, com.episort.ui.UiText.loadingStartup(viewModel.language()));
         stage.setScene(new Scene(appShell.root(), 1180, 760));
         stage.setMinWidth(1180);
         stage.setMinHeight(760);
         stage.setMaximized(true);
         stage.show();
+        javafx.application.Platform.runLater(() -> appShell.setLoading(false, ""));
         stage.toFront();
         stage.requestFocus();
         appShell.setLanguageChangeListener(language -> settingsStore.saveLanguage(language.name()));

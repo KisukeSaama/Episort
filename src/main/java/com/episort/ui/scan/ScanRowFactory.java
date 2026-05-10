@@ -1,5 +1,12 @@
 package com.episort.ui.scan;
 
+import com.episort.analysis.AnalysisStatus;
+import com.episort.analysis.AnalysisValidationService;
+import com.episort.analysis.AnalyzedVideoFile;
+import com.episort.analysis.HeuristicAnalysisService;
+import com.episort.analysis.RenameProposalService;
+import com.episort.analysis.TvdbOrder;
+import com.episort.analysis.VideoMediaType;
 import com.episort.scanner.InventoryGroup;
 import com.episort.scanner.InventoryGroupType;
 import com.episort.scanner.InventoryItem;
@@ -12,22 +19,33 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.OptionalDouble;
 
 /**
  * Maps {@link InventoryItem}s into {@link ScanRow}s for the preview table.
  * Pure mapping logic — no JavaFX, fully unit-testable.
  */
 public final class ScanRowFactory {
+    private static final HeuristicAnalysisService HEURISTICS = new HeuristicAnalysisService();
+    private static final RenameProposalService RENAME = new RenameProposalService();
+    private static final AnalysisValidationService VALIDATION = new AnalysisValidationService();
+
     private ScanRowFactory() {
     }
 
     public static List<ScanRow> from(InventoryScanResult result) {
         Objects.requireNonNull(result, "result");
         Map<String, InventoryGroupType> itemGroupTypes = indexItemsByGroup(result.groups());
-        List<ScanRow> rows = new ArrayList<>(result.items().size());
+        List<AnalyzedVideoFile> analyses = new ArrayList<>(result.items().size());
         for (InventoryItem item : result.items()) {
-            rows.add(toRow(item, itemGroupTypes));
+            InventoryGroupType groupType = itemGroupTypes.get(item.sourcePath().toAbsolutePath().normalize().toString());
+            AnalyzedVideoFile analysis = HEURISTICS.analyze(item, groupType);
+            RENAME.generate(analysis);
+            analyses.add(analysis);
+        }
+        VALIDATION.validatePreTvdb(analyses);
+        List<ScanRow> rows = new ArrayList<>(analyses.size());
+        for (AnalyzedVideoFile analysis : analyses) {
+            rows.add(toRow(analysis));
         }
         return rows;
     }
@@ -42,17 +60,19 @@ public final class ScanRowFactory {
         return index;
     }
 
-    private static ScanRow toRow(InventoryItem item, Map<String, InventoryGroupType> itemGroupTypes) {
-        InventoryGroupType groupType = itemGroupTypes.get(item.sourcePath().toAbsolutePath().normalize().toString());
-        ScanMediaType mediaType = mediaType(item.type(), groupType);
-        ScanRowStatus status = status(item.type());
+    private static ScanRow toRow(AnalyzedVideoFile analysis) {
         ScanRow row = new ScanRow(
-                item.sourcePath(),
-                item.filename(),
-                normalizeExtension(item.extension()),
-                mediaType,
-                status);
-        autoFillOrder(row, item.filename(), groupType);
+                analysis.originalPath(),
+                analysis.originalFileName(),
+                normalizeExtension(analysis.extension()),
+                mediaType(analysis.mediaType()),
+                status(analysis.status()));
+        ScanInputPatternParser.parse(analysis.originalFileName()).ifPresent(parse -> row.setInputParse(Optional.of(parse)));
+        row.setInputPattern(analysis.inputPattern());
+        row.setProposedFilename(analysis.proposedName());
+        row.setOrder(Optional.of(orderText(analysis.tvdbOrder())));
+        row.setConfidence(analysis.confidence());
+        row.setStatusReasons(analysis.statusReasons());
         return row;
     }
 
@@ -87,29 +107,41 @@ public final class ScanRowFactory {
         return ScanInputPatternParser.parse(filename);
     }
 
-    private static ScanMediaType mediaType(InventoryItemType itemType, InventoryGroupType groupType) {
-        return switch (itemType) {
-            case SUPPORTED_VIDEO -> mediaTypeFromGroup(groupType);
-            case SIDECAR, UNSUPPORTED, IGNORED -> ScanMediaType.IGNORED;
-        };
-    }
-
-    private static ScanMediaType mediaTypeFromGroup(InventoryGroupType groupType) {
-        if (groupType == null) {
-            return ScanMediaType.UNKNOWN;
-        }
-        return switch (groupType) {
-            case LIKELY_SERIES -> ScanMediaType.SERIES;
-            case LIKELY_MOVIE -> ScanMediaType.MOVIE;
+    private static ScanMediaType mediaType(VideoMediaType mediaType) {
+        return switch (mediaType) {
+            case SERIES, SPECIAL -> ScanMediaType.SERIES;
+            case MOVIE -> ScanMediaType.MOVIE;
             case UNKNOWN -> ScanMediaType.UNKNOWN;
-            case SIDECAR, UNSUPPORTED, IGNORED -> ScanMediaType.IGNORED;
+            case IGNORED -> ScanMediaType.IGNORED;
         };
     }
 
-    private static ScanRowStatus status(InventoryItemType itemType) {
-        return switch (itemType) {
-            case SUPPORTED_VIDEO -> ScanRowStatus.PREVIEW;
-            case SIDECAR, UNSUPPORTED, IGNORED -> ScanRowStatus.IGNORED;
+    private static ScanRowStatus status(AnalysisStatus status) {
+        return switch (status) {
+            case OK -> ScanRowStatus.OK;
+            case REVIEW -> ScanRowStatus.REVIEW;
+            case AI -> ScanRowStatus.AI;
+            case TVDB -> ScanRowStatus.TVDB;
+            case TYPE -> ScanRowStatus.TYPE;
+            case EXT -> ScanRowStatus.EXT;
+            case PATTERN -> ScanRowStatus.PATTERN;
+            case META -> ScanRowStatus.META;
+            case CONFLICT -> ScanRowStatus.CONFLICT;
+            case DUPLICATE -> ScanRowStatus.DUPLICATE;
+            case PATH -> ScanRowStatus.PATH;
+            case ERROR -> ScanRowStatus.ERROR;
+            case IGNORED -> ScanRowStatus.IGNORED;
+        };
+    }
+
+    private static String orderText(TvdbOrder order) {
+        return switch (order) {
+            case NOT_APPLICABLE -> "N/A";
+            case TO_DEFINE -> "TO_DEFINE";
+            case AIRED -> "Aired";
+            case DVD -> "DVD";
+            case ABSOLUTE -> "Absolute";
+            case UNAVAILABLE -> "UNAVAILABLE";
         };
     }
 

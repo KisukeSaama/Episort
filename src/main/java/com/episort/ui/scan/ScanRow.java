@@ -30,6 +30,7 @@ public final class ScanRow {
     private Optional<String> alertText;
     private Optional<String> noteText;
     private Optional<String> conflictText;
+    private java.util.List<String> statusReasons;
 
     public ScanRow(
             Path sourcePath,
@@ -53,6 +54,7 @@ public final class ScanRow {
         this.alertText = Optional.empty();
         this.noteText = Optional.empty();
         this.conflictText = Optional.empty();
+        this.statusReasons = java.util.List.of();
     }
 
     public BooleanProperty selectedProperty() {
@@ -100,7 +102,8 @@ public final class ScanRow {
     }
 
     public void setProposedFilename(Optional<String> proposedFilename) {
-        this.proposedFilename = Objects.requireNonNull(proposedFilename, "proposedFilename");
+        Objects.requireNonNull(proposedFilename, "proposedFilename");
+        this.proposedFilename = proposedFilename.map(ScanRow::fileNameOnly);
     }
 
     public Optional<String> pattern() {
@@ -181,5 +184,18 @@ public final class ScanRow {
 
     public void setConflictText(Optional<String> conflictText) {
         this.conflictText = Objects.requireNonNull(conflictText, "conflictText");
+    }
+
+    public java.util.List<String> statusReasons() {
+        return statusReasons;
+    }
+
+    public void setStatusReasons(java.util.List<String> statusReasons) {
+        this.statusReasons = statusReasons == null ? java.util.List.of() : java.util.List.copyOf(statusReasons);
+    }
+
+    private static String fileNameOnly(String value) {
+        int slash = Math.max(value.lastIndexOf('/'), value.lastIndexOf('\\'));
+        return slash >= 0 ? value.substring(slash + 1) : value;
     }
 }

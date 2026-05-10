@@ -18,6 +18,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
@@ -49,11 +50,14 @@ public final class AppShell {
     private String historySearchQuery = "";
     private java.util.function.BooleanSupplier localAiReady = () -> true;
     private java.util.function.Consumer<AppLanguage> languageChangeListener = lang -> {};
+    private boolean loading;
     private VBox prereqOverlay;
     private Label prereqOverlayTitle;
     private Label prereqOverlaySubtitle;
     private VBox prereqOverlayList;
     private Button prereqOverlayButton;
+    private VBox loadingOverlay;
+    private Label loadingOverlayText;
     private Region currentScreenRoot;
 
     public AppShell() {
@@ -174,6 +178,7 @@ public final class AppShell {
         viewHost = new StackPane();
         viewHost.getStyleClass().add("view-host");
         buildPrereqOverlay();
+        buildLoadingOverlay();
 
         root = new BorderPane();
         root.getStyleClass().add("app-shell");
@@ -236,6 +241,21 @@ public final class AppShell {
         }
     }
 
+    public void setLoading(boolean loading, String text) {
+        this.loading = loading;
+        loadingOverlayText.setText(text == null || text.isBlank()
+                ? UiText.loadingStartup(currentViewModel.language())
+                : text);
+        loadingOverlay.setVisible(loading);
+        loadingOverlay.setManaged(loading);
+        if (currentScreenRoot != null) {
+            boolean blocked = loading || prereqOverlay.isVisible();
+            currentScreenRoot.setMouseTransparent(blocked);
+            currentScreenRoot.setOpacity(loading ? 0.45 : prereqOverlay.isVisible() ? 0.35 : 1.0);
+        }
+        refreshPrimaryAction();
+    }
+
     private void buildPrereqOverlay() {
         prereqOverlayTitle = new Label();
         prereqOverlayTitle.setStyle("-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #f1f5f9;");
@@ -262,6 +282,27 @@ public final class AppShell {
         prereqOverlay.setStyle("-fx-background-color: rgba(7,8,11,0.55);");
         prereqOverlay.setVisible(false);
         prereqOverlay.setManaged(false);
+    }
+
+    private void buildLoadingOverlay() {
+        ProgressIndicator indicator = new ProgressIndicator();
+        indicator.getStyleClass().add("app-loader-spinner");
+        indicator.setMaxSize(42, 42);
+
+        loadingOverlayText = new Label();
+        loadingOverlayText.getStyleClass().add("app-loader-text");
+        loadingOverlayText.setWrapText(true);
+
+        VBox card = new VBox(14, indicator, loadingOverlayText);
+        card.getStyleClass().add("app-loader-card");
+        card.setAlignment(Pos.CENTER);
+        card.setMaxWidth(420);
+
+        loadingOverlay = new VBox(card);
+        loadingOverlay.getStyleClass().add("app-loader-overlay");
+        loadingOverlay.setAlignment(Pos.CENTER);
+        loadingOverlay.setVisible(false);
+        loadingOverlay.setManaged(false);
     }
 
     private static Label bullet(String text) {
@@ -292,7 +333,7 @@ public final class AppShell {
             case SETTINGS -> settingsScroll;
         };
         currentScreenRoot = screenRoot;
-        viewHost.getChildren().setAll(screenRoot, prereqOverlay);
+        viewHost.getChildren().setAll(screenRoot, prereqOverlay, loadingOverlay);
         refreshPrerequisitesGate();
 
         if (view == AppView.HISTORY) {
@@ -386,8 +427,17 @@ public final class AppShell {
                     Optional.empty(),
                     currentViewModel.theme(),
                     currentViewModel.language()));
+            scanScreen.setLoading(true);
+            setLoading(true, UiText.loadingScan(currentViewModel.language()));
             selectInputFolder.apply(selected.toPath())
-                    .thenAccept(viewModel -> Platform.runLater(() -> apply(viewModel)))
+                    .thenAccept(viewModel -> Platform.runLater(() -> {
+                        apply(viewModel);
+                        setLoading(false, "");
+                    }))
+                    .whenComplete((ignored, exception) -> Platform.runLater(() -> {
+                        scanScreen.setLoading(false);
+                        setLoading(false, "");
+                    }))
                     .exceptionally(exception -> {
                         Platform.runLater(() -> apply(new AppShellViewModel(
                                 "Episort",
@@ -435,8 +485,17 @@ public final class AppShell {
                 Optional.empty(),
                 currentViewModel.theme(),
                 currentViewModel.language()));
+        scanScreen.setLoading(true);
+        setLoading(true, UiText.loadingScan(currentViewModel.language()));
         selectInputFolder.apply(folder)
-                .thenAccept(viewModel -> Platform.runLater(() -> apply(viewModel)))
+                .thenAccept(viewModel -> Platform.runLater(() -> {
+                    apply(viewModel);
+                    setLoading(false, "");
+                }))
+                .whenComplete((ignored, exception) -> Platform.runLater(() -> {
+                    scanScreen.setLoading(false);
+                    setLoading(false, "");
+                }))
                 .exceptionally(exception -> {
                     Platform.runLater(() -> apply(new AppShellViewModel(
                             "Episort",
@@ -474,17 +533,18 @@ public final class AppShell {
             case SCAN -> {
                 if (scanScreen.hasLoadedFolder()) {
                     topBar.setPrimaryActionText(UiText.primaryActionValidate(language));
-                    topBar.setPrimaryActionDisabled(false);
+                    topBar.setPrimaryActionDisabled(loading);
                 } else {
                     topBar.setPrimaryActionText(UiText.primaryActionLoad(language));
-                    topBar.setPrimaryActionDisabled(!(workspaceReady && selectInputFolder != null));
+                    topBar.setPrimaryActionDisabled(loading || !(workspaceReady && selectInputFolder != null));
                 }
                 topBar.primaryAction().setVisible(true);
                 topBar.primaryAction().setManaged(true);
                 setTopSecondaryActionsVisible(true);
-                topBar.changeFolderAction().setDisable(!(scanScreen.hasLoadedFolder() && workspaceReady && selectInputFolder != null));
-                topBar.resetFolderAction().setDisable(!scanScreen.hasLoadedFolder());
-                topBar.rescanAction().setDisable(selectInputFolder == null || lastInputFolder.isEmpty());
+                topBar.changeFolderAction().setDisable(
+                        loading || !(scanScreen.hasLoadedFolder() && workspaceReady && selectInputFolder != null));
+                topBar.resetFolderAction().setDisable(loading || !scanScreen.hasLoadedFolder());
+                topBar.rescanAction().setDisable(loading || selectInputFolder == null || lastInputFolder.isEmpty());
             }
             case HISTORY -> {
                 topBar.setPrimaryActionText(language == AppLanguage.ENGLISH ? "Refresh" : "Rafraîchir");

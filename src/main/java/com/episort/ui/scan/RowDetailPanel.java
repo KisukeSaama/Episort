@@ -10,6 +10,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
@@ -26,6 +27,7 @@ public final class RowDetailPanel {
     private final Label emptyTitle;
     private final Label emptyHint;
     private final VBox content;
+    private final ScrollPane contentScroll;
 
     private final Label filenameValue;
     private final Label folderValue;
@@ -206,14 +208,25 @@ public final class RowDetailPanel {
         notesSection.getStyleClass().add("detail-panel-section");
 
         content = new VBox(12, sourceSection, detectionSection, tvdbSection, destinationSection, notesSection);
-        content.setVisible(false);
-        content.setManaged(false);
 
-        root = new VBox(12, emptyState, content);
+        contentScroll = new ScrollPane(content);
+        contentScroll.getStyleClass().add("detail-scroll");
+        contentScroll.setFitToWidth(true);
+        contentScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        contentScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        contentScroll.setVisible(false);
+        contentScroll.setManaged(false);
+        contentScroll.setMinHeight(0);
+        contentScroll.setPrefHeight(0);
+
+        root = new VBox(12, emptyState, contentScroll);
         root.getStyleClass().add("detail-panel");
         root.setMinWidth(320);
+        root.setMinHeight(0);
         root.setPrefWidth(360);
         root.setMaxWidth(420);
+        root.setMaxHeight(Double.MAX_VALUE);
+        VBox.setVgrow(contentScroll, Priority.ALWAYS);
 
         applyLanguage(AppLanguage.FRENCH);
     }
@@ -286,8 +299,8 @@ public final class RowDetailPanel {
         currentGroupMatch = groupMatch;
         emptyState.setVisible(false);
         emptyState.setManaged(false);
-        content.setVisible(true);
-        content.setManaged(true);
+        contentScroll.setVisible(true);
+        contentScroll.setManaged(true);
 
         filenameValue.setText(row.originalFilename());
         installTooltip(filenameValue, row.originalFilename());
@@ -333,8 +346,8 @@ public final class RowDetailPanel {
         currentGroupMatch = null;
         emptyState.setVisible(true);
         emptyState.setManaged(true);
-        content.setVisible(false);
-        content.setManaged(false);
+        contentScroll.setVisible(false);
+        contentScroll.setManaged(false);
     }
 
     private static Label sectionHeading() {
@@ -409,10 +422,18 @@ public final class RowDetailPanel {
 
     static String statusText(ScanRowStatus status, AppLanguage language) {
         return switch (status) {
-            case PREVIEW -> UiText.scanRowStatusPreview(language);
-            case READY -> UiText.scanRowStatusReady(language);
-            case WARNING -> UiText.scanRowStatusWarning(language);
+            case OK -> UiText.scanRowStatusOk(language);
+            case REVIEW -> UiText.scanRowStatusReview(language);
+            case AI -> UiText.scanRowStatusAi(language);
+            case TVDB -> UiText.scanRowStatusTvdb(language);
+            case TYPE -> UiText.scanRowStatusType(language);
+            case EXT -> UiText.scanRowStatusExt(language);
+            case PATTERN -> UiText.scanRowStatusPattern(language);
+            case META -> UiText.scanRowStatusMeta(language);
             case CONFLICT -> UiText.scanRowStatusConflict(language);
+            case DUPLICATE -> UiText.scanRowStatusDuplicate(language);
+            case PATH -> UiText.scanRowStatusPath(language);
+            case ERROR -> UiText.scanRowStatusError(language);
             case IGNORED -> UiText.scanRowStatusIgnored(language);
         };
     }

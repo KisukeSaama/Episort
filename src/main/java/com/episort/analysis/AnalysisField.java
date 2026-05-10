@@ -1,0 +1,21 @@
+package com.episort.analysis;
+
+public enum AnalysisField {
+    EXTENSION,
+    MEDIA_TYPE,
+    INPUT_PATTERN,
+    DETECTED_TITLE,
+    SEASON_NUMBER,
+    EPISODE_NUMBER,
+    EPISODE_TITLE,
+    YEAR,
+    QUALITY,
+    SOURCE,
+    CODEC,
+    LANGUAGE,
+    RELEASE_GROUP,
+    PROPOSED_NAME,
+    PROPOSED_DESTINATION_PATH,
+    TVDB_ORDER,
+    CONFIDENCE
+}
