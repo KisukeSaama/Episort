@@ -46,7 +46,7 @@ On Windows PowerShell:
 
 TVDB credentials must stay out of source control. Use an environment variable or an ignored config file.
 
-Local AI uses Qwen3 8B through an embedded llama.cpp runtime. The model is downloaded once to `%LOCALAPPDATA%\Episort\models\`. If the runtime or model is unavailable, the app remains usable without AI features.
+Local AI uses Qwen3 1.7B Q8 through an embedded llama.cpp runtime with a 32K context and `/no_think` prompts. The model is downloaded once to `%LOCALAPPDATA%\Episort\models\`. If the runtime or model is unavailable, the app remains usable without AI features.
 
 To prepare a distribution with the embedded runtime:
 

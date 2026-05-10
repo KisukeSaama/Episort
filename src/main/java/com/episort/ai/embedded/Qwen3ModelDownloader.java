@@ -14,19 +14,19 @@ import java.util.Objects;
 import java.util.function.LongConsumer;
 
 /**
- * Downloads the bundled Qwen3 8B GGUF model into Episort's per-user cache and
+ * Downloads the bundled Qwen3 1.7B GGUF model into Episort's per-user cache and
  * exposes its absolute path. Idempotent: subsequent calls return the cached
  * path without re-downloading.
  *
  * <p>Used at first run from {@link EmbeddedLlamaRuntime}; the model file is
- * never bundled inside the installer (~5 GB) — only the runtime binaries are.
+ * never bundled inside the installer (~1.3 GB) — only the runtime binaries are.
  */
 public class Qwen3ModelDownloader {
-    public static final String MODEL_FILENAME = "Qwen3-8B-Instruct-Q4_K_M.gguf";
+    public static final String MODEL_FILENAME = "Qwen_Qwen3-1.7B-Q8_0.gguf";
     // Default mirror — pinned community build. Override via EPISORT_MODEL_URL.
     static final URI DEFAULT_MODEL_URL = URI.create(
-            "https://huggingface.co/bartowski/Qwen_Qwen3-8B-GGUF/resolve/main/"
-                    + "Qwen_Qwen3-8B-Q4_K_M.gguf");
+            "https://huggingface.co/bartowski/Qwen_Qwen3-1.7B-GGUF/resolve/main/"
+                    + "Qwen_Qwen3-1.7B-Q8_0.gguf");
 
     private final Path modelDirectory;
     private final URI sourceUrl;

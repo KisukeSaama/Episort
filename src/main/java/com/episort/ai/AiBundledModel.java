@@ -1,7 +1,7 @@
 package com.episort.ai;
 
 public enum AiBundledModel {
-    QWEN3_8B("qwen3:8b", true);
+    QWEN3_1_7B("qwen3:1.7b", true);
 
     private final String identity;
     private final boolean requiresGpu;

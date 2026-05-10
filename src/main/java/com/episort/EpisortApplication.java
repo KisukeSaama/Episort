@@ -149,7 +149,12 @@ public class EpisortApplication extends Application {
             return;
         }
         localAiSection = new LocalAiSection(
-                language, modelDownloader, embeddedRuntime, appShell::refreshPrerequisitesGate);
+                language, modelDownloader, embeddedRuntime, () -> {
+                    runtimeStartupSettled.set(true);
+                    appShell.refreshPrerequisitesGate();
+                    appShell.scanScreen().refreshAiChatAvailability();
+                    appShell.reanalyzeLastFolder();
+                });
         appShell.settingsPane().attachExtraSection(localAiSection.root(), localAiSection::applyLanguage);
     }
 

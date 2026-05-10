@@ -52,7 +52,7 @@ public final class BundledLocalAiRuntimeProbe implements AiRuntimeProbe {
         }
         return AiRuntimeStatus.available(
                 new AiHardwareSignals(true, AiHardwareSignals.MINIMUM_VRAM_MEGABYTES),
-                AiBundledModel.QWEN3_8B,
+                AiBundledModel.QWEN3_1_7B,
                 RUNTIME_NAME);
     }
 }

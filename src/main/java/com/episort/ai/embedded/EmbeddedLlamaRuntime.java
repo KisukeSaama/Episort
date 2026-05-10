@@ -169,13 +169,14 @@ public class EmbeddedLlamaRuntime implements AutoCloseable {
         args.add("127.0.0.1");
         args.add("--port");
         args.add(String.valueOf(port));
-        // GPU offload: all layers to VRAM. Qwen3 8B Q4_K_M (~5 GB) fits with
-        // huge headroom on a 12 GB RTX 4070 Super.
+        // GPU offload: all layers to VRAM. Qwen3 1.7B Q8_0 (~2.2 GB) fits
+        // comfortably on modest discrete GPUs.
         args.add("-ngl");
         args.add("999");
-        // 8K context: enough for Episort's group lists.
+        // 32K context: Qwen3 1.7B supports 32,768 tokens and this keeps large
+        // selected batches in-context without relying on reasoning mode.
         args.add("--ctx-size");
-        args.add("8192");
+        args.add("32768");
         // Larger logical and physical batch sizes to saturate the GPU during
         // prompt processing (system prompt + filenames are batched).
         args.add("--batch-size");

@@ -74,7 +74,7 @@ class BundledLocalAiRuntimeProbeTest {
             AiRuntimeStatus status = fake.probe().probe();
 
             assertTrue(status.runtimeAvailable());
-            assertEquals(AiBundledModel.QWEN3_8B, status.model().orElseThrow());
+            assertEquals(AiBundledModel.QWEN3_1_7B, status.model().orElseThrow());
             assertTrue(status.hardwareSignals().minimumVramAvailable());
         }
     }

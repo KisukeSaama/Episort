@@ -19,14 +19,14 @@ class AiPrerequisiteServiceTest {
     void availableRuntimeAllowsAiWorkflow() {
         AiPrerequisiteService service = new AiPrerequisiteService(() -> AiRuntimeStatus.available(
                 new AiHardwareSignals(true, 8_192),
-                AiBundledModel.QWEN3_8B,
+                AiBundledModel.QWEN3_1_7B,
                 "local-runtime"));
 
         AiPrerequisiteCheckResult result = service.check();
 
         assertTrue(result.aiWorkflowsAvailable());
         assertTrue(result.error().isEmpty());
-        assertEquals(AiBundledModel.QWEN3_8B, result.model());
+        assertEquals(AiBundledModel.QWEN3_1_7B, result.model());
     }
 
     @Test
@@ -69,14 +69,14 @@ class AiPrerequisiteServiceTest {
     @Test
     void onlyOneBundledModelIsSupported() {
         assertEquals(1, AiBundledModel.values().length);
-        assertEquals(AiBundledModel.QWEN3_8B, AiBundledModel.values()[0]);
+        assertEquals(AiBundledModel.QWEN3_1_7B, AiBundledModel.values()[0]);
     }
 
     @Test
     void defaultConfigurationUsesOnlyBundledModelAndRejectsExternalModelPath() {
         AiModelConfiguration configuration = AiModelConfiguration.bundledOnly();
 
-        assertEquals(AiBundledModel.QWEN3_8B, configuration.model());
+        assertEquals(AiBundledModel.QWEN3_1_7B, configuration.model());
         assertTrue(configuration.externalModelPath().isEmpty());
         assertThrows(IllegalArgumentException.class, () -> AiModelConfiguration.external(
                 Path.of("C:\\Users\\private\\models\\external.gguf")));
@@ -87,13 +87,13 @@ class AiPrerequisiteServiceTest {
         AiPrerequisiteService service = new AiPrerequisiteService(() -> new AiRuntimeStatus(
                 true,
                 new AiHardwareSignals(true, 8_192),
-                java.util.Optional.of(AiBundledModel.QWEN3_8B),
+                java.util.Optional.of(AiBundledModel.QWEN3_1_7B),
                 "local-runtime",
                 "C:\\Users\\private\\Videos\\Show\\episode01.mkv"));
 
         AiRuntimeDiagnostic diagnostic = service.diagnostic();
 
-        assertEquals(AiBundledModel.QWEN3_8B.identity(), diagnostic.modelIdentity());
+        assertEquals(AiBundledModel.QWEN3_1_7B.identity(), diagnostic.modelIdentity());
         assertTrue(diagnostic.runtimeAvailable());
         assertEquals("local-runtime", diagnostic.runtimeName());
         assertFalse(diagnostic.details().contains("episode01.mkv"));

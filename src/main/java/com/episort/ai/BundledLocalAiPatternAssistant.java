@@ -17,7 +17,7 @@ import java.util.function.Supplier;
 
 /**
  * Pattern assistant backed by the embedded Episort local AI runtime
- * (llama.cpp / Qwen3 8B). Sends a single completion request with the
+ * (llama.cpp / Qwen3 1.7B). Sends a single completion request with the
  * minimized selected-item context and parses a JSON envelope of the form:
  *
  * <pre>{"patterns": ["SxxExx", ...], "explanation": "..."}</pre>
@@ -30,11 +30,15 @@ import java.util.function.Supplier;
 public final class BundledLocalAiPatternAssistant implements AiPatternAssistant {
     private static final String SYSTEM_PROMPT = ""
             + "You classify media filenames. Output ONE JSON object, nothing else. "
-            + "No prose, no markdown, no code fences.\n"
+            + "No prose, no markdown, no code fences, no <think> blocks.\n"
             + "Schema (all keys required, exactly these keys):\n"
             + "{\"mediaType\":\"series|movie|unknown\","
             + "\"confidence\":0.0,"
             + "\"patterns\":[\"...\"],"
+            + "\"files\":[{\"filename\":\"...\",\"pattern\":\"SxxExx|NxNN|absolute|unknown\","
+            + "\"tokens\":[{\"role\":\"SERIES|SEASON|EPISODE|TITLE|EXTENSION|NOISE\","
+            + "\"rawValue\":\"...\",\"normalizedValue\":\"...\",\"start\":0,\"end\":1}],"
+            + "\"normalizedOrder\":\"S01E02\",\"confidence\":0.0}],"
             + "\"explanation\":\"<= 12 words\"}\n"
             + "Rules:\n"
             + "- mediaType=\"series\" iff filenames share a recurring SxxExx / 1xNN / "
@@ -48,7 +52,7 @@ public final class BundledLocalAiPatternAssistant implements AiPatternAssistant 
             + "- explanation: one short sentence, no quotes inside.";
     // Enough to fit the full envelope (~120 tokens typical). Small enough to
     // stop fast on a 4070 Super (~20–40ms/token range).
-    private static final int DEFAULT_MAX_TOKENS = 256;
+    private static final int DEFAULT_MAX_TOKENS = 1024;
 
     private final Supplier<Optional<LlamaServerClient>> clientSupplier;
 
@@ -102,11 +106,13 @@ public final class BundledLocalAiPatternAssistant implements AiPatternAssistant 
             JsonObject root = JsonParser.parseString(json).getAsJsonObject();
             String explanation = root.has("explanation") ? root.get("explanation").getAsString() : "";
             List<String> patterns = extractStringArray(root, "patterns");
+            List<AiFilePatternParse> files = extractFileParses(root);
             Optional<InventoryGroupType> mediaType = extractMediaType(root);
             OptionalDouble confidence = extractConfidence(root);
             return AiPatternSuggestion.advisory(
                     explanation.isBlank() ? "Local AI proposed pattern hints." : explanation,
                     patterns,
+                    files,
                     minimizedContext,
                     mediaType,
                     confidence);
@@ -130,6 +136,81 @@ public final class BundledLocalAiPatternAssistant implements AiPatternAssistant 
             }
         }
         return new ArrayList<>(values);
+    }
+
+    private List<AiFilePatternParse> extractFileParses(JsonObject root) {
+        if (!root.has("files") || !root.get("files").isJsonArray()) {
+            return List.of();
+        }
+        List<AiFilePatternParse> parses = new ArrayList<>();
+        for (JsonElement element : root.getAsJsonArray("files")) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject obj = element.getAsJsonObject();
+            String filename = stringValue(obj, "filename");
+            if (filename.isBlank()) {
+                continue;
+            }
+            parses.add(new AiFilePatternParse(
+                    filename,
+                    stringValue(obj, "pattern"),
+                    extractTokens(obj),
+                    optionalString(obj, "normalizedOrder"),
+                    optionalDouble(obj, "confidence")));
+        }
+        return parses;
+    }
+
+    private List<AiPatternToken> extractTokens(JsonObject file) {
+        if (!file.has("tokens") || !file.get("tokens").isJsonArray()) {
+            return List.of();
+        }
+        List<AiPatternToken> tokens = new ArrayList<>();
+        for (JsonElement element : file.getAsJsonArray("tokens")) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject obj = element.getAsJsonObject();
+            try {
+                tokens.add(new AiPatternToken(
+                        stringValue(obj, "role"),
+                        stringValue(obj, "rawValue"),
+                        stringValue(obj, "normalizedValue"),
+                        obj.has("start") ? obj.get("start").getAsInt() : 0,
+                        obj.has("end") ? obj.get("end").getAsInt() : 0));
+            } catch (RuntimeException ignored) {
+                // Ignore malformed per-token output while preserving other files.
+            }
+        }
+        return tokens;
+    }
+
+    private Optional<String> optionalString(JsonObject obj, String key) {
+        String value = stringValue(obj, key);
+        return value.isBlank() ? Optional.empty() : Optional.of(value);
+    }
+
+    private String stringValue(JsonObject obj, String key) {
+        if (!obj.has(key) || !obj.get(key).isJsonPrimitive() || !obj.get(key).getAsJsonPrimitive().isString()) {
+            return "";
+        }
+        return obj.get(key).getAsString().trim();
+    }
+
+    private OptionalDouble optionalDouble(JsonObject obj, String key) {
+        if (!obj.has(key)) {
+            return OptionalDouble.empty();
+        }
+        try {
+            double value = obj.get(key).getAsDouble();
+            if (Double.isNaN(value) || value < 0.0) {
+                return OptionalDouble.empty();
+            }
+            return OptionalDouble.of(Math.min(1.0, value));
+        } catch (RuntimeException ex) {
+            return OptionalDouble.empty();
+        }
     }
 
     private Optional<InventoryGroupType> extractMediaType(JsonObject root) {

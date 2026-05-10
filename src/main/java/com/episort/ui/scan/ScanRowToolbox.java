@@ -6,6 +6,8 @@ import java.util.Optional;
 
 /** Applies confirmed AI tool calls to ScanRow(s). All operations are advisory and reversible. */
 public final class ScanRowToolbox {
+    private static final String CANONICAL_SERIES_PATTERN = "{series} - S{season}E{episode} - {title}";
+
     private ScanRowToolbox() {
     }
 
@@ -57,7 +59,7 @@ public final class ScanRowToolbox {
     }
 
     static void applyPattern(ScanRow row, String pattern) {
-        String normalized = pattern == null ? "" : pattern.trim();
+        String normalized = normalizePattern(pattern);
         if (row == null || normalized.isBlank()) {
             return;
         }
@@ -65,5 +67,14 @@ public final class ScanRowToolbox {
         ScanPatternFormatter.format(row, normalized)
                 .ifPresent(name -> row.setProposedFilename(Optional.of(name)));
         row.setNoteText(Optional.of("Pattern proposé : " + normalized));
+    }
+
+    static String normalizePattern(String pattern) {
+        String trimmed = pattern == null ? "" : pattern.trim();
+        return switch (trimmed.toLowerCase(java.util.Locale.ROOT)) {
+            case "sxxexx", "s{season}e{episode}", "sxxexxx", "1xnn", "1x01", "absolute" ->
+                    CANONICAL_SERIES_PATTERN;
+            default -> trimmed;
+        };
     }
 }

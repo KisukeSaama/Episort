@@ -10,6 +10,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -34,6 +35,8 @@ public final class RowDetailPanel {
     private final Label statusValue;
     private final Label confidenceValue;
     private final Label seasonEpisodeValue;
+    private final TextArea inputPatternEditor = new TextArea();
+    private final Button inputPatternApply = new Button();
 
     private final Label tvdbSeedValue;
     private final Label tvdbTypeValue;
@@ -62,6 +65,7 @@ public final class RowDetailPanel {
     private final Label statusLabel;
     private final Label confidenceLabel;
     private final Label seasonEpisodeLabel;
+    private final Label inputPatternLabel;
     private final Label tvdbSeedLabel;
     private final Label tvdbTypeLabel;
     private final Label tvdbStatusLabel;
@@ -75,6 +79,7 @@ public final class RowDetailPanel {
     private ScanRow currentRow;
     private BatchTvdbMatch currentGroupMatch;
     private BiConsumer<ScanRow, String> onApplyCandidate = (r, c) -> {};
+    private BiConsumer<ScanRow, String> onApplyInputPattern = (r, p) -> {};
     private java.util.function.Consumer<ScanRow> onResetMatch = r -> {};
 
     public RowDetailPanel() {
@@ -103,6 +108,7 @@ public final class RowDetailPanel {
         statusLabel = fieldLabel();
         confidenceLabel = fieldLabel();
         seasonEpisodeLabel = fieldLabel();
+        inputPatternLabel = fieldLabel();
         tvdbSeedLabel = fieldLabel();
         tvdbTypeLabel = fieldLabel();
         tvdbStatusLabel = fieldLabel();
@@ -123,10 +129,24 @@ public final class RowDetailPanel {
         tvdbTypeValue = proseValue();
         tvdbStatusValue = proseValue();
         proposedValue = monoValue();
+        proposedValue.getStyleClass().add("proposed-name-value");
         destinationValue = monoValue();
         conflictValue = proseValue();
         alertValue = proseValue();
         noteValue = proseValue();
+
+        inputPatternEditor.getStyleClass().add("ai-chat-input");
+        inputPatternEditor.setWrapText(true);
+        inputPatternEditor.setPrefRowCount(5);
+        inputPatternEditor.setPrefHeight(128);
+        inputPatternEditor.setMinHeight(104);
+        inputPatternEditor.setMaxWidth(Double.MAX_VALUE);
+        inputPatternApply.getStyleClass().add("ghost");
+        inputPatternApply.setOnAction(e -> {
+            if (currentRow != null) {
+                onApplyInputPattern.accept(currentRow, inputPatternEditor.getText());
+            }
+        });
 
         tvdbCandidate.setMaxWidth(Double.MAX_VALUE);
         tvdbApply.getStyleClass().add("primary");
@@ -157,7 +177,9 @@ public final class RowDetailPanel {
                 fieldRow(mediaTypeLabel, mediaTypeValue),
                 fieldRow(statusLabel, statusValue),
                 fieldRow(confidenceLabel, confidenceValue),
-                fieldRow(seasonEpisodeLabel, seasonEpisodeValue));
+                fieldRow(seasonEpisodeLabel, seasonEpisodeValue),
+                fieldRow(inputPatternLabel, inputPatternEditor),
+                inputPatternApply);
         detectionSection.getStyleClass().add("detail-panel-section");
 
         VBox tvdbSection = new VBox(6,
@@ -208,6 +230,10 @@ public final class RowDetailPanel {
         this.onResetMatch = handler == null ? r -> {} : handler;
     }
 
+    public void setOnApplyInputPattern(BiConsumer<ScanRow, String> handler) {
+        this.onApplyInputPattern = handler == null ? (r, p) -> {} : handler;
+    }
+
     public void applyLanguage(AppLanguage language) {
         currentLanguage = language;
         emptyTitle.setText(UiText.detailEmptyTitle(language));
@@ -226,6 +252,8 @@ public final class RowDetailPanel {
         statusLabel.setText(UiText.detailFieldStatus(language));
         confidenceLabel.setText(UiText.detailFieldConfidence(language));
         seasonEpisodeLabel.setText(UiText.detailFieldSeasonEpisode(language));
+        inputPatternLabel.setText(UiText.detailFieldInputPattern(language));
+        inputPatternApply.setText(UiText.detailApplyToSelection(language));
         tvdbSeedLabel.setText(language == AppLanguage.ENGLISH ? "Group" : "Groupe");
         tvdbTypeLabel.setText(UiText.detailFieldMediaType(language));
         tvdbStatusLabel.setText(UiText.detailFieldStatus(language));
@@ -275,6 +303,7 @@ public final class RowDetailPanel {
         statusValue.setText(statusText(row.status(), currentLanguage));
         confidenceValue.setText(confidenceText(row.confidence()));
         seasonEpisodeValue.setText(row.order().orElse(EMPTY));
+        inputPatternEditor.setText(patternDetail(row));
 
         if (groupMatch == null) {
             tvdbSeedValue.setText(EMPTY);
@@ -339,6 +368,26 @@ public final class RowDetailPanel {
         VBox row = new VBox(2, label, value);
         VBox.setVgrow(value, Priority.NEVER);
         return row;
+    }
+
+    private static VBox fieldRow(Label label, TextArea value) {
+        VBox row = new VBox(2, label, value);
+        VBox.setVgrow(value, Priority.NEVER);
+        return row;
+    }
+
+    private static String patternDetail(ScanRow row) {
+        if (row.inputParse().isEmpty()) {
+            return row.inputPattern().orElse("");
+        }
+        ScanInputParse parse = row.inputParse().orElseThrow();
+        StringBuilder sb = new StringBuilder();
+        sb.append(parse.summary().isBlank() ? parse.label() : parse.summary());
+        if (!parse.positionsSummary().isBlank()) {
+            sb.append('\n').append(parse.positionsSummary());
+        }
+        sb.append('\n').append("source=").append(parse.source());
+        return sb.toString();
     }
 
     private static void installTooltip(Label label, String text) {

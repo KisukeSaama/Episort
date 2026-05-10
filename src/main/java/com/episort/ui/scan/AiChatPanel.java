@@ -6,10 +6,7 @@ import com.episort.ai.AiChatToolCall;
 import com.episort.ai.AiChatTurn;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.UiText;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.BiConsumer;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -35,16 +32,16 @@ public final class AiChatPanel {
     private final VBox messagesBox;
     private final ScrollPane messagesScroll;
     private final TextArea input;
+    private final Button renamePromptButton;
     private final Button sendButton;
     private final Label unavailableNote;
+    private String currentTargetLabel = "";
 
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
     private AiChatBackend backend;
     private BiConsumer<AiChatToolCall, ScanRow> applyHandler = (call, row) -> {};
     private ScanRow currentTarget;
     private String currentContext = "";
-    private final Map<ScanRow, List<AiChatTurn.Message>> historyByTarget = new HashMap<>();
-    private final Map<ScanRow, VBox> messagesByTarget = new HashMap<>();
     private boolean awaitingResponse = false;
 
     public AiChatPanel() {
@@ -79,11 +76,15 @@ public final class AiChatPanel {
             }
         });
 
+        renamePromptButton = new Button();
+        renamePromptButton.getStyleClass().add("ghost");
+        renamePromptButton.setOnAction(event -> sendText(renamePrompt()));
+
         sendButton = new Button();
         sendButton.getStyleClass().add("primary");
         sendButton.setOnAction(event -> onSend());
 
-        HBox inputRow = new HBox(8, input, sendButton);
+        HBox inputRow = new HBox(8, input, renamePromptButton, sendButton);
         HBox.setHgrow(input, Priority.ALWAYS);
         inputRow.setAlignment(Pos.CENTER_LEFT);
 
@@ -103,13 +104,15 @@ public final class AiChatPanel {
     public void applyLanguage(AppLanguage language) {
         currentLanguage = language;
         heading.setText(UiText.aiChatHeading(language));
+        renamePromptButton.setText(UiText.aiChatRenamePrompt(language));
         sendButton.setText(UiText.aiChatSend(language));
         input.setPromptText(UiText.aiChatPlaceholder(language));
         unavailableNote.setText(UiText.aiChatUnavailable(language));
         if (currentTarget == null) {
             targetBreadcrumb.setText(UiText.aiChatNoTarget(language));
         } else {
-            targetBreadcrumb.setText(UiText.aiChatTargetPrefix(language) + currentTarget.originalFilename());
+            targetBreadcrumb.setText(UiText.aiChatTargetPrefix(language)
+                    + (currentTargetLabel.isBlank() ? currentTarget.originalFilename() : currentTargetLabel));
         }
     }
 
@@ -123,26 +126,38 @@ public final class AiChatPanel {
     }
 
     public void setTarget(ScanRow row, String context) {
+        setTarget(row, context, row == null ? null : row.originalFilename());
+    }
+
+    public void setTarget(ScanRow row, String context, String label) {
+        setTarget(row, context, label, false);
+    }
+
+    public void setTarget(ScanRow row, String context, String label, boolean preserveMessages) {
+        boolean sameContext = currentTarget == row && currentContext.equals(context == null ? "" : context);
         this.currentTarget = row;
         this.currentContext = context == null ? "" : context;
+        this.currentTargetLabel = label == null ? "" : label;
         if (row == null) {
+            currentTargetLabel = "";
             targetBreadcrumb.setText(UiText.aiChatNoTarget(currentLanguage));
             messagesBox.getChildren().clear();
             setEnabled(false);
             return;
         }
-        targetBreadcrumb.setText(UiText.aiChatTargetPrefix(currentLanguage) + row.originalFilename());
-        VBox box = messagesByTarget.computeIfAbsent(row, k -> new VBox(8));
-        messagesBox.getChildren().setAll(box);
+        targetBreadcrumb.setText(UiText.aiChatTargetPrefix(currentLanguage)
+                + (label == null || label.isBlank() ? row.originalFilename() : label));
+        if (!sameContext && !preserveMessages) {
+            messagesBox.getChildren().clear();
+        }
         refreshAvailability();
     }
 
     public void clear() {
         currentTarget = null;
         currentContext = "";
+        currentTargetLabel = "";
         messagesBox.getChildren().clear();
-        historyByTarget.clear();
-        messagesByTarget.clear();
         targetBreadcrumb.setText(UiText.aiChatNoTarget(currentLanguage));
         setEnabled(false);
     }
@@ -156,6 +171,7 @@ public final class AiChatPanel {
 
     private void setEnabled(boolean enabled) {
         input.setDisable(!enabled);
+        renamePromptButton.setDisable(!enabled);
         sendButton.setDisable(!enabled);
     }
 
@@ -171,9 +187,15 @@ public final class AiChatPanel {
         if (text.isEmpty()) {
             return;
         }
+        sendText(text);
+    }
+
+    private void sendText(String text) {
+        if (backend == null || currentTarget == null || text == null || text.isBlank()) {
+            return;
+        }
         ScanRow target = currentTarget;
-        VBox messageBox = messagesByTarget.computeIfAbsent(target, k -> new VBox(8));
-        List<AiChatTurn.Message> history = historyByTarget.computeIfAbsent(target, k -> new ArrayList<>());
+        VBox messageBox = messagesBox;
 
         appendMessage(messageBox, "user", text);
         input.clear();
@@ -181,7 +203,7 @@ public final class AiChatPanel {
         setEnabled(false);
         scrollToBottom();
 
-        AiChatTurn turn = new AiChatTurn(currentContext, history, text, currentLanguage);
+        AiChatTurn turn = new AiChatTurn(currentContext, List.of(), text, currentLanguage);
         StringBuilder accumulated = new StringBuilder();
         final Label[] assistantLabel = new Label[1];
         backend.send(turn, new AiChatStreamSink() {
@@ -209,9 +231,7 @@ public final class AiChatPanel {
             @Override
             public void onComplete(String fullResponse) {
                 Platform.runLater(() -> {
-                    history.add(new AiChatTurn.Message(AiChatTurn.Role.USER, text));
                     if (fullResponse != null && !fullResponse.isBlank()) {
-                        history.add(new AiChatTurn.Message(AiChatTurn.Role.ASSISTANT, fullResponse));
                         if (assistantLabel[0] == null) {
                             assistantLabel[0] = appendMessage(messageBox, "assistant", fullResponse);
                         }
@@ -237,6 +257,10 @@ public final class AiChatPanel {
                 });
             }
         });
+    }
+
+    private String renamePrompt() {
+        return "Propose un renommage pour tous les fichiers sélectionnés.";
     }
 
     private Label appendMessage(VBox box, String role, String text) {

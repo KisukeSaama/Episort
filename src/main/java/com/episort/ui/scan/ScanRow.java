@@ -20,6 +20,8 @@ public final class ScanRow {
     private ScanMediaType mediaType;
     private ScanRowStatus status;
     private Optional<String> proposedFilename;
+    private Optional<ScanInputParse> inputParse;
+    private Optional<String> inputPattern;
     private Optional<String> pattern;
     private Optional<String> tvdbMatch;
     private Optional<String> order;
@@ -41,6 +43,8 @@ public final class ScanRow {
         this.mediaType = Objects.requireNonNull(mediaType, "mediaType");
         this.status = Objects.requireNonNull(status, "status");
         this.proposedFilename = Optional.empty();
+        this.inputParse = Optional.empty();
+        this.inputPattern = Optional.empty();
         this.pattern = Optional.empty();
         this.tvdbMatch = Optional.empty();
         this.order = Optional.empty();
@@ -101,6 +105,22 @@ public final class ScanRow {
 
     public Optional<String> pattern() {
         return pattern;
+    }
+
+    public Optional<ScanInputParse> inputParse() {
+        return inputParse;
+    }
+
+    public void setInputParse(Optional<ScanInputParse> inputParse) {
+        this.inputParse = Objects.requireNonNull(inputParse, "inputParse");
+    }
+
+    public Optional<String> inputPattern() {
+        return inputPattern;
+    }
+
+    public void setInputPattern(Optional<String> inputPattern) {
+        this.inputPattern = Objects.requireNonNull(inputPattern, "inputPattern");
     }
 
     public void setPattern(Optional<String> pattern) {

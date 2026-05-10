@@ -1,6 +1,7 @@
 package com.episort.ai.embedded;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,6 +15,14 @@ import java.util.zip.ZipOutputStream;
 import org.junit.jupiter.api.Test;
 
 class EmbeddedLlamaRuntimeTest {
+
+    @Test
+    void downloaderTargetsBundledQwen3OnePointSevenBModel() {
+        assertEquals("Qwen_Qwen3-1.7B-Q8_0.gguf", Qwen3ModelDownloader.MODEL_FILENAME);
+        assertEquals(
+                "https://huggingface.co/bartowski/Qwen_Qwen3-1.7B-GGUF/resolve/main/Qwen_Qwen3-1.7B-Q8_0.gguf",
+                Qwen3ModelDownloader.DEFAULT_MODEL_URL.toString());
+    }
 
     @Test
     void runtimeBinariesAvailableReportsTrueWhenZipsArePresent() throws IOException {

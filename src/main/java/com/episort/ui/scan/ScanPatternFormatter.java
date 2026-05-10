@@ -31,6 +31,15 @@ public final class ScanPatternFormatter {
 
     private record Metadata(String series, String season, String episode, String title, String seasonEpisode) {
         static Metadata from(ScanRow row) {
+            if (row.inputParse().isPresent()) {
+                ScanInputParse parse = row.inputParse().orElseThrow();
+                String order = parse.normalizedOrder().orElse(row.order().orElse("S??E??"));
+                String season = parse.tokenValue(ScanInputRole.SEASON).orElse(seasonFromOrder(order));
+                String episode = parse.tokenValue(ScanInputRole.EPISODE).orElse(episodeFromOrder(order));
+                String series = parse.tokenValue(ScanInputRole.SERIES).orElse("Unknown Series");
+                String title = parse.tokenValue(ScanInputRole.TITLE).orElse("Untitled");
+                return new Metadata(series, season, episode, title, "S" + season + "E" + episode);
+            }
             String baseName = stripExtension(row.originalFilename());
             String season = "??";
             String episode = "??";
@@ -94,6 +103,16 @@ public final class ScanPatternFormatter {
             } catch (NumberFormatException ex) {
                 return "??";
             }
+        }
+
+        private static String seasonFromOrder(String order) {
+            Matcher matcher = SXXEXX.matcher(order == null ? "" : order);
+            return matcher.find() ? twoDigits(matcher.group(1)) : "??";
+        }
+
+        private static String episodeFromOrder(String order) {
+            Matcher matcher = SXXEXX.matcher(order == null ? "" : order);
+            return matcher.find() ? twoDigits(matcher.group(2)) : "??";
         }
     }
 }

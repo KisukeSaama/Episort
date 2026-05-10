@@ -142,6 +142,7 @@ public final class UiText {
     public static String detailFieldConfidence(AppLanguage language) { return t(language, "detail.field.confidence"); }
     public static String detailFieldDestination(AppLanguage language) { return t(language, "detail.field.destination"); }
     public static String detailFieldSeasonEpisode(AppLanguage language) { return t(language, "detail.field.seasonEpisode"); }
+    public static String detailFieldInputPattern(AppLanguage language) { return t(language, "detail.field.inputPattern"); }
     public static String detailFieldProposed(AppLanguage language) { return t(language, "detail.field.proposed"); }
     public static String detailFieldConflict(AppLanguage language) { return t(language, "detail.field.conflict"); }
     public static String detailFieldAlert(AppLanguage language) { return t(language, "detail.field.alert"); }
@@ -150,6 +151,7 @@ public final class UiText {
     public static String detailTvdbSearchPlaceholder(AppLanguage language) { return t(language, "detail.tvdb.search.placeholder"); }
     public static String detailTvdbStub(AppLanguage language) { return t(language, "detail.tvdb.stub"); }
     public static String detailApplyButton(AppLanguage language) { return t(language, "detail.apply.button"); }
+    public static String detailApplyToSelection(AppLanguage language) { return t(language, "detail.apply.toSelection"); }
     public static String detailResetButton(AppLanguage language) { return t(language, "detail.reset.button"); }
 
     /* ---- History screen --------------------------------------------- */
@@ -227,6 +229,7 @@ public final class UiText {
 
     public static String aiChatHeading(AppLanguage language) { return t(language, "ai.chat.heading"); }
     public static String aiChatPlaceholder(AppLanguage language) { return t(language, "ai.chat.placeholder"); }
+    public static String aiChatRenamePrompt(AppLanguage language) { return t(language, "ai.chat.rename.prompt"); }
     public static String aiChatSend(AppLanguage language) { return t(language, "ai.chat.send"); }
     public static String aiChatNoTarget(AppLanguage language) { return t(language, "ai.chat.no.target"); }
     public static String aiChatTargetPrefix(AppLanguage language) { return t(language, "ai.chat.target.prefix") + " "; }

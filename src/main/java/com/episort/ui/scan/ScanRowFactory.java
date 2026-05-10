@@ -13,17 +13,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Maps {@link InventoryItem}s into {@link ScanRow}s for the preview table.
  * Pure mapping logic — no JavaFX, fully unit-testable.
  */
 public final class ScanRowFactory {
-    private static final Pattern SXXEXX = Pattern.compile("[Ss](\\d{1,2})[\\s._-]?[Ee](\\d{1,3})");
-    private static final Pattern NXNN = Pattern.compile("(?<![A-Za-z0-9])(\\d{1,2})[xX](\\d{1,3})(?![A-Za-z0-9])");
-
     private ScanRowFactory() {
     }
 
@@ -71,33 +66,25 @@ public final class ScanRowFactory {
         if (groupType != InventoryGroupType.LIKELY_SERIES && groupType != InventoryGroupType.UNKNOWN) {
             return;
         }
-        Optional<String> extracted = extractSeasonEpisode(filename);
+        Optional<ScanInputParse> extracted = ScanInputPatternParser.parse(filename);
         if (extracted.isEmpty()) {
             return;
         }
-        row.setOrder(extracted);
-        row.setConfidence(OptionalDouble.of(0.9));
+        ScanInputParse parse = extracted.orElseThrow();
+        row.setInputParse(Optional.of(parse));
+        row.setInputPattern(Optional.of(parse.summary().isBlank() ? parse.label() : parse.summary()));
+        parse.normalizedOrder().ifPresent(order -> row.setOrder(Optional.of(order)));
+        if (parse.confidence().isPresent()) {
+            row.setConfidence(parse.confidence());
+        }
     }
 
     static Optional<String> extractSeasonEpisode(String filename) {
-        if (filename == null || filename.isBlank()) {
-            return Optional.empty();
-        }
-        Matcher m = SXXEXX.matcher(filename);
-        if (m.find()) {
-            return Optional.of(format(m.group(1), m.group(2)));
-        }
-        m = NXNN.matcher(filename);
-        if (m.find()) {
-            return Optional.of(format(m.group(1), m.group(2)));
-        }
-        return Optional.empty();
+        return ScanInputPatternParser.parse(filename).flatMap(ScanInputParse::normalizedOrder);
     }
 
-    private static String format(String season, String episode) {
-        int s = Integer.parseInt(season);
-        int e = Integer.parseInt(episode);
-        return String.format(Locale.ROOT, "S%02dE%02d", s, e);
+    static Optional<ScanInputParse> extractInputPattern(String filename) {
+        return ScanInputPatternParser.parse(filename);
     }
 
     private static ScanMediaType mediaType(InventoryItemType itemType, InventoryGroupType groupType) {

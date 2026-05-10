@@ -36,6 +36,8 @@ class ScanRowFactoryTest {
         assertSame(ScanMediaType.SERIES, row.mediaType());
         assertSame(ScanRowStatus.PREVIEW, row.status());
         assertTrue(row.proposedFilename().isEmpty());
+        assertEquals("Series: Show | S:01 | E:01 | Ext:mkv", row.inputPattern().orElseThrow());
+        assertEquals("SxxExx", row.inputParse().orElseThrow().label());
         assertTrue(row.tvdbMatch().isEmpty());
         assertEquals("S01E01", row.order().orElseThrow());
         assertEquals(0.9, row.confidence().orElseThrow(), 1e-9);
@@ -132,6 +134,55 @@ class ScanRowFactoryTest {
     }
 
     @Test
+    void recordsNxnnInputPatternWhenDetected() {
+        Path source = Path.of("C:/Media/Show - 1x02 - Title.mkv").toAbsolutePath().normalize();
+        InventoryItem video = new InventoryItem(
+                source, "Show - 1x02 - Title.mkv", "mkv", source.getParent(), InventoryItemType.SUPPORTED_VIDEO, true);
+        InventoryScanResult result = new InventoryScanResult(
+                List.of(video),
+                List.of(new InventoryGroup(InventoryGroupType.LIKELY_SERIES, "Show", List.of(video), false)),
+                summary(1, 0, 0, 0, 1, 0, 0));
+
+        ScanRow row = ScanRowFactory.from(result).get(0);
+
+        assertEquals("Series: Show | S:01 | E:02 | Title: Title | Ext:mkv", row.inputPattern().orElseThrow());
+        assertEquals("S01E02", row.order().orElseThrow());
+    }
+
+    @Test
+    void parserReadsSxxExxWithTitleAndPositions() {
+        ScanInputParse parse = ScanInputPatternParser.parse("Show.S01E02.Title.mkv").orElseThrow();
+
+        assertEquals("SxxExx", parse.label());
+        assertEquals("S01E02", parse.normalizedOrder().orElseThrow());
+        assertEquals("Series: Show | S:01 | E:02 | Title: Title | Ext:mkv", parse.summary());
+        assertEquals("series[0..5] season[6..8] episode[9..11] title[11..17] extension[18..21]",
+                parse.positionsSummary());
+    }
+
+    @Test
+    void parserReadsShortSxxExxAndNxnnAndAbsolute() {
+        assertEquals("S01E02", ScanInputPatternParser.parse("Show - S1E2 - Title.mkv")
+                .flatMap(ScanInputParse::normalizedOrder).orElseThrow());
+        assertEquals("S01E02", ScanInputPatternParser.parse("Show - 1x02 - Title.mkv")
+                .flatMap(ScanInputParse::normalizedOrder).orElseThrow());
+        ScanInputParse absolute = ScanInputPatternParser.parse("Show - 002 - Title.mkv").orElseThrow();
+        assertEquals("absolute", absolute.label());
+        assertEquals("S01E02", absolute.normalizedOrder().orElseThrow());
+    }
+
+    @Test
+    void parserPreservesExtensionAndHandlesMissingTitleOrSeries() {
+        ScanInputParse noTitle = ScanInputPatternParser.parse("Show.S01E02.mkv").orElseThrow();
+        assertEquals("mkv", noTitle.tokenValue(ScanInputRole.EXTENSION).orElseThrow());
+        assertTrue(noTitle.tokenValue(ScanInputRole.TITLE).isEmpty());
+
+        ScanInputParse noSeries = ScanInputPatternParser.parse("S01E02 - Pilot.mp4").orElseThrow();
+        assertTrue(noSeries.tokenValue(ScanInputRole.SERIES).isEmpty());
+        assertEquals("Pilot", noSeries.tokenValue(ScanInputRole.TITLE).orElseThrow());
+    }
+
+    @Test
     void patternFormatterGeneratesProposedNameFromAvailableMetadata() {
         ScanRow row = new ScanRow(
                 Path.of("C:/Media/Ma Serie - 01x02 - Titre.mkv"),
@@ -156,11 +207,28 @@ class ScanRowFactoryTest {
                 "MP4",
                 ScanMediaType.SERIES,
                 ScanRowStatus.PREVIEW);
+        row.setInputParse(ScanInputPatternParser.parse(row.originalFilename()));
 
         ScanRowToolbox.applyPattern(row, "{series} - S{season}E{episode} - {title}");
 
         assertEquals("{series} - S{season}E{episode} - {title}", row.pattern().orElseThrow());
         assertEquals("Show - S01E03 - Name.mp4", row.proposedFilename().orElseThrow());
+    }
+
+    @Test
+    void applyingShortSxxExxHintUsesCanonicalRenamePattern() {
+        ScanRow row = new ScanRow(
+                Path.of("C:/Media/Show.S01E04.Title.mkv"),
+                "Show.S01E04.Title.mkv",
+                "MKV",
+                ScanMediaType.SERIES,
+                ScanRowStatus.PREVIEW);
+        row.setInputParse(ScanInputPatternParser.parse(row.originalFilename()));
+
+        ScanRowToolbox.applyPattern(row, "SxxExx");
+
+        assertEquals("{series} - S{season}E{episode} - {title}", row.pattern().orElseThrow());
+        assertEquals("Show - S01E04 - Title.mkv", row.proposedFilename().orElseThrow());
     }
 
     @Test

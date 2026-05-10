@@ -15,7 +15,7 @@ public record AiModelConfiguration(AiBundledModel model, Optional<Path> external
     }
 
     public static AiModelConfiguration bundledOnly() {
-        return new AiModelConfiguration(AiBundledModel.QWEN3_8B, Optional.empty());
+        return new AiModelConfiguration(AiBundledModel.QWEN3_1_7B, Optional.empty());
     }
 
     public static AiModelConfiguration external(Path ignoredExternalModelPath) {

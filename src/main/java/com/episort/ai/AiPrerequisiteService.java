@@ -23,7 +23,7 @@ public final class AiPrerequisiteService {
                     true,
                     List.of(),
                     Optional.empty(),
-                    status.model().orElse(AiBundledModel.QWEN3_8B));
+                    status.model().orElse(AiBundledModel.QWEN3_1_7B));
         }
 
         return new AiPrerequisiteCheckResult(
@@ -35,13 +35,13 @@ public final class AiPrerequisiteService {
                         ErrorSeverity.BLOCKING,
                         "Local AI is unavailable. Non-AI workflows remain available.",
                         safeDiagnostic(missing, status))),
-                AiBundledModel.QWEN3_8B);
+                AiBundledModel.QWEN3_1_7B);
     }
 
     public AiRuntimeDiagnostic diagnostic() {
         AiRuntimeStatus status = runtimeProbe.probe();
         return new AiRuntimeDiagnostic(
-                AiBundledModel.QWEN3_8B.identity(),
+                AiBundledModel.QWEN3_1_7B.identity(),
                 status.runtimeAvailable(),
                 status.runtimeName(),
                 safeDiagnostic(missingPrerequisites(status), status));
@@ -74,6 +74,6 @@ public final class AiPrerequisiteService {
                 + "; runtimeAvailable=" + status.runtimeAvailable()
                 + "; gpuAvailable=" + status.hardwareSignals().gpuAvailable()
                 + "; vramMegabytes=" + status.hardwareSignals().vramMegabytes()
-                + "; bundledModel=" + AiBundledModel.QWEN3_8B;
+                + "; bundledModel=" + AiBundledModel.QWEN3_1_7B;
     }
 }

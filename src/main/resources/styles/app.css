@@ -1217,6 +1217,21 @@
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.05, 0, 6);
 }
 
+.detail-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-padding: 0;
+}
+
+.detail-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.detail-scroll .scroll-bar .thumb {
+    -fx-background-color: rgba(249,115,22,0.36);
+    -fx-background-radius: 999;
+}
+
 .detail-panel-section {
     -fx-spacing: 6;
     -fx-padding: 0 0 6 0;
@@ -1620,7 +1635,8 @@
     -fx-text-fill: #f97316;
 }
 
-.preview-table .table-cell.proposed-name-cell {
+.preview-table .table-cell.proposed-name-cell,
+.detail-panel-value-mono.proposed-name-value {
     -fx-text-fill: #4ade80;
 }
 

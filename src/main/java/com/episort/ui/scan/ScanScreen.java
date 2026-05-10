@@ -2,9 +2,11 @@ package com.episort.ui.scan;
 
 import com.episort.ai.AiChatBackend;
 import com.episort.ai.AiChatToolCall;
+import com.episort.ai.AiFilePatternParse;
 import com.episort.ai.AiGroupSuggestion;
 import com.episort.ai.AiPatternRefinementResult;
 import com.episort.ai.AiPatternSuggestion;
+import com.episort.ai.AiPatternToken;
 import com.episort.scanner.InventoryGroup;
 import com.episort.scanner.InventoryGroupType;
 import com.episort.scanner.InventoryScanResult;
@@ -38,11 +40,13 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SelectionMode;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.Tooltip;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.MouseButton;
@@ -54,6 +58,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.util.StringConverter;
+import javafx.util.converter.DefaultStringConverter;
 
 public final class ScanScreen {
     private static final String EMPTY = "—";
@@ -90,6 +96,7 @@ public final class ScanScreen {
     private final TableColumn<ScanRow, ScanRowStatus> statusColumn = new TableColumn<>();
 
     private final RowDetailPanel detailPanel = new RowDetailPanel();
+    private final ScrollPane detailScroll;
     private final AiChatPanel aiChatPanel = new AiChatPanel();
     private final Map<ScanRow, BatchTvdbMatch> rowToGroupMatch = new HashMap<>();
     private final Map<ScanRow, InventoryGroup> rowToGroup = new HashMap<>();
@@ -136,13 +143,24 @@ public final class ScanScreen {
         configureTable();
         detailPanel.setOnApplyCandidate(this::applyTvdbCandidate);
         detailPanel.setOnResetMatch(this::resetTvdbMatch);
+        detailPanel.setOnApplyInputPattern(this::applyInputPatternToSelection);
+        detailScroll = new ScrollPane(detailPanel.root());
+        detailScroll.setFitToWidth(true);
+        detailScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        detailScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        detailScroll.getStyleClass().add("detail-scroll");
+        detailScroll.setMinWidth(320);
+        detailScroll.setPrefWidth(380);
+        detailScroll.setMaxWidth(420);
         aiChatPanel.setApplyHandler(this::applyToolCall);
 
         VBox tableStack = new VBox(12, table, aiChatPanel.root());
         VBox.setVgrow(table, Priority.ALWAYS);
-        HBox initialBody = new HBox(16, tableStack, detailPanel.root());
+        HBox initialBody = new HBox(16, tableStack, detailScroll);
         HBox.setHgrow(tableStack, Priority.ALWAYS);
         HBox.setHgrow(table, Priority.ALWAYS);
+        HBox.setHgrow(detailScroll, Priority.NEVER);
+        VBox.setVgrow(detailScroll, Priority.ALWAYS);
         currentBody = initialBody;
 
         root = new VBox(14, heading, workflow, metricGrid, currentBody);
@@ -355,11 +373,64 @@ public final class ScanScreen {
                     .filter(t -> ps.classificationConfidence().orElse(0.0) >= 0.6)
                     .ifPresent(type -> row.setMediaType(toScanMediaType(type)));
             if (!ps.suggestedPatterns().isEmpty()) {
-                ScanRowToolbox.applyPattern(row, ps.suggestedPatterns().get(0));
                 row.setNoteText(Optional.of("AI : " + String.join(", ", ps.suggestedPatterns())));
+            }
+            if (canAcceptAiParse(row)) {
+                aiParseFor(row, ps)
+                        .or(() -> ScanInputPatternParser.parse(row.originalFilename()))
+                        .map(parse -> parse.withSource(ScanInputParseSource.AI))
+                        .ifPresent(parse -> {
+                            row.setInputParse(Optional.of(parse));
+                            row.setInputPattern(Optional.of(parse.summary().isBlank() ? parse.label() : parse.summary()));
+                            parse.normalizedOrder().ifPresent(order -> row.setOrder(Optional.of(order)));
+                            if (parse.confidence().isPresent()) {
+                                row.setConfidence(parse.confidence());
+                            }
+                        });
             }
         }
         table.refresh();
+    }
+
+    private static boolean canAcceptAiParse(ScanRow row) {
+        if (row.inputParse().map(ScanInputParse::source).filter(ScanInputParseSource.USER::equals).isPresent()) {
+            return false;
+        }
+        return row.inputParse().isEmpty() || row.confidence().isEmpty() || row.confidence().orElseThrow() < 0.6;
+    }
+
+    private static Optional<ScanInputParse> aiParseFor(ScanRow row, AiPatternSuggestion suggestion) {
+        for (AiFilePatternParse parse : suggestion.fileParses()) {
+            if (row.originalFilename().equals(parse.filename())) {
+                java.util.List<ScanInputToken> tokens = parse.tokens().stream()
+                        .map(ScanScreen::toScanToken)
+                        .flatMap(Optional::stream)
+                        .toList();
+                if (tokens.isEmpty()) {
+                    return Optional.empty();
+                }
+                return Optional.of(new ScanInputParse(
+                        parse.pattern(),
+                        tokens,
+                        parse.normalizedOrder(),
+                        parse.confidence(),
+                        ScanInputParseSource.AI));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<ScanInputToken> toScanToken(AiPatternToken token) {
+        try {
+            return Optional.of(new ScanInputToken(
+                    ScanInputRole.valueOf(token.role().toUpperCase(Locale.ROOT)),
+                    token.rawValue(),
+                    token.normalizedValue(),
+                    token.start(),
+                    token.end()));
+        } catch (IllegalArgumentException ex) {
+            return Optional.empty();
+        }
     }
 
     private static ScanMediaType toScanMediaType(InventoryGroupType type) {
@@ -387,22 +458,25 @@ public final class ScanScreen {
             vbox.getChildren().clear();
         }
 
-        Region detailRoot = detailPanel.root();
         Pane next;
         if (stacked) {
-            detailRoot.setMaxWidth(Double.MAX_VALUE);
+            detailScroll.setMaxWidth(Double.MAX_VALUE);
             VBox tableStack = new VBox(12, table, aiChatPanel.root());
             VBox.setVgrow(table, Priority.ALWAYS);
-            VBox stack = new VBox(16, tableStack, detailRoot);
+            VBox stack = new VBox(16, tableStack, detailScroll);
             VBox.setVgrow(tableStack, Priority.ALWAYS);
             VBox.setVgrow(table, Priority.ALWAYS);
+            VBox.setVgrow(detailScroll, Priority.ALWAYS);
             next = stack;
         } else {
-            detailRoot.setMaxWidth(420);
+            detailScroll.setMaxWidth(420);
+            detailScroll.setPrefWidth(380);
             VBox tableStack = new VBox(12, table, aiChatPanel.root());
             VBox.setVgrow(table, Priority.ALWAYS);
-            HBox row = new HBox(16, tableStack, detailRoot);
+            HBox row = new HBox(16, tableStack, detailScroll);
             HBox.setHgrow(tableStack, Priority.ALWAYS);
+            HBox.setHgrow(detailScroll, Priority.NEVER);
+            VBox.setVgrow(detailScroll, Priority.ALWAYS);
             next = row;
         }
         replaceCurrentBody(next);
@@ -439,6 +513,7 @@ public final class ScanScreen {
         table.getStyleClass().add("preview-table");
         RoundedClip.install(table, 14);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_SUBSEQUENT_COLUMNS);
+        table.setEditable(true);
         table.setItems(filtered);
         table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         table.getSelectionModel().getSelectedItems().addListener((ListChangeListener<ScanRow>) change -> {
@@ -446,16 +521,16 @@ public final class ScanScreen {
                 return;
             }
             syncRowsFromTableSelection();
+            updateAiChatTargetFromSelection();
         });
         table.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
             selectedRow.set(newValue);
             if (newValue == null) {
                 detailPanel.clear();
-                aiChatPanel.setTarget(null, "");
             } else {
                 detailPanel.show(newValue, rowToGroupMatch.get(newValue));
-                aiChatPanel.setTarget(newValue, buildContextSummary(newValue));
             }
+            updateAiChatTargetFromSelection();
         });
 
         configureSelectionColumn();
@@ -581,14 +656,63 @@ public final class ScanScreen {
         proposedColumn.setMinWidth(280);
         proposedColumn.setPrefWidth(430);
         proposedColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().proposedFilename().orElse(EMPTY)));
-        proposedColumn.setCellFactory(proposedNameCellFactory());
+        proposedColumn.setCellFactory(column -> {
+            TextFieldTableCell<ScanRow, String> cell = new TextFieldTableCell<>(new DefaultStringConverter());
+            cell.getStyleClass().add("proposed-name-cell");
+            return cell;
+        });
+        proposedColumn.setOnEditCommit(event -> {
+            ScanRow row = event.getRowValue();
+            String value = event.getNewValue() == null ? "" : event.getNewValue().trim();
+            if (value.isBlank() || EMPTY.equals(value)) {
+                row.setProposedFilename(Optional.empty());
+            } else {
+                row.setProposedFilename(Optional.of(value));
+            }
+            table.refresh();
+            if (selectedRow.get() == row) {
+                detailPanel.show(row, rowToGroupMatch.get(row));
+            }
+            updateAiChatTargetFromSelection(true);
+        });
     }
 
     private void configurePatternColumn() {
         patternColumn.setMinWidth(160);
-        patternColumn.setPrefWidth(220);
-        patternColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().pattern().orElse(EMPTY)));
-        patternColumn.setCellFactory(monoEllipsisCellFactory());
+        patternColumn.setPrefWidth(300);
+        patternColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().inputPattern().orElse(EMPTY)));
+        patternColumn.setCellFactory(column -> new TextFieldTableCell<>(new DefaultStringConverter()) {
+            @Override
+            public void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setTooltip(null);
+                    getStyleClass().remove("cell-mono");
+                    getStyleClass().remove("cell-muted");
+                    return;
+                }
+                setText(item);
+                if (!getStyleClass().contains("cell-mono")) {
+                    getStyleClass().add("cell-mono");
+                }
+                if (EMPTY.equals(item)) {
+                    if (!getStyleClass().contains("cell-muted")) {
+                        getStyleClass().add("cell-muted");
+                    }
+                    setTooltip(null);
+                    return;
+                }
+                getStyleClass().remove("cell-muted");
+                ScanRow row = getTableRow() == null ? null : getTableRow().getItem();
+                String tooltip = row == null ? item : patternTooltip(row);
+                Tooltip t = new Tooltip(tooltip);
+                t.setWrapText(true);
+                t.setMaxWidth(520);
+                setTooltip(t);
+            }
+        });
+        patternColumn.setOnEditCommit(event -> applyInputPatternToSelection(event.getRowValue(), event.getNewValue()));
     }
 
     private void configureExtensionColumn() {
@@ -620,18 +744,45 @@ public final class ScanScreen {
     }
 
     private void configureTypeColumn() {
-        typeColumn.setMinWidth(80);
-        typeColumn.setPrefWidth(100);
+        typeColumn.setMinWidth(118);
+        typeColumn.setPrefWidth(132);
         typeColumn.setCellValueFactory(data -> new SimpleObjectProperty<>(data.getValue().mediaType()));
         typeColumn.setCellFactory(column -> new TableCell<>() {
+            private final ComboBox<ScanMediaType> picker = new ComboBox<>();
+            private boolean updating;
+
+            {
+                picker.getItems().setAll(ScanMediaType.SERIES, ScanMediaType.MOVIE);
+                picker.setMaxWidth(Double.MAX_VALUE);
+                picker.setConverter(mediaTypeConverter());
+                picker.setOnAction(event -> {
+                    if (updating) {
+                        return;
+                    }
+                    ScanRow row = getTableRow() == null ? null : getTableRow().getItem();
+                    ScanMediaType value = picker.getValue();
+                    if (row != null && value != null && row.mediaType() != value) {
+                        applyMediaTypeToSelection(row, value);
+                    }
+                });
+                setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+            }
+
             @Override
             protected void updateItem(ScanMediaType item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
-                    setText(null);
+                    setGraphic(null);
                     return;
                 }
-                setText(RowDetailPanel.mediaTypeText(item, currentLanguage));
+                updating = true;
+                try {
+                    picker.setConverter(mediaTypeConverter());
+                    picker.setValue(item == ScanMediaType.MOVIE ? ScanMediaType.MOVIE : ScanMediaType.SERIES);
+                } finally {
+                    updating = false;
+                }
+                setGraphic(picker);
             }
         });
     }
@@ -748,6 +899,99 @@ public final class ScanScreen {
         return String.format("%.0f%%", confidence.orElseThrow() * 100.0);
     }
 
+    private StringConverter<ScanMediaType> mediaTypeConverter() {
+        return new StringConverter<>() {
+            @Override
+            public String toString(ScanMediaType type) {
+                if (type == null) {
+                    return "";
+                }
+                return switch (type) {
+                    case SERIES -> UiText.scanMediaTypeSeries(currentLanguage);
+                    case MOVIE -> UiText.scanMediaTypeMovie(currentLanguage);
+                    case UNKNOWN, IGNORED -> "";
+                };
+            }
+
+            @Override
+            public ScanMediaType fromString(String value) {
+                if (UiText.scanMediaTypeMovie(currentLanguage).equals(value)) {
+                    return ScanMediaType.MOVIE;
+                }
+                return ScanMediaType.SERIES;
+            }
+        };
+    }
+
+    private void applyMediaTypeToSelection(ScanRow anchor, ScanMediaType mediaType) {
+        for (ScanRow row : rowsForBatchEdit(anchor)) {
+            row.setMediaType(mediaType);
+        }
+        refreshAfterBatchEdit(anchor);
+    }
+
+    private void applyInputPatternToSelection(ScanRow anchor, String patternText) {
+        if (anchor == null) {
+            return;
+        }
+        String value = patternText == null ? "" : patternText.trim();
+        for (ScanRow row : rowsForBatchEdit(anchor)) {
+            applyManualInputPattern(row, value);
+        }
+        refreshAfterBatchEdit(anchor);
+    }
+
+    private java.util.List<ScanRow> rowsForBatchEdit(ScanRow anchor) {
+        java.util.List<ScanRow> selected = selectedRowsForAiContext();
+        if (selected.contains(anchor)) {
+            return selected;
+        }
+        return java.util.List.of(anchor);
+    }
+
+    private void refreshAfterBatchEdit(ScanRow anchor) {
+        table.refresh();
+        if (selectedRow.get() != null) {
+            detailPanel.show(selectedRow.get(), rowToGroupMatch.get(selectedRow.get()));
+        } else if (anchor != null) {
+            detailPanel.show(anchor, rowToGroupMatch.get(anchor));
+        }
+        updateAiChatTargetFromSelection(true);
+    }
+
+    private static void applyManualInputPattern(ScanRow row, String value) {
+        if (value == null || value.isBlank() || EMPTY.equals(value)) {
+            row.setInputPattern(Optional.empty());
+            row.setInputParse(Optional.empty());
+            return;
+        }
+        row.setInputPattern(Optional.of(value));
+        ScanInputPatternParser.parse(row.originalFilename())
+                .map(parse -> parse.withLabel(firstLine(value)).withSource(ScanInputParseSource.USER))
+                .ifPresent(parse -> {
+                    row.setInputParse(Optional.of(parse));
+                    parse.normalizedOrder().ifPresent(order -> row.setOrder(Optional.of(order)));
+                    if (parse.confidence().isPresent()) {
+                        row.setConfidence(parse.confidence());
+                    }
+                });
+    }
+
+    private static String firstLine(String value) {
+        int newline = value.indexOf('\n');
+        return newline >= 0 ? value.substring(0, newline).trim() : value.trim();
+    }
+
+    private static String patternTooltip(ScanRow row) {
+        if (row.inputParse().isEmpty()) {
+            return row.inputPattern().orElse(EMPTY);
+        }
+        ScanInputParse parse = row.inputParse().orElseThrow();
+        return (parse.summary().isBlank() ? parse.label() : parse.summary())
+                + "\n" + parse.positionsSummary()
+                + "\nsource=" + parse.source();
+    }
+
     private void setRowSelected(ScanRow row, boolean selected) {
         syncingSelection.set(true);
         try {
@@ -774,6 +1018,7 @@ public final class ScanScreen {
         } finally {
             syncingSelection.set(false);
             updateSelectAllCheckbox();
+            updateAiChatTargetFromSelection();
             table.refresh();
         }
     }
@@ -798,6 +1043,7 @@ public final class ScanScreen {
         } finally {
             syncingSelection.set(false);
             updateSelectAllCheckbox();
+            updateAiChatTargetFromSelection();
             table.refresh();
         }
     }
@@ -811,9 +1057,63 @@ public final class ScanScreen {
     }
 
     private String buildContextSummary(ScanRow row) {
+        return buildSingleRowContext(row);
+    }
+
+    private String buildContextSummary(java.util.List<ScanRow> selectedRows) {
+        if (selectedRows == null || selectedRows.isEmpty()) {
+            return "";
+        }
+        if (selectedRows.size() == 1) {
+            return buildSingleRowContext(selectedRows.get(0));
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("Lot sélectionné : ").append(selectedRows.size()).append(" fichiers.\n");
+        sb.append("Pattern d'entrée détecté : ")
+                .append(commonInputPattern(selectedRows).orElse("mixte ou inconnu")).append('\n');
+        sb.append("Pattern de sortie attendu : {series} - S{season}E{episode} - {title}.{extension}\n");
+        sb.append("Utilise chaque ligne du lot, pas seulement la dernière.\n");
+        sb.append("Fichiers du lot :\n");
+        for (ScanRow selected : selectedRows) {
+            sb.append("  - original=").append(selected.originalFilename())
+                    .append(" | ext=").append(selected.extension().isBlank() ? EMPTY : selected.extension());
+            selected.inputPattern().ifPresent(pattern -> sb.append(" | patternEntree=").append(pattern));
+            selected.inputParse().ifPresent(parse -> sb.append(" | patternStructure=")
+                    .append(parse.summary())
+                    .append(" | positions=")
+                    .append(parse.positionsSummary())
+                    .append(" | source=")
+                    .append(parse.source()));
+            selected.order().ifPresent(order -> {
+                sb.append(" | ordre=").append(order);
+                sb.append(" | saison=").append(seasonFromOrder(order));
+                sb.append(" | episode=").append(episodeFromOrder(order));
+            });
+            sb.append(" | titreDetecte=").append(inferredTitle(selected));
+            selected.proposedFilename().ifPresent(proposed -> sb.append(" | propose=").append(proposed));
+            selected.tvdbMatch().ifPresent(match -> sb.append(" | tvdb=").append(match));
+            sb.append('\n');
+        }
+        if (tvdbCandidatesForCurrentGroup.isEmpty()) {
+            sb.append("Candidats TVDB disponibles : aucun pour l'instant.\n");
+        } else {
+            sb.append("Candidats TVDB disponibles : ")
+              .append(String.join(", ", tvdbCandidatesForCurrentGroup)).append('\n');
+        }
+        return sb.toString();
+    }
+
+    private String buildSingleRowContext(ScanRow row) {
         StringBuilder sb = new StringBuilder();
         sb.append("Fichier sélectionné : ").append(row.originalFilename()).append('\n');
         sb.append("Type détecté : ").append(RowDetailPanel.mediaTypeText(row.mediaType(), currentLanguage)).append('\n');
+        row.inputPattern().ifPresent(pattern -> sb.append("Pattern d'entrée détecté : ").append(pattern).append('\n'));
+        row.inputParse().ifPresent(parse -> {
+            sb.append("Pattern d'entrée structuré : ").append(parse.summary()).append('\n');
+            sb.append("Positions du pattern d'entrée : ").append(parse.positionsSummary()).append('\n');
+            sb.append("Source du pattern d'entrée : ").append(parse.source()).append('\n');
+        });
+        sb.append("Titre détecté depuis le fichier : ").append(inferredTitle(row)).append('\n');
         row.proposedFilename().ifPresent(p -> sb.append("Nom proposé actuel : ").append(p).append('\n'));
         row.tvdbMatch().ifPresent(m -> sb.append("Correspondance TVDB actuelle : ").append(m).append('\n'));
         row.order().ifPresent(o -> sb.append("Ordre : ").append(o).append('\n'));
@@ -845,6 +1145,84 @@ public final class ScanScreen {
         return sb.toString();
     }
 
+    private void updateAiChatTargetFromSelection() {
+        updateAiChatTargetFromSelection(false);
+    }
+
+    private void updateAiChatTargetFromSelection(boolean preserveMessages) {
+        java.util.List<ScanRow> selectedRows = selectedRowsForAiContext();
+        if (selectedRows.isEmpty()) {
+            aiChatPanel.setTarget(null, "");
+            return;
+        }
+        ScanRow anchor = selectedRow.get();
+        if (anchor == null || !selectedRows.contains(anchor)) {
+            anchor = selectedRows.get(selectedRows.size() - 1);
+        }
+        String label = selectedRows.size() == 1
+                ? anchor.originalFilename()
+                : selectedRows.size() + " fichiers sélectionnés";
+        aiChatPanel.setTarget(anchor, buildContextSummary(selectedRows), label, preserveMessages);
+    }
+
+    private java.util.List<ScanRow> selectedRowsForAiContext() {
+        java.util.List<ScanRow> selectedRows = new java.util.ArrayList<>();
+        for (ScanRow row : rows) {
+            if (row.isSelected()) {
+                selectedRows.add(row);
+            }
+        }
+        return selectedRows;
+    }
+
+    private static Optional<String> commonInputPattern(java.util.List<ScanRow> selectedRows) {
+        String common = null;
+        for (ScanRow row : selectedRows) {
+            if (row.inputPattern().isEmpty()) {
+                return Optional.empty();
+            }
+            String value = row.inputPattern().orElseThrow();
+            if (common == null) {
+                common = value;
+            } else if (!common.equals(value)) {
+                return Optional.empty();
+            }
+        }
+        return Optional.ofNullable(common);
+    }
+
+    private static String seasonFromOrder(String order) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("[Ss](\\d{1,2})[Ee](\\d{1,3})")
+                .matcher(order == null ? "" : order);
+        return matcher.find() ? matcher.group(1) : EMPTY;
+    }
+
+    private static String episodeFromOrder(String order) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("[Ss](\\d{1,2})[Ee](\\d{1,3})")
+                .matcher(order == null ? "" : order);
+        return matcher.find() ? matcher.group(2) : EMPTY;
+    }
+
+    private static String inferredTitle(ScanRow row) {
+        String name = row.originalFilename();
+        int dot = name.lastIndexOf('.');
+        String base = dot > 0 ? name.substring(0, dot) : name;
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("[Ss]\\d{1,2}[\\s._-]?[Ee]\\d{1,3}|(?<![A-Za-z0-9])\\d{1,2}[xX]\\d{1,3}(?![A-Za-z0-9])")
+                .matcher(base);
+        if (!matcher.find()) {
+            return EMPTY;
+        }
+        String title = base.substring(matcher.end())
+                .replaceAll("[._]+", " ")
+                .replaceAll("\\s*-\\s*", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return title.isBlank() ? EMPTY : title;
+    }
+
     private void applyTvdbCandidate(ScanRow row, String candidate) {
         row.setTvdbMatch(java.util.Optional.of(candidate));
         table.refresh();
@@ -865,12 +1243,16 @@ public final class ScanScreen {
     }
 
     private void applyToolCall(AiChatToolCall call, ScanRow target) {
-        java.util.List<ScanRow> peers = groupRows.getOrDefault(target, java.util.List.of(target));
-        ScanRowToolbox.apply(call, target, peers);
+        java.util.List<ScanRow> selectedRows = selectedRowsForAiContext();
+        java.util.List<ScanRow> targetRows = selectedRows.isEmpty()
+                ? groupRows.getOrDefault(target, java.util.List.of(target))
+                : selectedRows;
+        ScanRowToolbox.apply(call, target, targetRows);
         table.refresh();
         if (selectedRow.get() == target) {
             detailPanel.show(target, rowToGroupMatch.get(target));
         }
+        updateAiChatTargetFromSelection(true);
     }
 
     private void updateSelectAllCheckbox() {

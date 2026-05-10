@@ -56,6 +56,29 @@ class AiPatternRefinementServiceTest {
     }
 
     @Test
+    void bundledAssistantParsesStructuredFilePatternsAndIgnoresMalformedJson() throws Exception {
+        try (FakeLlamaServer fake = FakeLlamaServer.start()) {
+            fake.setNextContent("""
+                    {"mediaType":"series","confidence":0.88,"patterns":["SxxExx"],"files":[{"filename":"Show.S01E02.mkv","pattern":"SxxExx","tokens":[{"role":"SERIES","rawValue":"Show.","normalizedValue":"Show","start":0,"end":5},{"role":"SEASON","rawValue":"01","normalizedValue":"01","start":6,"end":8},{"role":"EPISODE","rawValue":"02","normalizedValue":"02","start":9,"end":11},{"role":"EXTENSION","rawValue":"mkv","normalizedValue":"mkv","start":12,"end":15}],"normalizedOrder":"S01E02","confidence":0.92}],"explanation":"parsed"}
+                    """);
+
+            AiPatternSuggestion structured = fake.patternAssistant()
+                    .suggestPattern(new AiPatternSuggestionRequest(List.of("Show.S01E02.mkv"), ""));
+
+            assertEquals(1, structured.fileParses().size());
+            assertEquals("Show.S01E02.mkv", structured.fileParses().get(0).filename());
+            assertEquals("S01E02", structured.fileParses().get(0).normalizedOrder().orElseThrow());
+
+            fake.setNextContent("not json");
+            AiPatternSuggestion malformed = fake.patternAssistant()
+                    .suggestPattern(new AiPatternSuggestionRequest(List.of("Show.S01E02.mkv"), ""));
+
+            assertTrue(malformed.fileParses().isEmpty());
+            assertTrue(malformed.suggestedPatterns().isEmpty());
+        }
+    }
+
+    @Test
     void aiSuggestionCannotBeConstructedWithValidationOrExecutionAuthority() {
         assertThrows(IllegalArgumentException.class, () -> new AiGroupSuggestion(
                 "Show",

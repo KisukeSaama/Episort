@@ -9,6 +9,7 @@ import java.util.OptionalDouble;
 public record AiPatternSuggestion(
         String explanation,
         List<String> suggestedPatterns,
+        List<AiFilePatternParse> fileParses,
         List<String> selectedItemContext,
         Optional<InventoryGroupType> classifiedType,
         OptionalDouble classificationConfidence,
@@ -18,6 +19,7 @@ public record AiPatternSuggestion(
     public AiPatternSuggestion {
         explanation = explanation == null ? "" : explanation;
         suggestedPatterns = suggestedPatterns == null ? List.of() : List.copyOf(suggestedPatterns);
+        fileParses = fileParses == null ? List.of() : List.copyOf(fileParses);
         selectedItemContext = selectedItemContext == null ? List.of() : List.copyOf(selectedItemContext);
         classifiedType = classifiedType == null ? Optional.empty() : classifiedType;
         classificationConfidence = classificationConfidence == null ? OptionalDouble.empty() : classificationConfidence;
@@ -41,11 +43,25 @@ public record AiPatternSuggestion(
                 advisoryOnly, validationAuthority, executionAuthority);
     }
 
+    public AiPatternSuggestion(
+            String explanation,
+            List<String> suggestedPatterns,
+            List<String> selectedItemContext,
+            Optional<InventoryGroupType> classifiedType,
+            OptionalDouble classificationConfidence,
+            boolean advisoryOnly,
+            boolean validationAuthority,
+            boolean executionAuthority) {
+        this(explanation, suggestedPatterns, List.of(), selectedItemContext,
+                classifiedType, classificationConfidence,
+                advisoryOnly, validationAuthority, executionAuthority);
+    }
+
     public static AiPatternSuggestion advisory(
             String explanation,
             List<String> suggestedPatterns,
             List<String> selectedItemContext) {
-        return new AiPatternSuggestion(explanation, suggestedPatterns, selectedItemContext,
+        return new AiPatternSuggestion(explanation, suggestedPatterns, List.of(), selectedItemContext,
                 Optional.empty(), OptionalDouble.empty(), true, false, false);
     }
 
@@ -55,7 +71,18 @@ public record AiPatternSuggestion(
             List<String> selectedItemContext,
             Optional<InventoryGroupType> classifiedType,
             OptionalDouble classificationConfidence) {
-        return new AiPatternSuggestion(explanation, suggestedPatterns, selectedItemContext,
+        return new AiPatternSuggestion(explanation, suggestedPatterns, List.of(), selectedItemContext,
+                classifiedType, classificationConfidence, true, false, false);
+    }
+
+    public static AiPatternSuggestion advisory(
+            String explanation,
+            List<String> suggestedPatterns,
+            List<AiFilePatternParse> fileParses,
+            List<String> selectedItemContext,
+            Optional<InventoryGroupType> classifiedType,
+            OptionalDouble classificationConfidence) {
+        return new AiPatternSuggestion(explanation, suggestedPatterns, fileParses, selectedItemContext,
                 classifiedType, classificationConfidence, true, false, false);
     }
 }

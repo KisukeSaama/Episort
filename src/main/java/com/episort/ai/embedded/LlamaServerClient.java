@@ -133,7 +133,9 @@ public final class LlamaServerClient {
         body.addProperty("top_p", 0.9);
         body.addProperty("top_k", 40);
         body.addProperty("repeat_penalty", 1.05);
-        body.addProperty("cache_prompt", true);
+        // Chat prompts carry changing selected-file context. Disable KV prompt
+        // reuse here so one selection cannot bleed into the next turn.
+        body.addProperty("cache_prompt", false);
         com.google.gson.JsonArray stop = new com.google.gson.JsonArray();
         stop.add("<|im_end|>");
         stop.add("</s>");
