@@ -17,8 +17,14 @@ public final class ScanRowToolbox {
                     + call.stringArg("candidate", "?") + " »";
             case "adjustProposedName" -> "Renommer en : « " + call.stringArg("newName", "?") + " »";
             case "setOrder" -> "Définir l'ordre : " + call.stringArg("order", "?");
-            case "applyPatternToGroup" -> "Appliquer le pattern « "
-                    + call.stringArg("pattern", "?") + " » à tout le groupe";
+            case "applyPatternToGroup" -> {
+                String pattern = call.stringArg("pattern", "?");
+                String series = call.stringArg("series", "");
+                yield series.isBlank()
+                        ? "Appliquer le pattern « " + pattern + " » à tout le groupe"
+                        : "Appliquer le pattern « " + pattern + " » à tout le groupe (série : « "
+                                + series + " »)";
+            }
             default -> "Outil inconnu : " + call.name();
         };
     }
@@ -49,8 +55,9 @@ public final class ScanRowToolbox {
             case "applyPatternToGroup" -> {
                 String pattern = call.stringArg("pattern", "");
                 if (pattern.isBlank() || groupRows == null) yield false;
+                String seriesOverride = call.stringArg("series", "");
                 for (ScanRow row : groupRows) {
-                    applyPattern(row, pattern);
+                    applyPattern(row, pattern, seriesOverride);
                 }
                 yield true;
             }
@@ -59,12 +66,16 @@ public final class ScanRowToolbox {
     }
 
     static void applyPattern(ScanRow row, String pattern) {
+        applyPattern(row, pattern, null);
+    }
+
+    static void applyPattern(ScanRow row, String pattern, String seriesOverride) {
         String normalized = normalizePattern(pattern);
         if (row == null || normalized.isBlank()) {
             return;
         }
         row.setPattern(Optional.of(normalized));
-        ScanPatternFormatter.format(row, normalized)
+        ScanPatternFormatter.format(row, normalized, seriesOverride)
                 .ifPresent(name -> row.setProposedFilename(Optional.of(name)));
         row.setNoteText(Optional.of("Pattern proposé : " + normalized));
     }

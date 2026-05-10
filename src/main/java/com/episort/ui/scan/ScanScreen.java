@@ -94,7 +94,10 @@ public final class ScanScreen {
     private final TableColumn<ScanRow, String> originalColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> arrowColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> proposedColumn = new TableColumn<>();
-    private final TableColumn<ScanRow, String> patternColumn = new TableColumn<>();
+    private final TableColumn<ScanRow, String> seriesColumn = new TableColumn<>();
+    private final TableColumn<ScanRow, String> seasonColumn = new TableColumn<>();
+    private final TableColumn<ScanRow, String> episodeColumn = new TableColumn<>();
+    private final TableColumn<ScanRow, String> titleColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> extensionColumn = new TableColumn<>();
     private final TableColumn<ScanRow, ScanMediaType> typeColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> orderColumn = new TableColumn<>();
@@ -113,6 +116,7 @@ public final class ScanScreen {
     private final SimpleBooleanProperty syncingSelection = new SimpleBooleanProperty(false);
     private boolean loadedFolder;
     private boolean loading;
+    private Optional<java.nio.file.Path> workspaceRoot = Optional.empty();
     private String searchQuery = "";
     private ScanRowFilter activeFilter = ScanRowFilter.ALL;
 
@@ -199,7 +203,10 @@ public final class ScanScreen {
         originalColumn.setText(UiText.scanColumnOriginal(language));
         arrowColumn.setText("→");
         proposedColumn.setText(UiText.scanColumnProposed(language));
-        patternColumn.setText(UiText.scanColumnPattern(language));
+        seriesColumn.setText(UiText.scanColumnSeries(language));
+        seasonColumn.setText(UiText.scanColumnSeason(language));
+        episodeColumn.setText(UiText.scanColumnEpisode(language));
+        titleColumn.setText(UiText.scanColumnTitle(language));
         extensionColumn.setText(UiText.scanColumnExtension(language));
         typeColumn.setText(UiText.scanColumnType(language));
         orderColumn.setText(UiText.scanColumnOrder(language));
@@ -278,6 +285,10 @@ public final class ScanScreen {
         searchQuery = normalized;
         updateFilterPredicate();
         updateSelectAllCheckbox();
+    }
+
+    public void setWorkspaceRoot(Optional<java.nio.file.Path> root) {
+        this.workspaceRoot = root == null ? Optional.empty() : root;
     }
 
     public void apply(Optional<InventoryScanResult> result) {
@@ -386,7 +397,6 @@ public final class ScanScreen {
             }
             if (canAcceptAiParse(row)) {
                 aiParseFor(row, ps)
-                        .or(() -> ScanInputPatternParser.parse(row.originalFilename()))
                         .map(parse -> parse.withSource(ScanInputParseSource.AI))
                         .ifPresent(parse -> {
                             row.setInputParse(Optional.of(parse));
@@ -394,6 +404,8 @@ public final class ScanScreen {
                             if (parse.confidence().isPresent()) {
                                 row.setConfidence(parse.confidence());
                             }
+                            parse.normalizedOrder().ifPresent(order -> row.setOrder(Optional.of(order)));
+                            recomputeProposedName(row);
                         });
             }
         }
@@ -407,11 +419,16 @@ public final class ScanScreen {
         }
     }
 
+    private static void recomputeProposedName(ScanRow row) {
+        String pattern = row.pattern()
+                .filter(p -> !p.isBlank())
+                .orElse("{series} - S{season}E{episode} - {title}");
+        ScanPatternFormatter.format(row, pattern)
+                .ifPresent(name -> row.setProposedFilename(Optional.of(name)));
+    }
+
     private static boolean canAcceptAiParse(ScanRow row) {
-        if (row.inputParse().map(ScanInputParse::source).filter(ScanInputParseSource.USER::equals).isPresent()) {
-            return false;
-        }
-        return row.inputParse().isEmpty() || row.confidence().isEmpty() || row.confidence().orElseThrow() < 0.6;
+        return row.inputParse().map(ScanInputParse::source).filter(ScanInputParseSource.USER::equals).isEmpty();
     }
 
     private static Optional<ScanInputParse> aiParseFor(ScanRow row, AiPatternSuggestion suggestion) {
@@ -536,7 +553,6 @@ public final class ScanScreen {
             if (syncingSelection.get()) {
                 return;
             }
-            syncRowsFromTableSelection();
             updateAiChatTargetFromSelection();
         });
         table.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
@@ -553,7 +569,10 @@ public final class ScanScreen {
         configureOriginalColumn();
         configureArrowColumn();
         configureProposedColumn();
-        configurePatternColumn();
+        configureRoleColumn(seriesColumn, ScanInputRole.SERIES, 200);
+        configureRoleColumn(seasonColumn, ScanInputRole.SEASON, 70);
+        configureRoleColumn(episodeColumn, ScanInputRole.EPISODE, 78);
+        configureRoleColumn(titleColumn, ScanInputRole.TITLE, 200);
         configureExtensionColumn();
         configureTypeColumn();
         configureOrderColumn();
@@ -566,7 +585,10 @@ public final class ScanScreen {
                 originalColumn,
                 arrowColumn,
                 proposedColumn,
-                patternColumn,
+                seriesColumn,
+                seasonColumn,
+                episodeColumn,
+                titleColumn,
                 extensionColumn,
                 typeColumn,
                 orderColumn,
@@ -694,11 +716,11 @@ public final class ScanScreen {
         proposedColumn.setComparator(ScanRowTableSupport.NATURAL_TEXT);
     }
 
-    private void configurePatternColumn() {
-        patternColumn.setMinWidth(160);
-        patternColumn.setPrefWidth(300);
-        patternColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().inputPattern().orElse(EMPTY)));
-        patternColumn.setCellFactory(column -> new TextFieldTableCell<>(new DefaultStringConverter()) {
+    private void configureRoleColumn(TableColumn<ScanRow, String> column, ScanInputRole role, double prefWidth) {
+        column.setMinWidth(60);
+        column.setPrefWidth(prefWidth);
+        column.setCellValueFactory(data -> new SimpleStringProperty(roleValue(data.getValue(), role)));
+        column.setCellFactory(c -> new TextFieldTableCell<>(new DefaultStringConverter()) {
             @Override
             public void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
@@ -709,28 +731,109 @@ public final class ScanScreen {
                     getStyleClass().remove("cell-muted");
                     return;
                 }
-                setText(item);
+                String display = item.isBlank() ? EMPTY : item;
+                setText(display);
                 if (!getStyleClass().contains("cell-mono")) {
                     getStyleClass().add("cell-mono");
                 }
-                if (EMPTY.equals(item)) {
+                if (EMPTY.equals(display)) {
                     if (!getStyleClass().contains("cell-muted")) {
                         getStyleClass().add("cell-muted");
                     }
                     setTooltip(null);
-                    return;
+                } else {
+                    getStyleClass().remove("cell-muted");
+                    ScanRow row = getTableRow() == null ? null : getTableRow().getItem();
+                    Tooltip t = new Tooltip(row == null ? display : patternTooltip(row));
+                    t.setWrapText(true);
+                    t.setMaxWidth(520);
+                    setTooltip(t);
                 }
-                getStyleClass().remove("cell-muted");
-                ScanRow row = getTableRow() == null ? null : getTableRow().getItem();
-                String tooltip = row == null ? item : patternTooltip(row);
-                Tooltip t = new Tooltip(tooltip);
-                t.setWrapText(true);
-                t.setMaxWidth(520);
-                setTooltip(t);
             }
         });
-        patternColumn.setOnEditCommit(event -> applyInputPatternToSelection(event.getRowValue(), event.getNewValue()));
-        patternColumn.setComparator(ScanRowTableSupport.NATURAL_TEXT);
+        column.setOnEditCommit(event -> applyTokenEditToSelection(event.getRowValue(), role, event.getNewValue()));
+        column.setComparator(ScanRowTableSupport.NATURAL_TEXT);
+    }
+
+    private static String roleValue(ScanRow row, ScanInputRole role) {
+        if (row.mediaType() == ScanMediaType.MOVIE
+                && (role == ScanInputRole.SERIES
+                    || role == ScanInputRole.SEASON
+                    || role == ScanInputRole.EPISODE
+                    || role == ScanInputRole.TITLE)) {
+            return "";
+        }
+        return row.inputParse().flatMap(parse -> parse.tokenValue(role)).orElse("");
+    }
+
+    private void applyTokenEditToSelection(ScanRow anchor, ScanInputRole role, String newValue) {
+        if (anchor == null) {
+            return;
+        }
+        String value = newValue == null ? "" : newValue.trim();
+        if (EMPTY.equals(value)) {
+            value = "";
+        }
+        for (ScanRow row : rowsForBatchEdit(anchor)) {
+            applyTokenEdit(row, role, value);
+        }
+        refreshAfterBatchEdit(anchor);
+    }
+
+    private static void applyTokenEdit(ScanRow row, ScanInputRole role, String value) {
+        ScanInputParse base = row.inputParse().orElseGet(() ->
+                ScanInputPatternParser.parse(row.originalFilename())
+                        .orElse(new ScanInputParse("", java.util.List.of(), Optional.empty(),
+                                OptionalDouble.empty(), ScanInputParseSource.USER)));
+        java.util.List<ScanInputToken> tokens = new java.util.ArrayList<>(base.tokens());
+        boolean matched = false;
+        for (int i = 0; i < tokens.size(); i++) {
+            if (tokens.get(i).role() == role) {
+                ScanInputToken old = tokens.get(i);
+                if (value.isBlank()) {
+                    tokens.remove(i);
+                } else {
+                    tokens.set(i, new ScanInputToken(role, value, value, old.start(), old.end()));
+                }
+                matched = true;
+                break;
+            }
+        }
+        if (!matched && !value.isBlank()) {
+            tokens.add(new ScanInputToken(role, value, value, 0, 0));
+        }
+        Optional<String> normalizedOrder = (role == ScanInputRole.SEASON || role == ScanInputRole.EPISODE)
+                ? recomputeOrder(tokens)
+                : base.normalizedOrder();
+        ScanInputParse updated = new ScanInputParse(
+                base.label(), tokens, normalizedOrder, base.confidence(), ScanInputParseSource.USER);
+        row.setInputParse(Optional.of(updated));
+        String label = updated.summary();
+        row.setInputPattern(label.isBlank() ? Optional.empty() : Optional.of(label));
+        if (role == ScanInputRole.SEASON || role == ScanInputRole.EPISODE) {
+            row.setOrder(normalizedOrder);
+        }
+        String pattern = row.pattern()
+                .filter(p -> !p.isBlank())
+                .orElse("{series} - S{season}E{episode} - {title}");
+        ScanPatternFormatter.format(row, pattern)
+                .ifPresent(name -> row.setProposedFilename(Optional.of(name)));
+    }
+
+    private static Optional<String> recomputeOrder(java.util.List<ScanInputToken> tokens) {
+        String season = tokens.stream().filter(t -> t.role() == ScanInputRole.SEASON)
+                .findFirst().map(ScanInputToken::normalizedValue).orElse("");
+        String episode = tokens.stream().filter(t -> t.role() == ScanInputRole.EPISODE)
+                .findFirst().map(ScanInputToken::normalizedValue).orElse("");
+        if (season.isBlank() || episode.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(String.format("S%02dE%02d",
+                    Integer.parseInt(season.trim()), Integer.parseInt(episode.trim())));
+        } catch (NumberFormatException ex) {
+            return Optional.empty();
+        }
     }
 
     private void configureExtensionColumn() {
@@ -763,8 +866,8 @@ public final class ScanScreen {
     }
 
     private void configureTypeColumn() {
-        typeColumn.setMinWidth(118);
-        typeColumn.setPrefWidth(132);
+        typeColumn.setMinWidth(150);
+        typeColumn.setPrefWidth(170);
         typeColumn.setCellValueFactory(data -> new SimpleObjectProperty<>(data.getValue().mediaType()));
         typeColumn.setCellFactory(column -> new TableCell<>() {
             private final ComboBox<ScanMediaType> picker = new ComboBox<>();
@@ -1011,6 +1114,7 @@ public final class ScanScreen {
     private void applyMediaTypeToSelection(ScanRow anchor, ScanMediaType mediaType) {
         for (ScanRow row : rowsForBatchEdit(anchor)) {
             row.setMediaType(mediaType);
+            recomputeProposedName(row);
         }
         refreshAfterBatchEdit(anchor);
     }
@@ -1132,14 +1236,6 @@ public final class ScanScreen {
         }
     }
 
-    private void syncRowsFromTableSelection() {
-        for (ScanRow row : rows) {
-            row.setSelected(table.getSelectionModel().getSelectedItems().contains(row));
-        }
-        updateSelectAllCheckbox();
-        table.refresh();
-    }
-
     private String buildContextSummary(ScanRow row) {
         return buildSingleRowContext(row);
     }
@@ -1161,6 +1257,10 @@ public final class ScanScreen {
         for (ScanRow selected : selectedRows) {
             sb.append("  - original=").append(selected.originalFilename())
                     .append(" | ext=").append(selected.extension().isBlank() ? EMPTY : selected.extension());
+            java.util.List<String> rowChain = parentFolderChain(selected.sourcePath());
+            if (!rowChain.isEmpty()) {
+                sb.append(" | dossiersParents=").append(String.join(" / ", rowChain));
+            }
             selected.inputPattern().ifPresent(pattern -> sb.append(" | patternEntree=").append(pattern));
             selected.inputParse().ifPresent(parse -> sb.append(" | patternStructure=")
                     .append(parse.summary())
@@ -1190,6 +1290,11 @@ public final class ScanScreen {
     private String buildSingleRowContext(ScanRow row) {
         StringBuilder sb = new StringBuilder();
         sb.append("Fichier sélectionné : ").append(row.originalFilename()).append('\n');
+        java.util.List<String> chain = parentFolderChain(row.sourcePath());
+        if (!chain.isEmpty()) {
+            sb.append("Dossiers parents (du plus externe au plus interne, workspace exclu) : ")
+              .append(String.join(" / ", chain)).append('\n');
+        }
         sb.append("Type détecté : ").append(RowDetailPanel.mediaTypeText(row.mediaType(), currentLanguage)).append('\n');
         row.inputPattern().ifPresent(pattern -> sb.append("Pattern d'entrée détecté : ").append(pattern).append('\n'));
         row.inputParse().ifPresent(parse -> {
@@ -1289,6 +1394,32 @@ public final class ScanScreen {
                 .compile("[Ss](\\d{1,2})[Ee](\\d{1,3})")
                 .matcher(order == null ? "" : order);
         return matcher.find() ? matcher.group(2) : EMPTY;
+    }
+
+    private java.util.List<String> parentFolderChain(java.nio.file.Path filePath) {
+        if (filePath == null) {
+            return java.util.List.of();
+        }
+        java.nio.file.Path parent = filePath.toAbsolutePath().normalize().getParent();
+        if (parent == null) {
+            return java.util.List.of();
+        }
+        if (workspaceRoot.isPresent()) {
+            java.nio.file.Path workspace = workspaceRoot.get().toAbsolutePath().normalize();
+            if (parent.startsWith(workspace) && !parent.equals(workspace)) {
+                java.nio.file.Path relative = workspace.relativize(parent);
+                java.util.List<String> chain = new java.util.ArrayList<>(relative.getNameCount());
+                for (java.nio.file.Path segment : relative) {
+                    String name = segment.toString();
+                    if (!name.isEmpty()) {
+                        chain.add(name);
+                    }
+                }
+                return java.util.List.copyOf(chain);
+            }
+        }
+        java.nio.file.Path leaf = parent.getFileName();
+        return leaf == null ? java.util.List.of() : java.util.List.of(leaf.toString());
     }
 
     private static String inferredTitle(ScanRow row) {

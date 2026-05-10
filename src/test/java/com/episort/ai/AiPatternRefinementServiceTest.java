@@ -58,9 +58,13 @@ class AiPatternRefinementServiceTest {
     @Test
     void bundledAssistantParsesStructuredFilePatternsAndIgnoresMalformedJson() throws Exception {
         try (FakeLlamaServer fake = FakeLlamaServer.start()) {
-            fake.setNextContent("""
-                    {"mediaType":"series","confidence":0.88,"patterns":["SxxExx"],"files":[{"filename":"Show.S01E02.mkv","pattern":"SxxExx","tokens":[{"role":"SERIES","rawValue":"Show.","normalizedValue":"Show","start":0,"end":5},{"role":"SEASON","rawValue":"01","normalizedValue":"01","start":6,"end":8},{"role":"EPISODE","rawValue":"02","normalizedValue":"02","start":9,"end":11},{"role":"EXTENSION","rawValue":"mkv","normalizedValue":"mkv","start":12,"end":15}],"normalizedOrder":"S01E02","confidence":0.92}],"explanation":"parsed"}
-                    """);
+            fake.setNextContents(
+                    """
+                            {"mediaType":"series","confidence":0.88,"patterns":["SxxExx"],"explanation":"parsed"}
+                            """,
+                    """
+                            {"filename":"Show.S01E02.mkv","pattern":"SxxExx","tokens":[{"role":"SERIES","rawValue":"Show.","normalizedValue":"Show","start":0,"end":5},{"role":"SEASON","rawValue":"01","normalizedValue":"01","start":6,"end":8},{"role":"EPISODE","rawValue":"02","normalizedValue":"02","start":9,"end":11},{"role":"EXTENSION","rawValue":"mkv","normalizedValue":"mkv","start":12,"end":15}],"normalizedOrder":"S01E02","confidence":0.92}
+                            """);
 
             AiPatternSuggestion structured = fake.patternAssistant()
                     .suggestPattern(new AiPatternSuggestionRequest(List.of("Show.S01E02.mkv"), ""));

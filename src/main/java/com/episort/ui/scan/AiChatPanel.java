@@ -231,10 +231,16 @@ public final class AiChatPanel {
             @Override
             public void onComplete(String fullResponse) {
                 Platform.runLater(() -> {
-                    if (fullResponse != null && !fullResponse.isBlank()) {
+                    String clean = fullResponse == null ? "" : fullResponse.trim();
+                    if (!clean.isBlank()) {
                         if (assistantLabel[0] == null) {
-                            assistantLabel[0] = appendMessage(messageBox, "assistant", fullResponse);
+                            assistantLabel[0] = appendMessage(messageBox, "assistant", clean);
+                        } else {
+                            replaceMessageContent(assistantLabel[0], clean);
                         }
+                    } else if (assistantLabel[0] != null) {
+                        messageBox.getChildren().remove(assistantLabel[0]);
+                        assistantLabel[0] = null;
                     }
                     awaitingResponse = false;
                     refreshAvailability();

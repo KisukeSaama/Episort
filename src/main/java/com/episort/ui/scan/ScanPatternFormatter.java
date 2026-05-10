@@ -10,23 +10,68 @@ public final class ScanPatternFormatter {
     private static final Pattern SXXEXX = Pattern.compile("[Ss](\\d{1,2})[\\s._-]?[Ee](\\d{1,3})");
     private static final Pattern NXNN = Pattern.compile("(?<![A-Za-z0-9])(\\d{1,2})[xX](\\d{1,3})(?![A-Za-z0-9])");
     private static final Pattern ABSOLUTE = Pattern.compile("(?<!\\d)(\\d{2,4})(?!\\d)");
+    private static final Pattern YEAR = Pattern.compile("(?<!\\d)(19\\d{2}|20\\d{2})(?!\\d)");
 
     private ScanPatternFormatter() {
     }
 
     public static Optional<String> format(ScanRow row, String pattern) {
+        return format(row, pattern, null);
+    }
+
+    public static Optional<String> format(ScanRow row, String pattern, String seriesOverride) {
         if (row == null || pattern == null || pattern.isBlank()) {
             return Optional.empty();
         }
+        if (row.mediaType() == ScanMediaType.MOVIE) {
+            return Optional.of(formatMovie(row, seriesOverride));
+        }
         Metadata metadata = Metadata.from(row);
+        String series = seriesOverride != null && !seriesOverride.isBlank()
+                ? seriesOverride.trim()
+                : metadata.series();
         String rendered = pattern
-                .replace("{series}", metadata.series())
+                .replace("{series}", series)
                 .replace("{season}", metadata.season())
                 .replace("{episode}", metadata.episode())
                 .replace("{title}", metadata.title())
                 .replace("{order}", row.order().orElse(metadata.seasonEpisode()));
         String extension = row.extension().isBlank() ? "" : "." + row.extension().toLowerCase(Locale.ROOT);
         return Optional.of(rendered + extension);
+    }
+
+    private static String formatMovie(ScanRow row, String titleOverride) {
+        String baseName = row.originalFilename();
+        int dot = baseName.lastIndexOf('.');
+        String stem = dot > 0 ? baseName.substring(0, dot) : baseName;
+        String extension = row.extension().isBlank() ? "" : "." + row.extension().toLowerCase(Locale.ROOT);
+
+        String year = "";
+        Matcher yearMatcher = YEAR.matcher(stem);
+        int titleEnd = stem.length();
+        while (yearMatcher.find()) {
+            year = yearMatcher.group(1);
+            titleEnd = yearMatcher.start();
+        }
+
+        String titleSource = titleOverride != null && !titleOverride.isBlank()
+                ? titleOverride.trim()
+                : row.inputParse()
+                        .flatMap(parse -> parse.tokenValue(ScanInputRole.TITLE)
+                                .or(() -> parse.tokenValue(ScanInputRole.SERIES)))
+                        .filter(s -> !s.isBlank())
+                        .orElse(stem.substring(0, titleEnd));
+
+        String title = titleSource
+                .replaceAll("[._]+", " ")
+                .replaceAll("[\\(\\[\\{].*?[\\)\\]\\}]", " ")
+                .replaceAll("\\s*-\\s*", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (title.isBlank()) {
+            title = "Untitled";
+        }
+        return year.isBlank() ? title + extension : title + " (" + year + ")" + extension;
     }
 
     private record Metadata(String series, String season, String episode, String title, String seasonEpisode) {

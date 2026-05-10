@@ -213,7 +213,9 @@ public class EpisortApplication extends Application {
         return service.scan(selectedFolder, progress -> {})
                 .thenApply(result -> {
                     InventoryScanResult scanResult = new InventoryScanResult(result.items(), result.groups(), result.summary());
-                    AiPatternRefinementResult refinement = aiPatternRefinementService.refine(scanResult);
+                    AiPatternRefinementResult refinement = aiPatternRefinementService.refine(
+                            scanResult, Optional.of(selectedFolder),
+                            (done, total) -> updateLoadingForAiProgress(done, total));
                     recordScanCompleted(runEventStore, workspace, selectedFolder, scanResult, refinement);
                     pushRefinementAfterApply(refinement);
                     return AppShellViewModel.fromInventoryScan(selectedFolder, scanResult);
@@ -226,6 +228,18 @@ public class EpisortApplication extends Application {
                             "Inventory scan failed.",
                             ""));
                 });
+    }
+
+    private void updateLoadingForAiProgress(int done, int total) {
+        AppShell shell = appShellRef;
+        if (shell == null || total <= 0) return;
+        AppLanguage language = shell.currentLanguage();
+        String text = com.episort.ui.UiText.loadingScanAi(language);
+        double progress = (double) done / (double) total;
+        javafx.application.Platform.runLater(() -> {
+            shell.updateLoadingText(text);
+            shell.setLoadingProgress(progress);
+        });
     }
 
     private void pushRefinementAfterApply(AiPatternRefinementResult refinement) {

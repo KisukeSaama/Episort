@@ -188,7 +188,13 @@ public class EmbeddedLlamaRuntime implements AutoCloseable {
         // room for the JavaFX UI thread.
         args.add("--threads");
         args.add(String.valueOf(Math.min(8, Math.max(2, Runtime.getRuntime().availableProcessors() / 2))));
-        // Episort serializes AI calls; one slot is enough.
+        // Single slot. Tried --parallel 4 to fan out the per-file pass, but on
+        // a 1.7B Q8 model on one GPU, four concurrent decode streams are
+        // bandwidth-bound and per-call latency 3-4x'd; aggregate throughput
+        // also dropped because each slot keeps its own KV cache so the
+        // system-prompt prefix is prefilled once per slot, not once total.
+        // Concurrency on one GPU only pays off with long shared context or
+        // long decode, neither of which we have. Batching wins here instead.
         args.add("--parallel");
         args.add("1");
         // Flash attention + KV quantization were tried but the bundled

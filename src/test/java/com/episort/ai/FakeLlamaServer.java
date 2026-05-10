@@ -13,6 +13,9 @@ import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Deque;
 import java.util.Optional;
 
 /**
@@ -27,6 +30,7 @@ final class FakeLlamaServer implements AutoCloseable {
     private final Path runtimeZipDir;
     private final Path extractionDir;
     private final Path modelPath;
+    private final Deque<String> queuedContent = new ArrayDeque<>();
     private volatile String nextContent =
             "{\"patterns\":[\"SxxExx\"],\"explanation\":\"detected pattern hint\"}";
 
@@ -45,14 +49,28 @@ final class FakeLlamaServer implements AutoCloseable {
         this.server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/health", exchange -> respond(exchange, 200, "{\"status\":\"ok\"}"));
         server.createContext("/completion", exchange -> {
-            String body = "{\"content\":" + jsonString(nextContent) + "}";
+            String content = pollContent();
+            String body = "{\"content\":" + jsonString(content) + "}";
             respond(exchange, 200, body);
         });
         server.start();
     }
 
     void setNextContent(String envelopeJson) {
+        synchronized (queuedContent) {
+            queuedContent.clear();
+        }
         this.nextContent = envelopeJson;
+    }
+
+    void setNextContents(String... contents) {
+        synchronized (queuedContent) {
+            queuedContent.clear();
+            queuedContent.addAll(Arrays.asList(contents));
+        }
+        if (contents.length > 0) {
+            this.nextContent = contents[contents.length - 1];
+        }
     }
 
     URI baseUri() {
@@ -109,6 +127,16 @@ final class FakeLlamaServer implements AutoCloseable {
         try (OutputStream out = exchange.getResponseBody()) {
             out.write(payload);
         }
+    }
+
+    private String pollContent() {
+        synchronized (queuedContent) {
+            String content = queuedContent.pollFirst();
+            if (content != null) {
+                return content;
+            }
+        }
+        return nextContent;
     }
 
     private static String jsonString(String value) {

@@ -1279,6 +1279,27 @@
     -fx-alignment: center;
 }
 
+.app-loader-bar {
+    -fx-pref-height: 6;
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
+}
+
+.app-loader-bar > .track {
+    -fx-background-color: rgba(255,255,255,0.08);
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
+    -fx-border-color: transparent;
+}
+
+.app-loader-bar > .bar {
+    -fx-background-color: #f97316;
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
+    -fx-padding: 0;
+}
+
 .detail-panel-section {
     -fx-spacing: 6;
     -fx-padding: 0 0 6 0;

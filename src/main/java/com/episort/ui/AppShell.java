@@ -18,6 +18,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
@@ -58,6 +59,7 @@ public final class AppShell {
     private Button prereqOverlayButton;
     private VBox loadingOverlay;
     private Label loadingOverlayText;
+    private ProgressBar loadingOverlayBar;
     private Region currentScreenRoot;
 
     public AppShell() {
@@ -241,6 +243,31 @@ public final class AppShell {
         }
     }
 
+    public AppLanguage currentLanguage() {
+        return currentViewModel.language();
+    }
+
+    public void updateLoadingText(String text) {
+        if (text == null) return;
+        loadingOverlayText.setText(text);
+    }
+
+    /**
+     * Sets a determinate progress value [0..1] on the loader. Pass a negative
+     * value to hide the bar and fall back to the indeterminate spinner only.
+     */
+    public void setLoadingProgress(double progress) {
+        if (progress < 0) {
+            loadingOverlayBar.setVisible(false);
+            loadingOverlayBar.setManaged(false);
+            return;
+        }
+        double clamped = Math.max(0, Math.min(1, progress));
+        loadingOverlayBar.setProgress(clamped);
+        loadingOverlayBar.setVisible(true);
+        loadingOverlayBar.setManaged(true);
+    }
+
     public void setLoading(boolean loading, String text) {
         this.loading = loading;
         loadingOverlayText.setText(text == null || text.isBlank()
@@ -248,6 +275,9 @@ public final class AppShell {
                 : text);
         loadingOverlay.setVisible(loading);
         loadingOverlay.setManaged(loading);
+        if (!loading) {
+            setLoadingProgress(-1);
+        }
         if (currentScreenRoot != null) {
             boolean blocked = loading || prereqOverlay.isVisible();
             currentScreenRoot.setMouseTransparent(blocked);
@@ -293,7 +323,14 @@ public final class AppShell {
         loadingOverlayText.getStyleClass().add("app-loader-text");
         loadingOverlayText.setWrapText(true);
 
-        VBox card = new VBox(14, indicator, loadingOverlayText);
+        loadingOverlayBar = new ProgressBar(0);
+        loadingOverlayBar.getStyleClass().add("app-loader-bar");
+        loadingOverlayBar.setMaxWidth(Double.MAX_VALUE);
+        loadingOverlayBar.setPrefWidth(320);
+        loadingOverlayBar.setVisible(false);
+        loadingOverlayBar.setManaged(false);
+
+        VBox card = new VBox(14, indicator, loadingOverlayText, loadingOverlayBar);
         card.getStyleClass().add("app-loader-card");
         card.setAlignment(Pos.CENTER);
         card.setMaxWidth(420);
@@ -517,6 +554,7 @@ public final class AppShell {
         topBar.setStatusPill(currentViewModel.errorCode(), currentViewModel.language());
         topBar.setWorkspace(currentWorkspace.get());
 
+        scanScreen.setWorkspaceRoot(currentWorkspace.get());
         Optional<InventoryScanResult> result = currentViewModel.inventoryScanResult();
         scanScreen.apply(result);
         if (currentView == AppView.HISTORY) {

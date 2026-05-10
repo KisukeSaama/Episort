@@ -84,6 +84,10 @@ public final class UiText {
     public static String loadingStartup(AppLanguage language) { return t(language, "loading.startup"); }
     public static String loadingScan(AppLanguage language) { return t(language, "loading.scan"); }
 
+    public static String loadingScanAi(AppLanguage language) {
+        return t(language, "loading.scan.ai");
+    }
+
     public static String[] scanWorkflowSteps(AppLanguage language) {
         return t(language, "scan.workflow.steps").split("\\|");
     }
@@ -100,7 +104,10 @@ public final class UiText {
     public static String scanColumnSelection(AppLanguage language) { return t(language, "scan.column.selection"); }
     public static String scanColumnOriginal(AppLanguage language) { return t(language, "scan.column.original"); }
     public static String scanColumnProposed(AppLanguage language) { return t(language, "scan.column.proposed"); }
-    public static String scanColumnPattern(AppLanguage language) { return t(language, "scan.column.pattern"); }
+    public static String scanColumnSeries(AppLanguage language) { return t(language, "scan.column.series"); }
+    public static String scanColumnSeason(AppLanguage language) { return t(language, "scan.column.season"); }
+    public static String scanColumnEpisode(AppLanguage language) { return t(language, "scan.column.episode"); }
+    public static String scanColumnTitle(AppLanguage language) { return t(language, "scan.column.title"); }
     public static String scanColumnExtension(AppLanguage language) { return t(language, "scan.column.extension"); }
     public static String scanColumnType(AppLanguage language) { return t(language, "scan.column.type"); }
     public static String scanColumnTvdb(AppLanguage language) { return t(language, "scan.column.tvdb"); }

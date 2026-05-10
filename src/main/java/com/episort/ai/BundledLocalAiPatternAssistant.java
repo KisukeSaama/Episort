@@ -17,10 +17,22 @@ import java.util.function.Supplier;
 
 /**
  * Pattern assistant backed by the embedded Episort local AI runtime
- * (llama.cpp / Qwen3 1.7B). Sends a single completion request with the
- * minimized selected-item context and parses a JSON envelope of the form:
+ * (llama.cpp / Qwen3 1.7B). Runs in two passes to stay within the model's
+ * reliable structured-output window:
  *
- * <pre>{"patterns": ["SxxExx", ...], "explanation": "..."}</pre>
+ * <ol>
+ *   <li>One small "global" call returning {@code {mediaType, patterns,
+ *       confidence, explanation}} — bounded ~150 output tokens, never
+ *       truncated even on large groups.</li>
+ *   <li>One per-file call per filename returning {@code {filename, pattern,
+ *       tokens, normalizedOrder, confidence}}. We tried packing N filenames
+ *       into one batched call to amortize round-trips, but a 1.7B model
+ *       loses track when asked to emit a structured entry per item in one
+ *       shot — entries got merged, dropped, or cross-contaminated. Per-file
+ *       calls stay sharp, and {@code cache_prompt=true} on the server reuses
+ *       the ~700-token system-prompt KV across calls, so each call only
+ *       prefills the small per-call user block.</li>
+ * </ol>
  *
  * <p>The {@link LlamaServerClient} supplier is consulted on every call so the
  * assistant works across runtime restarts and during the first-run boot
@@ -28,17 +40,13 @@ import java.util.function.Supplier;
  * never an exception — so callers can keep the user-visible flow alive.
  */
 public final class BundledLocalAiPatternAssistant implements AiPatternAssistant {
-    private static final String SYSTEM_PROMPT = ""
-            + "You classify media filenames. Output ONE JSON object, nothing else. "
+    private static final String GLOBAL_SYSTEM_PROMPT = ""
+            + "You classify a batch of media filenames. Output ONE JSON object, nothing else. "
             + "No prose, no markdown, no code fences, no <think> blocks.\n"
             + "Schema (all keys required, exactly these keys):\n"
             + "{\"mediaType\":\"series|movie|unknown\","
             + "\"confidence\":0.0,"
             + "\"patterns\":[\"...\"],"
-            + "\"files\":[{\"filename\":\"...\",\"pattern\":\"SxxExx|NxNN|absolute|unknown\","
-            + "\"tokens\":[{\"role\":\"SERIES|SEASON|EPISODE|TITLE|EXTENSION|NOISE\","
-            + "\"rawValue\":\"...\",\"normalizedValue\":\"...\",\"start\":0,\"end\":1}],"
-            + "\"normalizedOrder\":\"S01E02\",\"confidence\":0.0}],"
             + "\"explanation\":\"<= 12 words\"}\n"
             + "Rules:\n"
             + "- mediaType=\"series\" iff filenames share a recurring SxxExx / 1xNN / "
@@ -50,9 +58,61 @@ public final class BundledLocalAiPatternAssistant implements AiPatternAssistant 
             + "- patterns: 1 to 3 short labels (e.g. \"SxxExx\", \"Title (yyyy)\", "
             + "\"1xNN\", \"Date YYYY-MM-DD\"). Use [] if unsure.\n"
             + "- explanation: one short sentence, no quotes inside.";
-    // Enough to fit the full envelope (~120 tokens typical). Small enough to
-    // stop fast on a 4070 Super (~20–40ms/token range).
-    private static final int DEFAULT_MAX_TOKENS = 1024;
+
+    private static final String PER_FILE_SYSTEM_PROMPT = ""
+            + "You parse ONE media filename. Output ONE JSON object, nothing else. "
+            + "No prose, no markdown, no code fences, no <think> blocks.\n"
+            + "Schema (all keys required, exactly these keys):\n"
+            + "{\"filename\":\"...\","
+            + "\"pattern\":\"SxxExx|NxNN|absolute|unknown\","
+            + "\"tokens\":[{\"role\":\"SERIES|SEASON|EPISODE|TITLE|EXTENSION|NOISE\","
+            + "\"rawValue\":\"...\",\"normalizedValue\":\"...\",\"start\":0,\"end\":1}],"
+            + "\"normalizedOrder\":\"S01E02\","
+            + "\"confidence\":0.0}\n"
+            + "Rules:\n"
+            + "- filename: echo the input filename exactly.\n"
+            + "- pattern: pick one of the listed values; \"unknown\" if no episode marker.\n"
+            + "- tokens: every span MUST have correct half-open [start,end) offsets in the input.\n"
+            + "- SERIES token: when a parent folder name is provided and the filename's series\n"
+            + "  segment is missing, abbreviated, or release-tag noise (e.g. \"sgi-hkyu\",\n"
+            + "  \"sgi\", scene tags), prefer the clean series title from the parent folder for\n"
+            + "  rawValue and normalizedValue. Strip release tags, resolution, codec, language\n"
+            + "  tags from the parent folder to get the clean title (e.g.\n"
+            + "  \"Haikyu.S01.MULTi.1080p.BluRay.x264-SHiNiGAMi\" -> \"Haikyu\"). When the SERIES\n"
+            + "  token is taken from the folder, set its start=0 and end=0 (the span is not in\n"
+            + "  the filename); do NOT emit a separate NOISE token covering the filename's\n"
+            + "  series-like fragment.\n"
+            + "- Folder-derived SERIES does NOT change pattern/EPISODE/SEASON detection: still\n"
+            + "  parse the filename normally for season/episode digits. Trailing digits glued\n"
+            + "  to a series shorthand (e.g. \"hkyu02\") are an absolute-number EPISODE token;\n"
+            + "  pattern=\"absolute\" and normalizedOrder=\"S01E02\" (assume season 1 unless the\n"
+            + "  parent folder says otherwise, e.g. \".S02.\" -> season 2).\n"
+            + "- SEASON token: ALWAYS emit one when normalizedOrder is set. If the season\n"
+            + "  digits appear in the filename, use their real [start,end). Otherwise (season\n"
+            + "  derived from the parent folder via \".S0N.\"/\"Season N\", or the implicit\n"
+            + "  \"assume season 1\" rule for absolute patterns), emit it with start=0 and\n"
+            + "  end=0 and the two-digit normalizedValue (e.g. \"01\"). Never omit SEASON\n"
+            + "  just because the filename has no season marker.\n"
+            + "- normalizedOrder: S01E02 form when applicable; empty string for movies. Never\n"
+            + "  put a series title or non-SxxExx text in normalizedOrder.\n"
+            + "- confidence in [0,1], two decimals.\n"
+            + "Worked example:\n"
+            + "  Parent folders: Haikyu.S01.MULTi.1080p.BluRay.x264-SHiNiGAMi\n"
+            + "  Filename: sgi-hkyu02.1080p.multi.mkv\n"
+            + "  -> {\"filename\":\"sgi-hkyu02.1080p.multi.mkv\",\"pattern\":\"absolute\",\n"
+            + "      \"tokens\":[{\"role\":\"SERIES\",\"rawValue\":\"Haikyu\",\"normalizedValue\":\"Haikyu\",\"start\":0,\"end\":0},\n"
+            + "                {\"role\":\"SEASON\",\"rawValue\":\"01\",\"normalizedValue\":\"01\",\"start\":0,\"end\":0},\n"
+            + "                {\"role\":\"EPISODE\",\"rawValue\":\"02\",\"normalizedValue\":\"02\",\"start\":8,\"end\":10},\n"
+            + "                {\"role\":\"EXTENSION\",\"rawValue\":\"mkv\",\"normalizedValue\":\"mkv\",\"start\":23,\"end\":26}],\n"
+            + "      \"normalizedOrder\":\"S01E02\",\"confidence\":0.80}";
+
+    // Global pass: just an envelope of 4 short keys. ~150 tokens is plenty.
+    private static final int GLOBAL_MAX_TOKENS = 256;
+    // Per-file pass: tokens[] is the longest field; comfortable upper bound.
+    private static final int PER_FILE_MAX_TOKENS = 384;
+    // Filename samples sent to the global classification pass. Enough variety
+    // for reliable mediaType detection without bloating the prompt.
+    private static final int GLOBAL_SAMPLE_SIZE = 24;
 
     private final Supplier<Optional<LlamaServerClient>> clientSupplier;
 
@@ -62,6 +122,12 @@ public final class BundledLocalAiPatternAssistant implements AiPatternAssistant 
 
     @Override
     public AiPatternSuggestion suggestPattern(AiPatternSuggestionRequest request) {
+        return suggestPattern(request, () -> {});
+    }
+
+    @Override
+    public AiPatternSuggestion suggestPattern(AiPatternSuggestionRequest request, Runnable promptTick) {
+        Runnable tick = promptTick == null ? () -> {} : promptTick;
         List<String> minimizedContext = request.minimizedSelectedItemContext();
         if (minimizedContext.isEmpty()) {
             return AiPatternSuggestion.advisory(
@@ -72,53 +138,151 @@ public final class BundledLocalAiPatternAssistant implements AiPatternAssistant 
             return AiPatternSuggestion.advisory(
                     "Local AI runtime is not ready yet.", List.of(), minimizedContext);
         }
-        // Wrap in Qwen3 ChatML so the model sees a real system role, not a
-        // bare prompt. Without this Qwen3 tends to ramble in plain prose.
-        // Cap the filename list to keep the prompt small and the KV cache
-        // reusable across groups (cache_prompt is on).
-        List<String> capped = minimizedContext.size() > 24
-                ? minimizedContext.subList(0, 24)
-                : minimizedContext;
-        String userBlock = "Filenames:\n" + String.join("\n", capped) + "\n/no_think";
-        String prompt = "<|im_start|>system\n" + SYSTEM_PROMPT + "<|im_end|>\n"
-                + "<|im_start|>user\n" + userBlock + "<|im_end|>\n"
-                + "<|im_start|>assistant\n";
-        String raw;
-        try {
-            raw = maybeClient.get().complete("pattern", prompt, DEFAULT_MAX_TOKENS);
-        } catch (RuntimeException ex) {
+        LlamaServerClient client = maybeClient.get();
+
+        GlobalEnvelope global = runGlobalPass(client, minimizedContext, request.parentFolderChain(), tick);
+        if (global == null) {
             return AiPatternSuggestion.advisory(
-                    "Local AI runtime did not return a suggestion.", List.of(), minimizedContext);
+                    "Local AI response could not be parsed as a pattern envelope.",
+                    List.of(), minimizedContext);
         }
-        return parseEnvelope(raw, minimizedContext);
+
+        List<AiFilePatternParse> fileParses = runPerFilePass(
+                client, minimizedContext, global.patterns, request.parentFolderChain(), tick);
+
+        return AiPatternSuggestion.advisory(
+                global.explanation.isBlank() ? "Local AI proposed pattern hints." : global.explanation,
+                global.patterns,
+                fileParses,
+                minimizedContext,
+                global.mediaType,
+                global.confidence);
     }
 
-    private AiPatternSuggestion parseEnvelope(String raw, List<String> minimizedContext) {
+    /**
+     * Number of LLM prompts {@link #suggestPattern} will issue for a given
+     * filename count: one global pass + one call per filename. Used by the
+     * progress reporter to size its bar.
+     */
+    public static int promptCountFor(int filenameCount) {
+        if (filenameCount <= 0) return 0;
+        return 1 + filenameCount;
+    }
+
+    private GlobalEnvelope runGlobalPass(
+            LlamaServerClient client, List<String> filenames, List<String> parentFolderChain, Runnable tick) {
+        List<String> capped = filenames.size() > GLOBAL_SAMPLE_SIZE
+                ? filenames.subList(0, GLOBAL_SAMPLE_SIZE)
+                : filenames;
+        StringBuilder userBuilder = new StringBuilder();
+        if (parentFolderChain != null && !parentFolderChain.isEmpty()) {
+            userBuilder.append("Parent folders (outermost to innermost): ")
+                    .append(String.join(" / ", parentFolderChain))
+                    .append('\n');
+        }
+        userBuilder.append("Filenames:\n").append(String.join("\n", capped)).append("\n/no_think");
+        String userBlock = userBuilder.toString();
+        String prompt = wrapChatMl(GLOBAL_SYSTEM_PROMPT, userBlock);
+        String raw;
+        try {
+            raw = client.complete("pattern-global", prompt, GLOBAL_MAX_TOKENS);
+        } catch (RuntimeException ex) {
+            tick.run();
+            return null;
+        }
+        tick.run();
+        JsonObject root = extractObject(raw);
+        if (root == null) {
+            return null;
+        }
+        return new GlobalEnvelope(
+                stringValue(root, "explanation"),
+                extractStringArray(root, "patterns"),
+                extractMediaType(root),
+                extractConfidence(root));
+    }
+
+    private List<AiFilePatternParse> runPerFilePass(
+            LlamaServerClient client,
+            List<String> filenames,
+            List<String> globalPatterns,
+            List<String> parentFolderChain,
+            Runnable tick) {
+        int n = filenames.size();
+        if (n == 0) {
+            return List.of();
+        }
+        List<AiFilePatternParse> parses = new ArrayList<>(n);
+        for (String filename : filenames) {
+            AiFilePatternParse parse =
+                    runSingleFile(client, filename, globalPatterns, parentFolderChain);
+            if (parse != null) {
+                parses.add(parse);
+            }
+            tick.run();
+        }
+        return parses;
+    }
+
+    private AiFilePatternParse runSingleFile(
+            LlamaServerClient client,
+            String filename,
+            List<String> globalPatterns,
+            List<String> parentFolderChain) {
+        StringBuilder userBlock = new StringBuilder();
+        if (parentFolderChain != null && !parentFolderChain.isEmpty()) {
+            userBlock.append("Parent folders (outermost to innermost): ")
+                    .append(String.join(" / ", parentFolderChain))
+                    .append('\n');
+        }
+        if (!globalPatterns.isEmpty()) {
+            userBlock.append("Group hint patterns: ")
+                    .append(String.join(", ", globalPatterns))
+                    .append('\n');
+        }
+        userBlock.append("Filename: ").append(filename).append("\n/no_think");
+        String prompt = wrapChatMl(PER_FILE_SYSTEM_PROMPT, userBlock.toString());
+        String raw;
+        try {
+            raw = client.complete("pattern-file", prompt, PER_FILE_MAX_TOKENS);
+        } catch (RuntimeException ex) {
+            return null;
+        }
+        JsonObject obj = extractObject(raw);
+        if (obj == null) {
+            return null;
+        }
+        String returnedName = stringValue(obj, "filename");
+        if (returnedName.isBlank()) {
+            // Trust the input filename when the model omitted it; cheaper than
+            // discarding an otherwise-useful parse.
+            returnedName = filename;
+        }
+        return new AiFilePatternParse(
+                returnedName,
+                stringValue(obj, "pattern"),
+                extractTokens(obj),
+                optionalString(obj, "normalizedOrder"),
+                optionalDouble(obj, "confidence"));
+    }
+
+    private static String wrapChatMl(String system, String user) {
+        return "<|im_start|>system\n" + system + "<|im_end|>\n"
+                + "<|im_start|>user\n" + user + "<|im_end|>\n"
+                + "<|im_start|>assistant\n";
+    }
+
+    private static JsonObject extractObject(String raw) {
         String trimmed = raw == null ? "" : raw.trim();
         int braceStart = trimmed.indexOf('{');
         int braceEnd = trimmed.lastIndexOf('}');
         if (braceStart < 0 || braceEnd <= braceStart) {
-            return AiPatternSuggestion.advisory(
-                    fallbackExplanation(trimmed), List.of(), minimizedContext);
+            return null;
         }
-        String json = trimmed.substring(braceStart, braceEnd + 1);
         try {
-            JsonObject root = JsonParser.parseString(json).getAsJsonObject();
-            String explanation = root.has("explanation") ? root.get("explanation").getAsString() : "";
-            List<String> patterns = extractStringArray(root, "patterns");
-            List<AiFilePatternParse> files = extractFileParses(root);
-            Optional<InventoryGroupType> mediaType = extractMediaType(root);
-            OptionalDouble confidence = extractConfidence(root);
-            return AiPatternSuggestion.advisory(
-                    explanation.isBlank() ? "Local AI proposed pattern hints." : explanation,
-                    patterns,
-                    files,
-                    minimizedContext,
-                    mediaType,
-                    confidence);
+            return JsonParser.parseString(trimmed.substring(braceStart, braceEnd + 1)).getAsJsonObject();
         } catch (JsonSyntaxException | IllegalStateException ex) {
-            return AiPatternSuggestion.advisory(
-                    fallbackExplanation(trimmed), List.of(), minimizedContext);
+            return null;
         }
     }
 
@@ -136,30 +300,6 @@ public final class BundledLocalAiPatternAssistant implements AiPatternAssistant 
             }
         }
         return new ArrayList<>(values);
-    }
-
-    private List<AiFilePatternParse> extractFileParses(JsonObject root) {
-        if (!root.has("files") || !root.get("files").isJsonArray()) {
-            return List.of();
-        }
-        List<AiFilePatternParse> parses = new ArrayList<>();
-        for (JsonElement element : root.getAsJsonArray("files")) {
-            if (!element.isJsonObject()) {
-                continue;
-            }
-            JsonObject obj = element.getAsJsonObject();
-            String filename = stringValue(obj, "filename");
-            if (filename.isBlank()) {
-                continue;
-            }
-            parses.add(new AiFilePatternParse(
-                    filename,
-                    stringValue(obj, "pattern"),
-                    extractTokens(obj),
-                    optionalString(obj, "normalizedOrder"),
-                    optionalDouble(obj, "confidence")));
-        }
-        return parses;
     }
 
     private List<AiPatternToken> extractTokens(JsonObject file) {
@@ -243,10 +383,10 @@ public final class BundledLocalAiPatternAssistant implements AiPatternAssistant 
         }
     }
 
-    private String fallbackExplanation(String raw) {
-        if (raw.isBlank()) {
-            return "Local AI returned an empty response.";
-        }
-        return "Local AI response could not be parsed as a pattern envelope.";
+    private record GlobalEnvelope(
+            String explanation,
+            List<String> patterns,
+            Optional<InventoryGroupType> mediaType,
+            OptionalDouble confidence) {
     }
 }
