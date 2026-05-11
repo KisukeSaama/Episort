@@ -24,7 +24,7 @@ import java.util.function.LongConsumer;
 public class Qwen3ModelDownloader {
     public static final String MODEL_FILENAME = "Qwen_Qwen3-1.7B-Q8_0.gguf";
     // Default mirror — pinned community build. Override via EPISORT_MODEL_URL.
-    static final URI DEFAULT_MODEL_URL = URI.create(
+    public static final URI DEFAULT_MODEL_URL = URI.create(
             "https://huggingface.co/bartowski/Qwen_Qwen3-1.7B-GGUF/resolve/main/"
                     + "Qwen_Qwen3-1.7B-Q8_0.gguf");
 

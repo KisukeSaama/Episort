@@ -16,11 +16,12 @@ public final class BundledLocalAiRuntimeProbe implements AiRuntimeProbe {
     static final String RUNTIME_NAME = "episort-local";
 
     private final EmbeddedLlamaRuntime runtime;
+    @SuppressWarnings("unused")
     private final Qwen3ModelDownloader modelDownloader;
 
     public BundledLocalAiRuntimeProbe(EmbeddedLlamaRuntime runtime, Qwen3ModelDownloader modelDownloader) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
-        this.modelDownloader = Objects.requireNonNull(modelDownloader, "modelDownloader");
+        this.modelDownloader = modelDownloader;
     }
 
     @Override
@@ -31,7 +32,7 @@ public final class BundledLocalAiRuntimeProbe implements AiRuntimeProbe {
                     false,
                     "Local AI runtime binaries are missing from the installation.");
         }
-        if (!modelDownloader.isPresent()) {
+        if (!runtime.modelAvailable()) {
             return AiRuntimeStatus.unavailable(
                     new AiHardwareSignals(false, 0),
                     false,

@@ -46,12 +46,21 @@ public final class ScanPatternFormatter {
         String stem = dot > 0 ? baseName.substring(0, dot) : baseName;
         String extension = row.extension().isBlank() ? "" : "." + row.extension().toLowerCase(Locale.ROOT);
 
+        // YEAR token (set by AI/user via setYear) overrides the regex scan of
+        // the original filename — that is exactly what lets the chat assistant
+        // correct a wrong year in the source name.
+        Optional<String> yearOverride = row.inputParse()
+                .flatMap(parse -> parse.tokenValue(ScanInputRole.YEAR))
+                .filter(s -> s.matches("(19|20)\\d{2}"));
         String year = "";
-        Matcher yearMatcher = YEAR.matcher(stem);
         int titleEnd = stem.length();
+        Matcher yearMatcher = YEAR.matcher(stem);
         while (yearMatcher.find()) {
             year = yearMatcher.group(1);
             titleEnd = yearMatcher.start();
+        }
+        if (yearOverride.isPresent()) {
+            year = yearOverride.get();
         }
 
         String titleSource = titleOverride != null && !titleOverride.isBlank()
@@ -59,19 +68,40 @@ public final class ScanPatternFormatter {
                 : row.inputParse()
                         .flatMap(parse -> parse.tokenValue(ScanInputRole.TITLE)
                                 .or(() -> parse.tokenValue(ScanInputRole.SERIES)))
-                        .filter(s -> !s.isBlank())
+                        .filter(s -> hasLetterOrDigit(s))
                         .orElse(stem.substring(0, titleEnd));
 
-        String title = titleSource
+        String title = cleanMovieTitle(titleSource);
+        if (!hasLetterOrDigit(title)) {
+            // Heuristic parser sometimes hands us garbage tokens (e.g. ")" when
+            // a year/parenthesis got mis-tokenized). Fall back to the stem-up-
+            // to-year before declaring the title untitled.
+            String fallback = cleanMovieTitle(stem.substring(0, titleEnd));
+            if (hasLetterOrDigit(fallback)) {
+                title = fallback;
+            } else {
+                title = "Untitled";
+            }
+        }
+        return year.isBlank() ? title + extension : title + " (" + year + ")" + extension;
+    }
+
+    private static String cleanMovieTitle(String raw) {
+        return raw
                 .replaceAll("[._]+", " ")
                 .replaceAll("[\\(\\[\\{].*?[\\)\\]\\}]", " ")
+                .replaceAll("[\\(\\)\\[\\]\\{\\}]+", " ")
                 .replaceAll("\\s*-\\s*", " ")
                 .replaceAll("\\s+", " ")
                 .trim();
-        if (title.isBlank()) {
-            title = "Untitled";
+    }
+
+    private static boolean hasLetterOrDigit(String s) {
+        if (s == null) return false;
+        for (int i = 0; i < s.length(); i++) {
+            if (Character.isLetterOrDigit(s.charAt(i))) return true;
         }
-        return year.isBlank() ? title + extension : title + " (" + year + ")" + extension;
+        return false;
     }
 
     private record Metadata(String series, String season, String episode, String title, String seasonEpisode) {

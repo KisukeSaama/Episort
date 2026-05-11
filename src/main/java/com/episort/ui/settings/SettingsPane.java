@@ -5,6 +5,8 @@ import com.episort.ui.AppShellViewModel;
 import com.episort.ui.UiText;
 import java.io.File;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -37,7 +39,7 @@ public final class SettingsPane {
     @SuppressWarnings("unused")
     private final Runnable onClose;
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
-    private Consumer<AppLanguage> extraSectionLanguageHook;
+    private final List<Consumer<AppLanguage>> extraSectionLanguageHooks = new ArrayList<>();
 
     public SettingsPane(
             Function<Path, AppShellViewModel> configureWorkspace,
@@ -155,15 +157,15 @@ public final class SettingsPane {
         }
         root.getChildren().add(section);
         if (applyLanguageHook != null) {
-            extraSectionLanguageHook = applyLanguageHook;
+            extraSectionLanguageHooks.add(applyLanguageHook);
             applyLanguageHook.accept(currentLanguage);
         }
     }
 
     public void applyLanguage(AppLanguage language) {
         currentLanguage = language;
-        if (extraSectionLanguageHook != null) {
-            extraSectionLanguageHook.accept(language);
+        for (Consumer<AppLanguage> hook : extraSectionLanguageHooks) {
+            hook.accept(language);
         }
         pageEyebrow.setText(UiText.settingsHeading(language));
         pageTitle.setText(UiText.settingsPageTitle(language));

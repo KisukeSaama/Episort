@@ -19,6 +19,8 @@ public final class MediaInventoryScanner {
     private static final Pattern SERIES_PATTERN = Pattern.compile(
             "(?i)(.*?)(?:[ ._\\-]+S\\d{1,2}E\\d{1,4}|[ ._\\-]+\\d{1,2}x\\d{1,4}).*");
     private static final Pattern MOVIE_PATTERN = Pattern.compile("(?i)(.*?)[ ._\\-\\[(](19\\d{2}|20\\d{2})[)\\] ._\\-]?.*");
+    private static final Pattern FOLDER_SEASON_PATTERN = Pattern.compile(
+            "(?i)(.*?)[ ._\\-]+(?:S\\d{1,2}|Season[ ._\\-]?\\d{1,2})(?:[ ._\\-].*)?");
 
     public InventoryScanResult scan(Path inputFolder, InventoryProgressListener progressListener) throws IOException {
         List<Path> files;
@@ -80,15 +82,29 @@ public final class MediaInventoryScanner {
             case SIDECAR -> new GroupSeed(InventoryGroupType.SIDECAR, "sidecar");
             case UNSUPPORTED -> new GroupSeed(InventoryGroupType.UNSUPPORTED, "unsupported");
             case IGNORED -> new GroupSeed(InventoryGroupType.IGNORED, "ignored");
-            case SUPPORTED_VIDEO -> seedForSupported(item.filename());
+            case SUPPORTED_VIDEO -> seedForSupported(item.filename(), parentFolderName(item));
         };
     }
 
-    private static GroupSeed seedForSupported(String filename) {
+    private static String parentFolderName(InventoryItem item) {
+        if (item.parentFolder() == null) {
+            return "";
+        }
+        Path name = item.parentFolder().getFileName();
+        return name == null ? "" : name.toString();
+    }
+
+    private static GroupSeed seedForSupported(String filename, String parentFolderName) {
         String nameWithoutExtension = removeExtension(filename);
         var seriesMatcher = SERIES_PATTERN.matcher(nameWithoutExtension);
         if (seriesMatcher.matches()) {
             return new GroupSeed(InventoryGroupType.LIKELY_SERIES, normalizeSeed(seriesMatcher.group(1)));
+        }
+        if (parentFolderName != null && !parentFolderName.isBlank()) {
+            var folderMatcher = FOLDER_SEASON_PATTERN.matcher(parentFolderName);
+            if (folderMatcher.matches()) {
+                return new GroupSeed(InventoryGroupType.LIKELY_SERIES, normalizeSeed(parentFolderName));
+            }
         }
         var movieMatcher = MOVIE_PATTERN.matcher(nameWithoutExtension);
         if (movieMatcher.matches()) {

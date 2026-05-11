@@ -13,8 +13,14 @@ import java.util.regex.Pattern;
 
 public final class HeuristicAnalysisService {
     private static final Pattern MOVIE_YEAR = Pattern.compile("(?i)^(.*?)[ ._\\-\\[(](19\\d{2}|20\\d{2})[)\\] ._\\-]?.*");
+    private static final Pattern FOLDER_TITLE_SEASON = Pattern.compile(
+            "(?i)(.*?)[ ._\\-]+(?:S(\\d{1,2})|Season[ ._\\-]?(\\d{1,2}))(?:[ ._\\-].*)?");
 
     public AnalyzedVideoFile analyze(InventoryItem item, InventoryGroupType groupType) {
+        return analyze(item, groupType, parentFolderName(item));
+    }
+
+    public AnalyzedVideoFile analyze(InventoryItem item, InventoryGroupType groupType, String parentFolderName) {
         AnalyzedVideoFile file = new AnalyzedVideoFile(item.sourcePath(), item.filename());
         file.set(AnalysisField.EXTENSION, normalizeExtension(item.extension()), FieldSource.HEURISTIC);
         file.set(AnalysisField.MEDIA_TYPE, mediaType(item.type(), groupType), FieldSource.HEURISTIC);
@@ -37,6 +43,7 @@ public final class HeuristicAnalysisService {
                 file.set(AnalysisField.CONFIDENCE, value.confidence().orElseThrow(), FieldSource.HEURISTIC);
             }
         });
+        applyFolderFallback(file, parentFolderName);
         if (parse.isEmpty() && file.mediaType() == VideoMediaType.MOVIE) {
             Matcher matcher = MOVIE_YEAR.matcher(removeExtension(item.filename()));
             if (matcher.matches()) {
@@ -50,6 +57,40 @@ public final class HeuristicAnalysisService {
                 file.mediaType() == VideoMediaType.MOVIE ? TvdbOrder.NOT_APPLICABLE : TvdbOrder.TO_DEFINE,
                 FieldSource.UNKNOWN);
         return file;
+    }
+
+    private static void applyFolderFallback(AnalyzedVideoFile file, String parentFolderName) {
+        if (file.mediaType() != VideoMediaType.SERIES && file.mediaType() != VideoMediaType.SPECIAL) {
+            return;
+        }
+        if (parentFolderName == null || parentFolderName.isBlank()) {
+            return;
+        }
+        Matcher matcher = FOLDER_TITLE_SEASON.matcher(parentFolderName);
+        if (!matcher.matches()) {
+            return;
+        }
+        String folderTitle = clean(matcher.group(1));
+        if (folderTitle != null && !folderTitle.isBlank()) {
+            file.set(AnalysisField.DETECTED_TITLE, folderTitle, FieldSource.HEURISTIC);
+        }
+        if (file.seasonNumber().isEmpty()) {
+            String seasonRaw = matcher.group(2) != null ? matcher.group(2) : matcher.group(3);
+            if (seasonRaw != null) {
+                try {
+                    file.set(AnalysisField.SEASON_NUMBER, Integer.parseInt(seasonRaw), FieldSource.HEURISTIC);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+    }
+
+    private static String parentFolderName(InventoryItem item) {
+        if (item.parentFolder() == null) {
+            return "";
+        }
+        var name = item.parentFolder().getFileName();
+        return name == null ? "" : name.toString();
     }
 
     private static VideoMediaType mediaType(InventoryItemType itemType, InventoryGroupType groupType) {

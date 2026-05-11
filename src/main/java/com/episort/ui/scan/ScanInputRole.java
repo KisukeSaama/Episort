@@ -5,6 +5,7 @@ public enum ScanInputRole {
     SEASON,
     EPISODE,
     TITLE,
+    YEAR,
     EXTENSION,
     NOISE
 }

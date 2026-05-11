@@ -63,6 +63,62 @@ public final class UiText {
         return bundle.getString(prefix + "default");
     }
 
+    /* ---- AI models section ------------------------------------------ */
+
+    public static String aiModelsSectionTitle(AppLanguage language) { return t(language, "ai.models.section.title"); }
+    public static String aiModelsSectionDescription(AppLanguage language) { return t(language, "ai.models.section.description"); }
+    public static String aiEnabledToggleLabel(AppLanguage language) { return t(language, "ai.enabled.toggle.label"); }
+    public static String aiEnabledToggleDescription(AppLanguage language) { return t(language, "ai.enabled.toggle.description"); }
+    public static String aiEnabledRestartHint(AppLanguage language) { return t(language, "ai.enabled.restart.hint"); }
+    public static String aiEnabledRestartTitle(AppLanguage language) { return t(language, "ai.enabled.restart.title"); }
+    public static String aiEnabledRestartMessage(AppLanguage language) { return t(language, "ai.enabled.restart.message"); }
+    public static String aiEnabledRestartConfirm(AppLanguage language) { return t(language, "ai.enabled.restart.confirm"); }
+    public static String aiEnabledDisabledNote(AppLanguage language) { return t(language, "ai.enabled.disabled.note"); }
+    public static String aiModelsUse(AppLanguage language) { return t(language, "ai.models.use"); }
+    public static String aiModelsRecommended(AppLanguage language) { return t(language, "ai.models.recommended"); }
+    public static String aiModelsDownload(AppLanguage language) { return t(language, "ai.models.download"); }
+    public static String aiModelsDelete(AppLanguage language) { return t(language, "ai.models.delete"); }
+    public static String aiModelsStatusPresent(AppLanguage language) { return t(language, "ai.models.status.present"); }
+    public static String aiModelsStatusMissing(AppLanguage language) { return t(language, "ai.models.status.missing"); }
+    public static String aiModelsStatusDownloading(AppLanguage language) { return t(language, "ai.models.status.downloading"); }
+    public static String aiModelsDownloadUnavailable(AppLanguage language) { return t(language, "ai.models.download.unavailable"); }
+    public static String aiModelsDownloadFailed(AppLanguage language, String details) {
+        return t(language, "ai.models.download.failed") + " " + details;
+    }
+    public static String aiModelsDeleteFailed(AppLanguage language, String details) {
+        return t(language, "ai.models.delete.failed") + " " + details;
+    }
+    public static String aiModelsDeleteConfirm(AppLanguage language, String modelName) {
+        return t(language, "ai.models.delete.confirm.prefix") + " " + modelName + " ?";
+    }
+    public static String aiModelsDeleteTitle(AppLanguage language) { return t(language, "ai.models.delete.title"); }
+    public static String aiModelsDeleteMessage(AppLanguage language, String modelName) {
+        return t(language, "ai.models.delete.message.prefix") + " " + modelName
+                + " " + t(language, "ai.models.delete.message.suffix");
+    }
+    public static String aiModelsDownloadFailedTitle(AppLanguage language) { return t(language, "ai.models.download.failed.title"); }
+    public static String aiModelsDownloadUnavailableTitle(AppLanguage language) { return t(language, "ai.models.download.unavailable.title"); }
+    public static String aiModelsDeleteFailedTitle(AppLanguage language) { return t(language, "ai.models.delete.failed.title"); }
+    public static String aiModelsActivating(AppLanguage language, String modelName) {
+        return String.format(t(language, "ai.models.activating"), modelName);
+    }
+    public static String aiModelsActivated(AppLanguage language, String modelName) {
+        return String.format(t(language, "ai.models.activated"), modelName);
+    }
+    public static String aiModelsActivationFailed(AppLanguage language, String details) {
+        return t(language, "ai.models.activation.failed") + " " + details;
+    }
+    public static String aiModelsDownloadFirstHint(AppLanguage language) { return t(language, "ai.models.download.first.hint"); }
+    public static String aiModelsEmpty(AppLanguage language) { return t(language, "ai.models.empty"); }
+    public static String aiModelsDialogOk(AppLanguage language) { return t(language, "ai.models.dialog.ok"); }
+    public static String aiModelsActiveLabel(AppLanguage language) { return t(language, "ai.models.active.label"); }
+    public static String aiModelsActiveNone(AppLanguage language) { return t(language, "ai.models.active.none"); }
+    public static String aiModelsSummaryPrivacyLabel(AppLanguage language) { return t(language, "ai.models.summary.privacy.label"); }
+    public static String aiModelsSummaryPrivacyValue(AppLanguage language) { return t(language, "ai.models.summary.privacy.value"); }
+    public static String aiModelsSummaryDownloadLabel(AppLanguage language) { return t(language, "ai.models.summary.download.label"); }
+    public static String aiModelsSummaryDownloadValue(AppLanguage language) { return t(language, "ai.models.summary.download.value"); }
+    public static String aiModelsSummaryStatusLabel(AppLanguage language) { return t(language, "ai.models.summary.status.label"); }
+
     /* ---- Navigation -------------------------------------------------- */
 
     public static String navScan(AppLanguage language) { return t(language, "nav.scan"); }
@@ -92,6 +148,10 @@ public final class UiText {
         return t(language, "scan.workflow.steps").split("\\|");
     }
 
+    public static String[] scanWorkflowStepsNoAi(AppLanguage language) {
+        return t(language, "scan.workflow.steps.noAi").split("\\|");
+    }
+
     public static String scanMetricTotal(AppLanguage language) { return t(language, "scan.metric.total"); }
     public static String scanMetricSeries(AppLanguage language) { return t(language, "scan.metric.series"); }
     public static String scanMetricMovies(AppLanguage language) { return t(language, "scan.metric.movies"); }
@@ -108,6 +168,7 @@ public final class UiText {
     public static String scanColumnSeason(AppLanguage language) { return t(language, "scan.column.season"); }
     public static String scanColumnEpisode(AppLanguage language) { return t(language, "scan.column.episode"); }
     public static String scanColumnTitle(AppLanguage language) { return t(language, "scan.column.title"); }
+    public static String scanColumnYear(AppLanguage language) { return t(language, "scan.column.year"); }
     public static String scanColumnExtension(AppLanguage language) { return t(language, "scan.column.extension"); }
     public static String scanColumnType(AppLanguage language) { return t(language, "scan.column.type"); }
     public static String scanColumnTvdb(AppLanguage language) { return t(language, "scan.column.tvdb"); }

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -31,16 +32,29 @@ public class EmbeddedLlamaRuntime implements AutoCloseable {
 
     private final Path runtimeZipDir;
     private final Path extractionDir;
-    private final Path modelPath;
+    private final Supplier<Path> modelPathSupplier;
     private final AtomicReference<Process> serverProcess = new AtomicReference<>();
     private final AtomicReference<URI> serverUri = new AtomicReference<>();
+    private final AtomicReference<Path> loadedModelPath = new AtomicReference<>();
     private final Thread shutdownHook;
 
     public EmbeddedLlamaRuntime(Path runtimeZipDir, Path extractionDir, Path modelPath) {
+        this(runtimeZipDir, extractionDir, () -> modelPath);
+    }
+
+    public EmbeddedLlamaRuntime(Path runtimeZipDir, Path extractionDir, Supplier<Path> modelPathSupplier) {
         this.runtimeZipDir = Objects.requireNonNull(runtimeZipDir, "runtimeZipDir");
         this.extractionDir = Objects.requireNonNull(extractionDir, "extractionDir");
-        this.modelPath = Objects.requireNonNull(modelPath, "modelPath");
+        this.modelPathSupplier = Objects.requireNonNull(modelPathSupplier, "modelPathSupplier");
         this.shutdownHook = new Thread(this::stopQuietly, "episort-llama-shutdown");
+    }
+
+    private Path currentModelPath() {
+        return Objects.requireNonNull(modelPathSupplier.get(), "model path supplier returned null");
+    }
+
+    public Optional<Path> activeModelPath() {
+        return Optional.ofNullable(loadedModelPath.get());
     }
 
     /** True when the bundled zips can be located next to the JAR. */
@@ -56,7 +70,8 @@ public class EmbeddedLlamaRuntime implements AutoCloseable {
     }
 
     public boolean modelAvailable() {
-        return Files.isRegularFile(modelPath);
+        Path path = currentModelPath();
+        return Files.isRegularFile(path) && path.toFile().length() > 0;
     }
 
     public Optional<URI> baseUri() {
@@ -75,13 +90,14 @@ public class EmbeddedLlamaRuntime implements AutoCloseable {
         if (!runtimeBinariesAvailable()) {
             throw new IOException("Episort local AI runtime binaries are missing from " + runtimeZipDir);
         }
-        if (!modelAvailable()) {
+        Path modelPath = currentModelPath();
+        if (!Files.isRegularFile(modelPath) || modelPath.toFile().length() == 0) {
             throw new IOException("Episort local AI model is missing at " + modelPath);
         }
         ensureExtracted();
         Path serverExe = locateServerExecutable();
         int port = pickFreePort();
-        ProcessBuilder builder = new ProcessBuilder(serverArgs(serverExe, port));
+        ProcessBuilder builder = new ProcessBuilder(serverArgs(serverExe, port, modelPath));
         builder.redirectErrorStream(true);
         // Capture the server's stdout+stderr to a rolling log file so launch
         // failures are diagnosable. Falls back to DISCARD if the file can't
@@ -102,11 +118,17 @@ public class EmbeddedLlamaRuntime implements AutoCloseable {
         long deadline = System.currentTimeMillis() + readyTimeout.toMillis();
         while (System.currentTimeMillis() < deadline) {
             if (!process.isAlive()) {
+                int exit = process.exitValue();
+                String tail = tailLog(logFile, 6);
+                // Clear the dead process so a subsequent startBlocking/restart
+                // call doesn't short-circuit on the stale reference.
+                serverProcess.compareAndSet(process, null);
                 throw new IOException("Local AI runtime exited before becoming ready (exit "
-                        + process.exitValue() + "). Last log lines: " + tailLog(logFile, 6));
+                        + exit + "). Last log lines: " + tail);
             }
             if (client.isHealthy()) {
                 serverUri.set(uri);
+                loadedModelPath.set(modelPath);
                 return uri;
             }
             Thread.sleep(500);
@@ -115,9 +137,20 @@ public class EmbeddedLlamaRuntime implements AutoCloseable {
         throw new IOException("Local AI runtime did not become ready within " + readyTimeout);
     }
 
+    /**
+     * Stops the running server (if any) and starts a new one using the path
+     * currently returned by the model path supplier. Safe to call from any
+     * thread; blocks the caller for the duration of the start sequence.
+     */
+    public URI restart(java.time.Duration readyTimeout) throws IOException, InterruptedException {
+        stop();
+        return startBlocking(readyTimeout);
+    }
+
     public void stop() {
         Process process = serverProcess.getAndSet(null);
         serverUri.set(null);
+        loadedModelPath.set(null);
         if (process == null) {
             return;
         }
@@ -160,7 +193,7 @@ public class EmbeddedLlamaRuntime implements AutoCloseable {
         stop();
     }
 
-    private List<String> serverArgs(Path serverExe, int port) {
+    private List<String> serverArgs(Path serverExe, int port, Path modelPath) {
         List<String> args = new ArrayList<>();
         args.add(serverExe.toString());
         args.add("-m");
@@ -197,10 +230,34 @@ public class EmbeddedLlamaRuntime implements AutoCloseable {
         // long decode, neither of which we have. Batching wins here instead.
         args.add("--parallel");
         args.add("1");
-        // Flash attention + KV quantization were tried but the bundled
-        // llama-server build rejected them (exit 1). They can be reintroduced
-        // once we're sure the bundled binaries support them.
+        // Flash attention + KV quantization. Halves KV memory at 32K and
+        // gives a ~2x prefill speedup on Ampere/Ada GPUs. If a future bundled
+        // binary regresses on these flags, fall back to removing them.
+        args.add("-fa");
+        args.add("on");
+        args.add("-ctk");
+        args.add("q8_0");
+        args.add("-ctv");
+        args.add("q8_0");
+        // Use the GGUF's embedded Jinja chat template so /v1/chat/completions
+        // formats turns exactly the way Qwen3 expects (incl. tool-calls and
+        // the optional /no_think switch) instead of relying on hand-rolled
+        // ChatML in the client.
+        args.add("--jinja");
+        // Per-model overrides (currently unused — Qwen3 needs none — but the
+        // hook stays wired so a new catalog entry with a broken chat template
+        // can ship its workaround without touching this method).
+        args.addAll(extraArgsFor(modelPath));
         return args;
+    }
+
+    private static List<String> extraArgsFor(Path modelPath) {
+        String fileName = modelPath.getFileName() == null ? "" : modelPath.getFileName().toString();
+        return com.episort.ai.AiModelCatalog.entries().stream()
+                .filter(e -> e.fileName().equalsIgnoreCase(fileName))
+                .findFirst()
+                .map(com.episort.ai.AiModelEntry::extraServerArgs)
+                .orElse(List.of());
     }
 
     private void ensureExtracted() throws IOException {

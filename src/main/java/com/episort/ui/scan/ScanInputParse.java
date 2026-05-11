@@ -56,6 +56,7 @@ public record ScanInputParse(
             case SEASON -> "S:" + token.normalizedValue();
             case EPISODE -> "E:" + token.normalizedValue();
             case TITLE -> "Title: " + token.normalizedValue();
+            case YEAR -> "Year: " + token.normalizedValue();
             case EXTENSION -> "Ext:" + token.normalizedValue();
             case NOISE -> token.normalizedValue();
         };

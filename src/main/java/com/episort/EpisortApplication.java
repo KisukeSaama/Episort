@@ -13,7 +13,8 @@ import com.episort.ai.embedded.Qwen3ModelDownloader;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.AppShell;
 import com.episort.ui.AppShellViewModel;
-import com.episort.ui.settings.LocalAiSection;
+import com.episort.ai.AiModelLibrary;
+import com.episort.ui.settings.AiModelsSection;
 import com.episort.workflow.AiWorkflowGate;
 import com.episort.config.EmbeddedTvdbCredentialsProvider;
 import com.episort.config.FileTvdbCredentialStore;
@@ -56,25 +57,33 @@ public class EpisortApplication extends Application {
     private final java.util.concurrent.atomic.AtomicBoolean runtimeStartupSettled =
             new java.util.concurrent.atomic.AtomicBoolean(false);
     private final Qwen3ModelDownloader modelDownloader = new Qwen3ModelDownloader();
+    private final FileSettingsStore settingsStoreEarly = FileSettingsStore.userProfileStore();
+    private final AiModelLibrary aiModelLibrary = new AiModelLibrary(
+            modelDownloader.modelPath().getParent(),
+            settingsStoreEarly::loadSelectedAiModel,
+            settingsStoreEarly::saveSelectedAiModel);
     private final EmbeddedLlamaRuntime embeddedRuntime = new EmbeddedLlamaRuntime(
             EmbeddedLlamaRuntime.defaultRuntimeZipDir(),
             EmbeddedLlamaRuntime.defaultExtractionDir(),
-            modelDownloader.modelPath());
+            (java.util.function.Supplier<java.nio.file.Path>) aiModelLibrary::activeModelPath);
     private final AiWorkflowGate aiWorkflowGate = new AiWorkflowGate(new AiPrerequisiteService(
             new BundledLocalAiRuntimeProbe(embeddedRuntime, modelDownloader)));
+    private final BundledLocalAiPatternAssistant aiPatternAssistant = new BundledLocalAiPatternAssistant(
+            () -> embeddedRuntime.baseUri().map(LlamaServerClient::new));
     private final AiPatternRefinementService aiPatternRefinementService = new AiPatternRefinementService(
-            aiWorkflowGate,
-            new BundledLocalAiPatternAssistant(
-                    () -> embeddedRuntime.baseUri().map(LlamaServerClient::new)));
+            aiWorkflowGate, aiPatternAssistant);
     private final AiChatService aiChatService = new AiChatService(
             aiWorkflowGate,
             () -> embeddedRuntime.baseUri().map(LlamaServerClient::new));
 
     private volatile AppShell appShellRef;
 
+    private boolean aiEnabledAtStartup = true;
+
     @Override
     public void start(Stage stage) {
-        FileSettingsStore settingsStore = FileSettingsStore.userProfileStore();
+        FileSettingsStore settingsStore = settingsStoreEarly;
+        aiEnabledAtStartup = settingsStore.loadAiEnabled();
         StartupWorkflow startupWorkflow = new StartupWorkflow(
                 new WorkspaceConfigurationService(settingsStore),
                 new TvdbCredentialConfigurationService(
@@ -119,18 +128,25 @@ public class EpisortApplication extends Application {
             AiDebugWindow.show();
         }
         appShell.setLocalAiReadiness(() -> {
+            if (!aiEnabledAtStartup) return true;
             if (!embeddedRuntime.runtimeBinariesAvailable()) return true;
-            if (!modelDownloader.isPresent()) return false;
+            if (aiModelLibrary.selectedId().isEmpty()) return false;
             // Optimistic: assume the runtime will come up. The async starter
             // flips this once it has settled (success or failure), and we
             // refresh the gate then.
             if (!runtimeStartupSettled.get()) return true;
             return embeddedRuntime.baseUri().isPresent();
         });
-        attachLocalAiSection(appShell, viewModel.language());
-        appShell.scanScreen().setAiChatBackend(aiChatService);
-        if (embeddedRuntime.runtimeBinariesAvailable() && modelDownloader.isPresent()) {
-            startEmbeddedRuntimeAsync(appShell);
+        attachAiModelsSection(appShell, viewModel.language(), settingsStore);
+        appShell.scanScreen().setAiAssistanceEnabled(aiEnabledAtStartup);
+        if (aiEnabledAtStartup) {
+            appShell.scanScreen().setAiChatBackend(aiChatService);
+            appShell.scanScreen().setAiPatternAssistant(aiPatternAssistant);
+            if (embeddedRuntime.runtimeBinariesAvailable() && aiModelLibrary.selectedId().isPresent()) {
+                startEmbeddedRuntimeAsync(appShell);
+            } else {
+                runtimeStartupSettled.set(true);
+            }
         } else {
             runtimeStartupSettled.set(true);
         }
@@ -144,20 +160,60 @@ public class EpisortApplication extends Application {
         stage.getScene().getAccelerators().put(combo, AiDebugWindow::toggle);
     }
 
-    private LocalAiSection localAiSection;
+    private AiModelsSection aiModelsSection;
 
-    private void attachLocalAiSection(AppShell appShell, com.episort.ui.AppLanguage language) {
+    private void attachAiModelsSection(
+            AppShell appShell,
+            com.episort.ui.AppLanguage language,
+            FileSettingsStore settingsStore) {
         if (appShell.settingsPane() == null) {
             return;
         }
-        localAiSection = new LocalAiSection(
-                language, modelDownloader, embeddedRuntime, () -> {
-                    runtimeStartupSettled.set(true);
+        aiModelsSection = new AiModelsSection(
+                language,
+                aiModelLibrary,
+                embeddedRuntime,
+                () -> {
+                    // Hot-swap: the active model selection just changed. Restart the
+                    // embedded llama-server in the background so the next AI call
+                    // hits the freshly-loaded model.
+                    restartEmbeddedRuntimeAsync(appShell);
+                },
+                aiEnabledAtStartup,
+                settingsStore::saveAiEnabled);
+        appShell.settingsPane().attachExtraSection(
+                aiModelsSection.root(), aiModelsSection::applyLanguage);
+    }
+
+    private void restartEmbeddedRuntimeAsync(AppShell appShell) {
+        runtimeStartupSettled.set(false);
+        javafx.application.Platform.runLater(() -> {
+            appShell.refreshPrerequisitesGate();
+            appShell.scanScreen().refreshAiChatAvailability();
+            if (aiModelsSection != null) aiModelsSection.refresh();
+        });
+        Thread restarter = new Thread(() -> {
+            try {
+                if (embeddedRuntime.runtimeBinariesAvailable()
+                        && aiModelLibrary.selectedId().isPresent()) {
+                    embeddedRuntime.restart(java.time.Duration.ofMinutes(5));
+                } else {
+                    embeddedRuntime.stop();
+                }
+            } catch (Exception ignored) {
+                // Probe will surface unavailable.
+            } finally {
+                runtimeStartupSettled.set(true);
+                javafx.application.Platform.runLater(() -> {
                     appShell.refreshPrerequisitesGate();
                     appShell.scanScreen().refreshAiChatAvailability();
+                    if (aiModelsSection != null) aiModelsSection.refresh();
                     appShell.reanalyzeLastFolder();
                 });
-        appShell.settingsPane().attachExtraSection(localAiSection.root(), localAiSection::applyLanguage);
+            }
+        }, "episort-local-ai-restart");
+        restarter.setDaemon(true);
+        restarter.start();
     }
 
     private void startEmbeddedRuntimeAsync(AppShell appShell) {
@@ -171,7 +227,7 @@ public class EpisortApplication extends Application {
                 javafx.application.Platform.runLater(() -> {
                     appShell.refreshPrerequisitesGate();
                     appShell.scanScreen().refreshAiChatAvailability();
-                    if (localAiSection != null) localAiSection.refresh();
+                    if (aiModelsSection != null) aiModelsSection.refresh();
                     // If the user already loaded a folder before the runtime
                     // came up, the original refinement was skipped. Re-run it
                     // now that the AI is available.

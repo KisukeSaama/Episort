@@ -40,9 +40,11 @@ public final class AiChatPanel {
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
     private AiChatBackend backend;
     private BiConsumer<AiChatToolCall, ScanRow> applyHandler = (call, row) -> {};
+    private Runnable proposeHandler;
     private ScanRow currentTarget;
     private String currentContext = "";
     private boolean awaitingResponse = false;
+    private Label busyLabel;
 
     public AiChatPanel() {
         heading = new Label();
@@ -78,7 +80,13 @@ public final class AiChatPanel {
 
         renamePromptButton = new Button();
         renamePromptButton.getStyleClass().add("ghost");
-        renamePromptButton.setOnAction(event -> sendText(renamePrompt()));
+        renamePromptButton.setOnAction(event -> {
+            if (proposeHandler != null) {
+                proposeHandler.run();
+            } else {
+                sendText(renamePrompt());
+            }
+        });
 
         sendButton = new Button();
         sendButton.getStyleClass().add("primary");
@@ -123,6 +131,49 @@ public final class AiChatPanel {
 
     public void setApplyHandler(BiConsumer<AiChatToolCall, ScanRow> handler) {
         this.applyHandler = handler == null ? (c, r) -> {} : handler;
+    }
+
+    /** Replaces the chat-LLM "Proposer" action with structured-analysis driven by the caller. */
+    public void setProposeHandler(Runnable handler) {
+        this.proposeHandler = handler;
+    }
+
+    /** Appends an assistant message bubble programmatically (used by the structured propose path). */
+    public void appendAssistantText(String text) {
+        if (text == null || text.isBlank()) return;
+        appendMessage(messagesBox, "assistant", text);
+        scrollToBottom();
+    }
+
+    /** Appends a tool-call confirmation card bound to a specific target row. */
+    public void appendProposalCard(AiChatToolCall call, ScanRow target) {
+        appendToolCallCard(messagesBox, call, target);
+    }
+
+    /** Appends a single aggregated confirmation card bundling multiple tool calls against one row. */
+    public void appendAggregatedProposalCard(List<AiChatToolCall> calls, ScanRow target) {
+        appendAggregatedToolCallCard(messagesBox, calls, target);
+    }
+
+    /** Locks/unlocks the panel during a long-running propose analysis. */
+    public void setBusy(boolean busy, String hint) {
+        awaitingResponse = busy;
+        if (busy) {
+            if (busyLabel == null) {
+                busyLabel = appendMessage(messagesBox, "assistant",
+                        hint == null || hint.isBlank() ? "…" : hint);
+            } else if (hint != null && !hint.isBlank()) {
+                replaceMessageContent(busyLabel, hint);
+            }
+            scrollToBottom();
+        } else if (busyLabel != null) {
+            VBox bubble = (VBox) busyLabel.getParent();
+            if (bubble != null && bubble.getParent() instanceof HBox row) {
+                messagesBox.getChildren().remove(row);
+            }
+            busyLabel = null;
+        }
+        refreshAvailability();
     }
 
     public void setTarget(ScanRow row, String context) {
@@ -206,6 +257,10 @@ public final class AiChatPanel {
         AiChatTurn turn = new AiChatTurn(currentContext, List.of(), text, currentLanguage);
         StringBuilder accumulated = new StringBuilder();
         final Label[] assistantLabel = new Label[1];
+        // Buffer tool calls across the turn so multiple structured edits
+        // (e.g. setTitle + setYear) appear as a SINGLE confirmation card the
+        // user accepts in one click, instead of N stacked cards.
+        final java.util.List<AiChatToolCall> pendingCalls = new java.util.ArrayList<>();
         backend.send(turn, new AiChatStreamSink() {
             @Override
             public void onToken(String chunk) {
@@ -225,7 +280,7 @@ public final class AiChatPanel {
 
             @Override
             public void onToolCall(AiChatToolCall toolCall) {
-                Platform.runLater(() -> appendToolCallCard(messageBox, toolCall, target));
+                Platform.runLater(() -> pendingCalls.add(toolCall));
             }
 
             @Override
@@ -241,6 +296,10 @@ public final class AiChatPanel {
                     } else if (assistantLabel[0] != null) {
                         messageBox.getChildren().remove(assistantLabel[0]);
                         assistantLabel[0] = null;
+                    }
+                    if (!pendingCalls.isEmpty()) {
+                        appendAggregatedToolCallCard(messageBox, List.copyOf(pendingCalls), target);
+                        pendingCalls.clear();
                     }
                     awaitingResponse = false;
                     refreshAvailability();
@@ -303,12 +362,28 @@ public final class AiChatPanel {
     }
 
     private void appendToolCallCard(VBox box, AiChatToolCall toolCall, ScanRow target) {
+        appendAggregatedToolCallCard(box, List.of(toolCall), target);
+    }
+
+    /**
+     * Renders a single confirmation card that bundles N tool calls. The user
+     * confirms once, and all calls are applied in order against the same row.
+     * One bullet per action so the user sees exactly what will happen.
+     */
+    private void appendAggregatedToolCallCard(VBox box, List<AiChatToolCall> calls, ScanRow target) {
+        if (calls == null || calls.isEmpty()) return;
+
         Label title = new Label(UiText.aiChatToolCallTitle(currentLanguage));
         title.getStyleClass().add("ai-chat-tool-title");
 
-        Label desc = new Label(ScanRowToolbox.describe(toolCall, target));
-        desc.setWrapText(true);
-        desc.getStyleClass().add("ai-chat-tool-desc");
+        VBox descList = new VBox(2);
+        descList.getStyleClass().add("ai-chat-tool-desc");
+        for (AiChatToolCall call : calls) {
+            String prefix = calls.size() > 1 ? "• " : "";
+            Label item = new Label(prefix + ScanRowToolbox.describe(call, target));
+            item.setWrapText(true);
+            descList.getChildren().add(item);
+        }
 
         Button confirm = new Button(UiText.aiChatToolConfirm(currentLanguage));
         confirm.getStyleClass().add("primary");
@@ -321,11 +396,13 @@ public final class AiChatPanel {
         outcome.setManaged(false);
 
         HBox actions = new HBox(8, confirm, cancel);
-        VBox card = new VBox(6, title, desc, actions, outcome);
+        VBox card = new VBox(6, title, descList, actions, outcome);
         card.getStyleClass().add("ai-chat-tool-card");
 
         confirm.setOnAction(event -> {
-            applyHandler.accept(toolCall, target);
+            for (AiChatToolCall call : calls) {
+                applyHandler.accept(call, target);
+            }
             confirm.setDisable(true);
             cancel.setDisable(true);
             outcome.setText(UiText.aiChatToolApplied(currentLanguage));

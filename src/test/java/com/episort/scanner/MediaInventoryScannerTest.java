@@ -80,6 +80,24 @@ class MediaInventoryScannerTest {
     }
 
     @Test
+    void promotesUnknownFilenamesToSeriesWhenParentFolderCarriesSeasonMarker() throws Exception {
+        Path input = Files.createDirectory(tempDir.resolve("input"));
+        Path season = Files.createDirectory(input.resolve("Haikyu.S01.MULTi.1080p.BluRay.x264-SHiNiGAMi"));
+        Files.createFile(season.resolve("sgi-hkyu01.1080p.multi.mkv"));
+        Files.createFile(season.resolve("sgi-hkyu02.1080p.multi.mkv"));
+        Files.createFile(season.resolve("sgi-hkyu03.1080p.multi.mkv"));
+
+        InventoryScanResult result = new MediaInventoryScanner().scan(input, progress -> {});
+
+        List<InventoryGroup> seriesGroups = result.groups().stream()
+                .filter(group -> group.type() == InventoryGroupType.LIKELY_SERIES)
+                .toList();
+        assertEquals(1, seriesGroups.size(), "all three episodes should land in a single series group");
+        assertEquals(3, seriesGroups.getFirst().items().size());
+        assertEquals(0, result.summary().unknownItemCount());
+    }
+
+    @Test
     void reportsProgressAndSummaryForLargeInventory() throws Exception {
         Path input = Files.createDirectory(tempDir.resolve("input"));
         for (int index = 1; index <= 2000; index++) {

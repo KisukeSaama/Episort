@@ -14,6 +14,8 @@ import java.util.Properties;
 public final class FileSettingsStore implements SettingsStore {
     private static final String WORKSPACE_DIRECTORY = "workspaceDirectory";
     private static final String LANGUAGE = "language";
+    private static final String SELECTED_AI_MODEL = "selectedAiModel";
+    private static final String AI_ENABLED = "aiEnabled";
 
     private final Path settingsFile;
 
@@ -103,6 +105,43 @@ public final class FileSettingsStore implements SettingsStore {
         } else {
             properties.setProperty(LANGUAGE, language);
         }
+        writeProperties(properties);
+    }
+
+    public Optional<String> loadSelectedAiModel() {
+        if (!Files.exists(settingsFile)) {
+            return Optional.empty();
+        }
+        Properties properties = readExistingProperties();
+        String value = properties.getProperty(SELECTED_AI_MODEL);
+        return (value == null || value.isBlank()) ? Optional.empty() : Optional.of(value);
+    }
+
+    public void saveSelectedAiModel(String modelId) {
+        Properties properties = readExistingProperties();
+        if (modelId == null || modelId.isBlank()) {
+            properties.remove(SELECTED_AI_MODEL);
+        } else {
+            properties.setProperty(SELECTED_AI_MODEL, modelId);
+        }
+        writeProperties(properties);
+    }
+
+    public boolean loadAiEnabled() {
+        if (!Files.exists(settingsFile)) {
+            return true;
+        }
+        Properties properties = readExistingProperties();
+        String value = properties.getProperty(AI_ENABLED);
+        if (value == null || value.isBlank()) {
+            return true;
+        }
+        return !"false".equalsIgnoreCase(value.trim());
+    }
+
+    public void saveAiEnabled(boolean enabled) {
+        Properties properties = readExistingProperties();
+        properties.setProperty(AI_ENABLED, Boolean.toString(enabled));
         writeProperties(properties);
     }
 

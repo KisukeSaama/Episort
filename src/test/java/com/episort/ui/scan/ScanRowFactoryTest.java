@@ -49,6 +49,29 @@ class ScanRowFactoryTest {
     }
 
     @Test
+    void buildsProposedNameWhenSeasonMarkerLivesOnlyInParentFolder() {
+        Path source = Path.of("C:/Media/Haikyu.S01.MULTi.1080p.BluRay.x264-SHiNiGAMi/sgi-hkyu01.1080p.multi.mkv")
+                .toAbsolutePath().normalize();
+        InventoryItem video = new InventoryItem(
+                source, "sgi-hkyu01.1080p.multi.mkv", "mkv", source.getParent(), InventoryItemType.SUPPORTED_VIDEO, true);
+        InventoryScanResult result = new InventoryScanResult(
+                List.of(video),
+                List.of(new InventoryGroup(
+                        InventoryGroupType.LIKELY_SERIES,
+                        "Haikyu S01 MULTi 1080p BluRay x264-SHiNiGAMi",
+                        List.of(video),
+                        false)),
+                summary(1, 0, 0, 0, 1, 0, 0));
+
+        ScanRow row = ScanRowFactory.from(result).get(0);
+
+        assertSame(ScanMediaType.SERIES, row.mediaType());
+        assertTrue(row.proposedFilename().isPresent(), "proposed name should be generated from folder metadata");
+        assertTrue(row.proposedFilename().orElseThrow().startsWith("Haikyu - S01E01"),
+                "expected 'Haikyu - S01E01...' but got: " + row.proposedFilename().orElseThrow());
+    }
+
+    @Test
     void mapsBatchTvdbGroupsFromRealInventoryGroups() {
         Path source = Path.of("C:/Media/Show.S01E01.mkv").toAbsolutePath().normalize();
         InventoryItem video = new InventoryItem(

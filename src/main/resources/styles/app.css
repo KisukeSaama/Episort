@@ -1851,3 +1851,263 @@
     -fx-font-size: 12px;
     -fx-font-style: italic;
 }
+
+/* ---- 22. AI models settings section ---------------------------------- */
+
+.ai-models-list {
+    -fx-spacing: 8;
+}
+
+.ai-model-row {
+    -fx-padding: 12 14 12 14;
+    -fx-background-color: rgba(15,18,24,0.55);
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: rgba(249,115,22,0.10);
+    -fx-border-width: 1;
+    -fx-min-height: 64;
+    -fx-pref-height: 64;
+}
+
+.ai-model-row:hover {
+    -fx-background-color: rgba(20,23,30,0.78);
+    -fx-border-color: rgba(249,115,22,0.28);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 14, 0.05, 0, 4);
+}
+
+.ai-model-row:focused {
+    -fx-border-color: rgba(249,115,22,0.45);
+}
+
+.ai-model-row.active {
+    -fx-background-color: linear-gradient(to right,
+        rgba(249,115,22,0.18) 0%,
+        rgba(249,115,22,0.06) 60%,
+        rgba(20,23,30,0.78) 100%);
+    -fx-border-color: rgba(249,115,22,0.65);
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.25), 16, 0.05, 0, 4);
+}
+
+.ai-model-name {
+    -fx-font-size: 13.5px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f5f7fb;
+}
+
+.ai-model-row.active .ai-model-name {
+    -fx-text-fill: #fff5ec;
+}
+
+.ai-model-description {
+    -fx-font-size: 12px;
+    -fx-text-fill: #8a93a3;
+    -fx-text-overrun: ellipsis;
+}
+
+.ai-model-active-icon {
+    -fx-padding: 0;
+}
+
+.ai-model-active-check {
+    -fx-fill: transparent;
+    -fx-stroke: #f97316;
+    -fx-stroke-width: 2.4;
+    -fx-stroke-line-cap: round;
+    -fx-stroke-line-join: round;
+    -fx-scale-x: 0.7;
+    -fx-scale-y: 0.7;
+}
+
+/* Chips ---------------------------------------------------------------- */
+
+.chip {
+    -fx-padding: 2 8 2 8;
+    -fx-font-size: 10.5px;
+    -fx-font-weight: 700;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-border-width: 1;
+}
+
+.chip-provider {
+    -fx-background-color: rgba(138,147,163,0.10);
+    -fx-border-color: rgba(138,147,163,0.28);
+    -fx-text-fill: #b8c0cc;
+}
+
+.chip-recommended {
+    -fx-background-color: rgba(249,115,22,0.14);
+    -fx-border-color: rgba(249,115,22,0.45);
+    -fx-text-fill: #fb923c;
+}
+
+/* Status pill ---------------------------------------------------------- */
+
+.ai-status-pill {
+    -fx-padding: 3 9 3 9;
+    -fx-font-size: 10.5px;
+    -fx-font-weight: 700;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-border-width: 1;
+}
+
+.ai-status-pill-installed {
+    -fx-background-color: rgba(34,197,94,0.12);
+    -fx-border-color: rgba(34,197,94,0.40);
+    -fx-text-fill: #86efac;
+}
+
+.ai-status-pill-missing {
+    -fx-background-color: rgba(138,147,163,0.10);
+    -fx-border-color: rgba(138,147,163,0.30);
+    -fx-text-fill: #98a2b3;
+}
+
+.ai-status-pill-working {
+    -fx-background-color: rgba(251,146,60,0.14);
+    -fx-border-color: rgba(251,146,60,0.45);
+    -fx-text-fill: #fb923c;
+}
+
+/* Status dot ----------------------------------------------------------- */
+
+.ai-status-dot {
+    -fx-stroke: rgba(0,0,0,0.30);
+    -fx-stroke-width: 0.5;
+}
+
+.ai-status-dot-installed { -fx-fill: #22c55e; -fx-effect: dropshadow(gaussian, rgba(34,197,94,0.55), 8, 0, 0, 0); }
+.ai-status-dot-missing   { -fx-fill: #5a6271; }
+.ai-status-dot-working   { -fx-fill: #fb923c; -fx-effect: dropshadow(gaussian, rgba(251,146,60,0.55), 8, 0, 0, 0); }
+
+/* Icon button ---------------------------------------------------------- */
+
+.icon-button {
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+    -fx-pref-width: 32;
+    -fx-pref-height: 32;
+    -fx-max-width: 32;
+    -fx-max-height: 32;
+    -fx-padding: 0;
+    -fx-background-color: rgba(255,255,255,0.04);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+
+.icon-button:hover {
+    -fx-background-color: rgba(249,115,22,0.14);
+    -fx-border-color: rgba(249,115,22,0.40);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.35), 10, 0, 0, 0);
+}
+
+.icon-button:focused {
+    -fx-border-color: rgba(249,115,22,0.65);
+}
+
+.icon-button:disabled {
+    -fx-opacity: 0.40;
+    -fx-cursor: default;
+    -fx-effect: null;
+}
+
+.icon-button-glyph {
+    -fx-fill: transparent;
+    -fx-stroke: #b8c0cc;
+    -fx-stroke-width: 1.8;
+    -fx-stroke-line-cap: round;
+    -fx-stroke-line-join: round;
+    -fx-scale-x: 0.62;
+    -fx-scale-y: 0.62;
+}
+
+.icon-button-accent .icon-button-glyph { -fx-stroke: #fb923c; }
+.icon-button-accent:hover .icon-button-glyph { -fx-stroke: #fdba74; }
+
+.icon-button-danger .icon-button-glyph { -fx-stroke: #f87171; }
+.icon-button-danger:hover { -fx-background-color: rgba(248,113,113,0.14); -fx-border-color: rgba(248,113,113,0.45); -fx-effect: dropshadow(gaussian, rgba(248,113,113,0.35), 10, 0, 0, 0); }
+.icon-button-danger:hover .icon-button-glyph { -fx-stroke: #fca5a5; }
+
+/* ---- 22b. AI models — non-installed + spinner + empty hint ---------- */
+
+.ai-model-row.not-installed {
+    -fx-background-color: rgba(15,18,24,0.40);
+    -fx-border-color: rgba(255,255,255,0.05);
+}
+
+.ai-model-row.not-installed:hover {
+    -fx-background-color: rgba(15,18,24,0.55);
+    -fx-border-color: rgba(255,255,255,0.10);
+    -fx-effect: null;
+}
+
+.ai-model-row.not-installed .ai-model-name { -fx-text-fill: #c5cbd6; }
+.ai-model-row.not-installed .ai-model-description { -fx-text-fill: #6e7785; }
+
+.ai-models-empty-hint {
+    -fx-padding: 10 0 0 2;
+    -fx-font-size: 12px;
+    -fx-text-fill: #98a2b3;
+}
+
+.ai-switch {
+    -fx-background-color: #2a2f3a;
+    -fx-background-radius: 999;
+    -fx-border-color: #3a3f4b;
+    -fx-border-radius: 999;
+    -fx-border-width: 1;
+}
+.ai-switch:hover {
+    -fx-border-color: #5a6271;
+}
+.ai-switch:focused {
+    -fx-border-color: #fb923c;
+}
+.ai-switch.on {
+    -fx-background-color: #fb923c;
+    -fx-border-color: #fb923c;
+}
+.ai-switch-thumb {
+    -fx-fill: #cbd5e1;
+}
+.ai-switch.on .ai-switch-thumb {
+    -fx-fill: #0b0d12;
+}
+
+.ai-enabled-restart-hint {
+    -fx-padding: 4 0 0 2;
+    -fx-font-size: 11px;
+    -fx-text-fill: #fb923c;
+    -fx-font-style: italic;
+}
+
+.icon-button-spinner {
+    -fx-progress-color: #fb923c;
+}
+.icon-button-spinner > .indicator {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+/* Destructive button (used by the custom delete dialog) ---------------- */
+
+.button.destructive {
+    -fx-background-color: #ef4444;
+    -fx-border-color: transparent;
+    -fx-text-fill: #fff5f5;
+}
+
+.button.destructive:hover {
+    -fx-background-color: #f87171;
+    -fx-effect: dropshadow(gaussian, rgba(239,68,68,0.55), 18, 0, 0, 0);
+}
+
+.button.destructive:disabled {
+    -fx-opacity: 0.45;
+    -fx-effect: null;
+}

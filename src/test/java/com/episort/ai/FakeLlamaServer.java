@@ -20,8 +20,8 @@ import java.util.Optional;
 
 /**
  * Minimal in-process fake of the embedded llama-server. Auto-handles
- * {@code /health} (200 OK) and {@code /completion} (returns the canned JSON
- * envelope set via {@link #setNextContent}). Backed by a temp directory that
+ * {@code /health} (200 OK) and {@code /v1/chat/completions} (returns the
+ * canned JSON envelope set via {@link #setNextContent}). Backed by a temp directory that
  * mimics the runtime+model layout so {@link BundledLocalAiRuntimeProbe} can
  * be exercised end-to-end.
  */
@@ -48,9 +48,10 @@ final class FakeLlamaServer implements AutoCloseable {
 
         this.server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/health", exchange -> respond(exchange, 200, "{\"status\":\"ok\"}"));
-        server.createContext("/completion", exchange -> {
+        server.createContext("/v1/chat/completions", exchange -> {
             String content = pollContent();
-            String body = "{\"content\":" + jsonString(content) + "}";
+            String body = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":"
+                    + jsonString(content) + "},\"finish_reason\":\"stop\"}]}";
             respond(exchange, 200, body);
         });
         server.start();

@@ -4,8 +4,10 @@ import com.episort.ai.AiChatBackend;
 import com.episort.ai.AiChatToolCall;
 import com.episort.ai.AiFilePatternParse;
 import com.episort.ai.AiGroupSuggestion;
+import com.episort.ai.AiPatternAssistant;
 import com.episort.ai.AiPatternRefinementResult;
 import com.episort.ai.AiPatternSuggestion;
+import com.episort.ai.AiPatternSuggestionRequest;
 import com.episort.ai.AiPatternToken;
 import com.episort.scanner.InventoryGroup;
 import com.episort.scanner.InventoryGroupType;
@@ -98,6 +100,7 @@ public final class ScanScreen {
     private final TableColumn<ScanRow, String> seasonColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> episodeColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> titleColumn = new TableColumn<>();
+    private final TableColumn<ScanRow, String> yearColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> extensionColumn = new TableColumn<>();
     private final TableColumn<ScanRow, ScanMediaType> typeColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> orderColumn = new TableColumn<>();
@@ -116,6 +119,7 @@ public final class ScanScreen {
     private final SimpleBooleanProperty syncingSelection = new SimpleBooleanProperty(false);
     private boolean loadedFolder;
     private boolean loading;
+    private boolean aiAssistanceEnabled = true;
     private Optional<java.nio.file.Path> workspaceRoot = Optional.empty();
     private String searchQuery = "";
     private ScanRowFilter activeFilter = ScanRowFilter.ALL;
@@ -123,6 +127,7 @@ public final class ScanScreen {
     private Pane currentBody;
     private boolean stackedLayout = false;
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
+    private AiPatternAssistant aiPatternAssistant;
 
     public ScanScreen() {
         heading = new Label();
@@ -162,6 +167,7 @@ public final class ScanScreen {
         detailRoot.setPrefWidth(380);
         detailRoot.setMaxWidth(420);
         aiChatPanel.setApplyHandler(this::applyToolCall);
+        aiChatPanel.setProposeHandler(this::onProposeRename);
 
         VBox tableStack = new VBox(12, filterBar, table, aiChatPanel.root());
         VBox.setVgrow(table, Priority.ALWAYS);
@@ -207,6 +213,7 @@ public final class ScanScreen {
         seasonColumn.setText(UiText.scanColumnSeason(language));
         episodeColumn.setText(UiText.scanColumnEpisode(language));
         titleColumn.setText(UiText.scanColumnTitle(language));
+        yearColumn.setText(UiText.scanColumnYear(language));
         extensionColumn.setText(UiText.scanColumnExtension(language));
         typeColumn.setText(UiText.scanColumnType(language));
         orderColumn.setText(UiText.scanColumnOrder(language));
@@ -231,6 +238,17 @@ public final class ScanScreen {
         aiChatPanel.setBackend(backend);
     }
 
+    public void setAiAssistanceEnabled(boolean enabled) {
+        this.aiAssistanceEnabled = enabled;
+        aiChatPanel.root().setVisible(enabled);
+        aiChatPanel.root().setManaged(enabled);
+        rebuildWorkflowSteps(currentLanguage);
+    }
+
+    public void setAiPatternAssistant(AiPatternAssistant assistant) {
+        this.aiPatternAssistant = assistant;
+    }
+
     public void refreshAiChatAvailability() {
         aiChatPanel.refreshAvailability();
     }
@@ -243,7 +261,9 @@ public final class ScanScreen {
     private void rebuildWorkflowSteps(AppLanguage language) {
         workflowSteps.getChildren().clear();
         steps.clear();
-        String[] labels = UiText.scanWorkflowSteps(language);
+        String[] labels = aiAssistanceEnabled
+                ? UiText.scanWorkflowSteps(language)
+                : UiText.scanWorkflowStepsNoAi(language);
         for (int index = 0; index < labels.length; index++) {
             WorkflowStep step = new WorkflowStep(index + 1, labels[index]);
             steps.add(step);
@@ -396,18 +416,22 @@ public final class ScanScreen {
                 row.setNoteText(Optional.of("AI : " + String.join(", ", ps.suggestedPatterns())));
             }
             if (canAcceptAiParse(row)) {
-                aiParseFor(row, ps)
-                        .map(parse -> parse.withSource(ScanInputParseSource.AI))
-                        .ifPresent(parse -> {
-                            row.setInputParse(Optional.of(parse));
-                            row.setInputPattern(Optional.of(parse.summary().isBlank() ? parse.label() : parse.summary()));
-                            if (parse.confidence().isPresent()) {
-                                row.setConfidence(parse.confidence());
-                            }
-                            parse.normalizedOrder().ifPresent(order -> row.setOrder(Optional.of(order)));
-                            recomputeProposedName(row);
-                        });
+                Optional<ScanInputParse> aiParse = aiParseFor(row, ps)
+                        .map(parse -> defendFolderDerivedSeries(parse, parentFolderChain(row.sourcePath())))
+                        .map(parse -> parse.withSource(ScanInputParseSource.AI));
+                aiParse.ifPresent(parse -> {
+                    row.setInputParse(Optional.of(parse));
+                    row.setInputPattern(Optional.of(parse.summary().isBlank() ? parse.label() : parse.summary()));
+                    if (parse.confidence().isPresent()) {
+                        row.setConfidence(parse.confidence());
+                    }
+                    parse.normalizedOrder().ifPresent(order -> row.setOrder(Optional.of(order)));
+                });
             }
+            // Always recompute the proposed name — even when the AI returned no
+            // usable per-file tokens, we may have updated mediaType above and
+            // the heuristic fallback can still produce a sensible name.
+            recomputeProposedName(row);
         }
         table.refresh();
     }
@@ -429,6 +453,83 @@ public final class ScanScreen {
 
     private static boolean canAcceptAiParse(ScanRow row) {
         return row.inputParse().map(ScanInputParse::source).filter(ScanInputParseSource.USER::equals).isEmpty();
+    }
+
+    /**
+     * Belt-and-suspenders: even with the strengthened per-file prompt, a small
+     * model still sometimes returns a release-tag-shaped SERIES (e.g. "sgi hkyu",
+     * "tfa") when a clean parent-folder title is staring it in the face. If the
+     * AI's SERIES looks like junk and the parent folder yields a clean title, we
+     * override here so the proposed name doesn't carry the release-tag garbage
+     * into the user's preview.
+     */
+    private static ScanInputParse defendFolderDerivedSeries(ScanInputParse parse, java.util.List<String> parentChain) {
+        Optional<String> cleanFolder = cleanedParentTitle(parentChain);
+        if (cleanFolder.isEmpty()) {
+            return parse;
+        }
+        java.util.List<ScanInputToken> tokens = new java.util.ArrayList<>(parse.tokens());
+        Optional<ScanInputToken> currentSeries = tokens.stream()
+                .filter(t -> t.role() == ScanInputRole.SERIES)
+                .findFirst();
+        boolean shouldOverride;
+        if (currentSeries.isEmpty()) {
+            shouldOverride = true;
+        } else {
+            String existing = currentSeries.get().normalizedValue();
+            // No length comparison here: the bogus value (e.g. "sgi hkyu",
+            // 8 chars) can easily be longer than the real cleaned title
+            // (e.g. "Haikyu", 6 chars). If the value matches the release-tag
+            // shape, trust the folder title regardless of relative length.
+            shouldOverride = looksLikeReleaseTag(existing);
+        }
+        if (!shouldOverride) {
+            return parse;
+        }
+        tokens.removeIf(t -> t.role() == ScanInputRole.SERIES);
+        String clean = cleanFolder.get();
+        tokens.add(0, new ScanInputToken(ScanInputRole.SERIES, clean, clean, 0, 0));
+        return new ScanInputParse(parse.label(), tokens, parse.normalizedOrder(), parse.confidence(), parse.source());
+    }
+
+    private static boolean looksLikeReleaseTag(String value) {
+        if (value == null || value.isBlank()) return true;
+        String trimmed = value.trim();
+        if (trimmed.length() > 12) return false;
+        // Short tokens with optional dashes/digits/spaces — release-group
+        // initials and shorthand patterns. Accept either case: the local
+        // model sometimes title-cases its normalizedValue ("Sgi Hkyu") even
+        // though the filename shorthand is lowercase ("sgi-hkyu"), and we
+        // want to override either way when a clean folder title is available.
+        return trimmed.matches("(?i)[a-z][a-z0-9 _.\\-]{1,11}");
+    }
+
+    private static Optional<String> cleanedParentTitle(java.util.List<String> parentChain) {
+        if (parentChain == null || parentChain.isEmpty()) return Optional.empty();
+        // Walk innermost → outermost. Skip season-only folders ("S01", "Season 2",
+        // "Saison 03") so a "Haikyu/S01/file.mkv" layout still surfaces "Haikyu"
+        // as the series name rather than a useless "S01".
+        for (int i = parentChain.size() - 1; i >= 0; i--) {
+            String name = parentChain.get(i);
+            if (name == null || name.isBlank()) continue;
+            if (isSeasonOnlyFolder(name)) continue;
+            String cut = name
+                    .split("(?i)[._\\-](?:s\\d{2}|season\\s*\\d+|saison\\s*\\d+|complete|multi|truefrench|french|vostfr|dual|1080p|720p|2160p|bluray|web-?dl|web|hdtv|x264|x265|h264|h265|hevc|10bit|ddp\\d|aac|flac|atmos)\\b.*$", 2)[0];
+            String cleaned = cut
+                    .replaceAll("[._]+", " ")
+                    .replaceAll("\\s+", " ")
+                    .trim();
+            if (cleaned.isBlank() || cleaned.length() < 2) continue;
+            if (isSeasonOnlyFolder(cleaned)) continue;
+            return Optional.of(cleaned);
+        }
+        return Optional.empty();
+    }
+
+    private static boolean isSeasonOnlyFolder(String name) {
+        if (name == null) return false;
+        String trimmed = name.trim();
+        return trimmed.matches("(?i)s\\d{1,2}|season\\s*\\d{1,2}|saison\\s*\\d{1,2}");
     }
 
     private static Optional<ScanInputParse> aiParseFor(ScanRow row, AiPatternSuggestion suggestion) {
@@ -454,8 +555,25 @@ public final class ScanScreen {
 
     private static Optional<ScanInputToken> toScanToken(AiPatternToken token) {
         try {
+            ScanInputRole role = ScanInputRole.valueOf(token.role().toUpperCase(Locale.ROOT));
+            // Drop tokens whose normalizedValue carries no letter/digit (e.g.
+            // "(", ")", "-"): these come from a 1.7B model misaligning offsets
+            // around bracketed segments and would otherwise pollute the token
+            // columns and the proposed name. Numeric roles still need digits;
+            // textual roles still need letters.
+            String normalized = token.normalizedValue() == null ? "" : token.normalizedValue();
+            boolean hasContent = false;
+            for (int i = 0; i < normalized.length(); i++) {
+                if (Character.isLetterOrDigit(normalized.charAt(i))) {
+                    hasContent = true;
+                    break;
+                }
+            }
+            if (!hasContent) {
+                return Optional.empty();
+            }
             return Optional.of(new ScanInputToken(
-                    ScanInputRole.valueOf(token.role().toUpperCase(Locale.ROOT)),
+                    role,
                     token.rawValue(),
                     token.normalizedValue(),
                     token.start(),
@@ -463,6 +581,17 @@ public final class ScanScreen {
         } catch (IllegalArgumentException ex) {
             return Optional.empty();
         }
+    }
+
+    private static Optional<ScanMediaType> mediaTypeFromParse(ScanInputParse parse) {
+        String pattern = parse.label() == null ? "" : parse.label().trim().toLowerCase(Locale.ROOT);
+        boolean hasOrder = parse.normalizedOrder().filter(s -> !s.isBlank()).isPresent();
+        if (hasOrder) return Optional.of(ScanMediaType.SERIES);
+        return switch (pattern) {
+            case "sxxexx", "nxnn", "absolute" -> Optional.of(ScanMediaType.SERIES);
+            case "unknown", "" -> Optional.of(ScanMediaType.MOVIE);
+            default -> Optional.empty();
+        };
     }
 
     private static ScanMediaType toScanMediaType(InventoryGroupType type) {
@@ -573,6 +702,7 @@ public final class ScanScreen {
         configureRoleColumn(seasonColumn, ScanInputRole.SEASON, 70);
         configureRoleColumn(episodeColumn, ScanInputRole.EPISODE, 78);
         configureRoleColumn(titleColumn, ScanInputRole.TITLE, 200);
+        configureRoleColumn(yearColumn, ScanInputRole.YEAR, 70);
         configureExtensionColumn();
         configureTypeColumn();
         configureOrderColumn();
@@ -589,6 +719,7 @@ public final class ScanScreen {
                 seasonColumn,
                 episodeColumn,
                 titleColumn,
+                yearColumn,
                 extensionColumn,
                 typeColumn,
                 orderColumn,
@@ -756,14 +887,64 @@ public final class ScanScreen {
     }
 
     private static String roleValue(ScanRow row, ScanInputRole role) {
-        if (row.mediaType() == ScanMediaType.MOVIE
-                && (role == ScanInputRole.SERIES
-                    || role == ScanInputRole.SEASON
-                    || role == ScanInputRole.EPISODE
-                    || role == ScanInputRole.TITLE)) {
+        boolean isMovie = row.mediaType() == ScanMediaType.MOVIE;
+        if (isMovie && (role == ScanInputRole.SERIES
+                || role == ScanInputRole.SEASON
+                || role == ScanInputRole.EPISODE)) {
             return "";
         }
-        return row.inputParse().flatMap(parse -> parse.tokenValue(role)).orElse("");
+        // YEAR only applies to movies (series ordering is owned by TVDB downstream).
+        if (!isMovie && role == ScanInputRole.YEAR) {
+            return "";
+        }
+        Optional<String> direct = row.inputParse().flatMap(parse -> parse.tokenValue(role));
+        if (direct.isPresent()) {
+            return direct.get();
+        }
+        // For movies, derive Title and Year from the filename when the AI/heuristic
+        // didn't tag them — the formatter already does this for the proposed name,
+        // so the column should display the same value rather than stay blank.
+        if (isMovie && role == ScanInputRole.TITLE) {
+            return derivedMovieTitle(row);
+        }
+        if (isMovie && role == ScanInputRole.YEAR) {
+            return derivedMovieYear(row);
+        }
+        return "";
+    }
+
+    private static String derivedMovieTitle(ScanRow row) {
+        String name = row.originalFilename();
+        int dot = name.lastIndexOf('.');
+        String stem = dot > 0 ? name.substring(0, dot) : name;
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("(?<!\\d)(19\\d{2}|20\\d{2})(?!\\d)")
+                .matcher(stem);
+        int titleEnd = stem.length();
+        while (matcher.find()) {
+            titleEnd = matcher.start();
+        }
+        String raw = stem.substring(0, titleEnd);
+        String cleaned = raw
+                .replaceAll("[._]+", " ")
+                .replaceAll("[\\(\\[\\{].*?[\\)\\]\\}]", " ")
+                .replaceAll("[\\(\\)\\[\\]\\{\\}]+", " ")
+                .replaceAll("\\s*-\\s*", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return cleaned;
+    }
+
+    private static String derivedMovieYear(ScanRow row) {
+        String name = row.originalFilename();
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("(?<!\\d)(19\\d{2}|20\\d{2})(?!\\d)")
+                .matcher(name);
+        String last = "";
+        while (matcher.find()) {
+            last = matcher.group(1);
+        }
+        return last;
     }
 
     private void applyTokenEditToSelection(ScanRow anchor, ScanInputRole role, String newValue) {
@@ -1275,14 +1456,7 @@ public final class ScanScreen {
             });
             sb.append(" | titreDetecte=").append(inferredTitle(selected));
             selected.proposedFilename().ifPresent(proposed -> sb.append(" | propose=").append(proposed));
-            selected.tvdbMatch().ifPresent(match -> sb.append(" | tvdb=").append(match));
             sb.append('\n');
-        }
-        if (tvdbCandidatesForCurrentGroup.isEmpty()) {
-            sb.append("Candidats TVDB disponibles : aucun pour l'instant.\n");
-        } else {
-            sb.append("Candidats TVDB disponibles : ")
-              .append(String.join(", ", tvdbCandidatesForCurrentGroup)).append('\n');
         }
         return sb.toString();
     }
@@ -1304,8 +1478,7 @@ public final class ScanScreen {
         });
         sb.append("Titre détecté depuis le fichier : ").append(inferredTitle(row)).append('\n');
         row.proposedFilename().ifPresent(p -> sb.append("Nom proposé actuel : ").append(p).append('\n'));
-        row.tvdbMatch().ifPresent(m -> sb.append("Correspondance TVDB actuelle : ").append(m).append('\n'));
-        row.order().ifPresent(o -> sb.append("Ordre TVDB/configuration : ").append(orderText(o)).append('\n'));
+        row.order().ifPresent(o -> sb.append("Ordre configuré : ").append(orderText(o)).append('\n'));
         row.inputParse().flatMap(ScanInputParse::normalizedOrder)
                 .ifPresent(o -> sb.append("Ordre episode detecte : ").append(o).append('\n'));
         BatchTvdbMatch match = rowToGroupMatch.get(row);
@@ -1326,12 +1499,6 @@ public final class ScanScreen {
                 }
                 sb.append("  - ").append(peer.originalFilename()).append('\n');
             }
-        }
-        if (tvdbCandidatesForCurrentGroup.isEmpty()) {
-            sb.append("Candidats TVDB disponibles : aucun pour l'instant.\n");
-        } else {
-            sb.append("Candidats TVDB disponibles : ")
-              .append(String.join(", ", tvdbCandidatesForCurrentGroup)).append('\n');
         }
         return sb.toString();
     }
@@ -1456,6 +1623,187 @@ public final class ScanScreen {
         table.refresh();
         if (selectedRow.get() == row) {
             detailPanel.show(row, rowToGroupMatch.get(row));
+        }
+    }
+
+    private void onProposeRename() {
+        if (aiPatternAssistant == null) {
+            aiChatPanel.appendAssistantText("Assistant IA local indisponible.");
+            return;
+        }
+        java.util.List<ScanRow> selected = selectedRowsForAiContext();
+        if (selected.isEmpty()) {
+            ScanRow anchor = selectedRow.get();
+            if (anchor == null) {
+                aiChatPanel.appendAssistantText("Sélectionne au moins un fichier pour proposer un renommage.");
+                return;
+            }
+            selected = java.util.List.of(anchor);
+        }
+        final java.util.List<ScanRow> rowsForRun = java.util.List.copyOf(selected);
+        java.util.List<String> filenames = rowsForRun.stream().map(ScanRow::originalFilename).toList();
+        java.util.List<String> parentChain = parentFolderChain(rowsForRun.get(0).sourcePath());
+        java.util.List<java.util.List<String>> perFileChains = rowsForRun.stream()
+                .map(r -> parentFolderChain(r.sourcePath()))
+                .map(java.util.List::copyOf)
+                .toList();
+        aiChatPanel.setBusy(true,
+                "Analyse IA en cours sur " + rowsForRun.size()
+                        + (rowsForRun.size() > 1 ? " fichiers…" : " fichier…"));
+        Thread worker = new Thread(() -> {
+            AiPatternSuggestion suggestion;
+            try {
+                suggestion = aiPatternAssistant.suggestPattern(
+                        new AiPatternSuggestionRequest(filenames, "", parentChain, perFileChains));
+            } catch (RuntimeException ex) {
+                javafx.application.Platform.runLater(() -> {
+                    aiChatPanel.setBusy(false, "");
+                    aiChatPanel.appendAssistantText("Analyse IA en échec : "
+                            + (ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage()));
+                });
+                return;
+            }
+            javafx.application.Platform.runLater(() -> handleProposeResult(rowsForRun, suggestion));
+        }, "episort-chat-propose");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private void handleProposeResult(java.util.List<ScanRow> rowsForRun, AiPatternSuggestion suggestion) {
+        aiChatPanel.setBusy(false, "");
+        String explanation = suggestion.explanation() == null || suggestion.explanation().isBlank()
+                ? "Analyse IA terminée."
+                : suggestion.explanation();
+        StringBuilder summary = new StringBuilder(explanation);
+        if (!suggestion.suggestedPatterns().isEmpty()) {
+            summary.append("\n\nPatterns détectés : ")
+                    .append(String.join(", ", suggestion.suggestedPatterns()));
+        }
+        suggestion.classifiedType().ifPresent(type -> {
+            String label = switch (type) {
+                case LIKELY_SERIES -> "Série";
+                case LIKELY_MOVIE -> "Film";
+                default -> "Inconnu";
+            };
+            summary.append("\nType : ").append(label);
+            suggestion.classificationConfidence().ifPresent(c ->
+                    summary.append(" (confiance ").append(Math.round(c * 100)).append("%)"));
+        });
+        aiChatPanel.appendAssistantText(summary.toString());
+
+        int cards = 0;
+        for (ScanRow row : rowsForRun) {
+            java.util.List<AiChatToolCall> calls = buildStructuredCalls(row, suggestion);
+            if (calls.isEmpty()) continue;
+            aiChatPanel.appendAggregatedProposalCard(calls, row);
+            cards++;
+        }
+        if (cards == 0) {
+            aiChatPanel.appendAssistantText(
+                    "Aucune nouvelle proposition de renommage (les noms actuels correspondent déjà ou l'IA n'a rien détecté).");
+        }
+    }
+
+    /**
+     * Derives the structured tool calls (setMediaType, setSeries, setYear,
+     * setTitle) that, when confirmed, will reproduce the AI's parse on the row
+     * and trigger the canonical recompute via {@link ScanRowToolbox}. Returns
+     * only calls that would actually change the row's current state — when
+     * the AI's parse already matches what's on the row, nothing is emitted.
+     */
+    private java.util.List<AiChatToolCall> buildStructuredCalls(ScanRow row, AiPatternSuggestion suggestion) {
+        Optional<ScanInputParse> aiParse = aiParseFor(row, suggestion)
+                .map(p -> defendFolderDerivedSeries(p, parentFolderChain(row.sourcePath())));
+        if (aiParse.isEmpty()) return java.util.List.of();
+        ScanInputParse parse = aiParse.get();
+
+        Optional<ScanMediaType> globalType = suggestion.classifiedType()
+                .filter(t -> suggestion.classificationConfidence().orElse(0.0) >= 0.6)
+                .map(ScanScreen::toScanMediaType);
+        ScanMediaType inferred;
+        if (globalType.filter(t -> t == ScanMediaType.MOVIE).isPresent()) {
+            inferred = ScanMediaType.MOVIE;
+        } else {
+            inferred = mediaTypeFromParse(parse)
+                    .orElseGet(() -> globalType.orElse(row.mediaType()));
+        }
+
+        java.util.List<AiChatToolCall> calls = new java.util.ArrayList<>();
+        if (inferred != row.mediaType()
+                && (inferred == ScanMediaType.MOVIE || inferred == ScanMediaType.SERIES)) {
+            com.google.gson.JsonObject args = new com.google.gson.JsonObject();
+            args.addProperty("type", inferred == ScanMediaType.MOVIE ? "movie" : "series");
+            calls.add(new AiChatToolCall("setMediaType", args, args.toString()));
+        }
+
+        Optional<String> currentSeries = row.inputParse().flatMap(p -> p.tokenValue(ScanInputRole.SERIES));
+        parse.tokenValue(ScanInputRole.SERIES)
+                .filter(v -> !v.isBlank())
+                .filter(v -> currentSeries.filter(v::equalsIgnoreCase).isEmpty())
+                .ifPresent(v -> {
+                    com.google.gson.JsonObject args = new com.google.gson.JsonObject();
+                    args.addProperty("series", v);
+                    calls.add(new AiChatToolCall("setSeries", args, args.toString()));
+                });
+
+        Optional<String> currentTitle = row.inputParse().flatMap(p -> p.tokenValue(ScanInputRole.TITLE));
+        parse.tokenValue(ScanInputRole.TITLE)
+                .filter(v -> !v.isBlank())
+                .filter(v -> currentTitle.filter(v::equalsIgnoreCase).isEmpty())
+                .ifPresent(v -> {
+                    com.google.gson.JsonObject args = new com.google.gson.JsonObject();
+                    args.addProperty("title", v);
+                    calls.add(new AiChatToolCall("setTitle", args, args.toString()));
+                });
+
+        Optional<String> currentYear = row.inputParse().flatMap(p -> p.tokenValue(ScanInputRole.YEAR));
+        parse.tokenValue(ScanInputRole.YEAR)
+                .filter(v -> v.matches("(19|20)\\d{2}"))
+                .filter(v -> currentYear.filter(v::equals).isEmpty())
+                .ifPresent(v -> {
+                    com.google.gson.JsonObject args = new com.google.gson.JsonObject();
+                    args.addProperty("year", v);
+                    calls.add(new AiChatToolCall("setYear", args, args.toString()));
+                });
+
+        return calls;
+    }
+
+    private Optional<String> computeProposedName(ScanRow row, AiPatternSuggestion suggestion) {
+        Optional<ScanInputParse> aiParse = aiParseFor(row, suggestion)
+                .map(p -> defendFolderDerivedSeries(p, parentFolderChain(row.sourcePath())))
+                .map(p -> p.withSource(ScanInputParseSource.AI));
+        Optional<ScanInputParse> originalParse = row.inputParse();
+        ScanMediaType originalType = row.mediaType();
+        try {
+            // Per-row media-type takes precedence in the SERIES direction (a
+            // single SxxExx-tagged file inside an otherwise-movie batch is
+            // legitimately an episode). But a confident global MOVIE classification
+            // overrides per-file SERIES guesses, because a 1.7B model routinely
+            // mis-parses files like "Movie (1985).mkv" — the year digits get
+            // grabbed as an episode number and the file gets a phantom S01E85.
+            // Falling back to the global classification only when the per-file
+            // pass produced nothing avoids forcing a heterogeneous batch into
+            // a single type.
+            Optional<ScanMediaType> globalType = suggestion.classifiedType()
+                    .filter(t -> suggestion.classificationConfidence().orElse(0.0) >= 0.6)
+                    .map(ScanScreen::toScanMediaType);
+            ScanMediaType inferred;
+            if (globalType.filter(t -> t == ScanMediaType.MOVIE).isPresent()) {
+                inferred = ScanMediaType.MOVIE;
+            } else {
+                inferred = aiParse
+                        .map(ScanScreen::mediaTypeFromParse)
+                        .flatMap(java.util.function.Function.identity())
+                        .orElseGet(() -> globalType.orElse(originalType));
+            }
+            row.setMediaType(inferred);
+            aiParse.ifPresent(parse -> row.setInputParse(Optional.of(parse)));
+            String pattern = "{series} - S{season}E{episode} - {title}";
+            return ScanPatternFormatter.format(row, pattern);
+        } finally {
+            row.setInputParse(originalParse);
+            row.setMediaType(originalType);
         }
     }
 
