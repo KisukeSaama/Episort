@@ -1,5 +1,6 @@
 package com.episort.scanner;
 
+import java.util.Comparator;
 import java.util.List;
 
 public record InventoryScanResult(
@@ -16,11 +17,11 @@ public record InventoryScanResult(
     }
 
     public List<InventoryItem> sidecars() {
-        return itemsOfType(InventoryItemType.SIDECAR);
+        return itemsOfTypeSortedByExtension(InventoryItemType.SIDECAR);
     }
 
     public List<InventoryItem> unsupported() {
-        return itemsOfType(InventoryItemType.UNSUPPORTED);
+        return itemsOfTypeSortedByExtension(InventoryItemType.UNSUPPORTED);
     }
 
     public List<InventoryItem> ignored() {
@@ -30,6 +31,13 @@ public record InventoryScanResult(
     private List<InventoryItem> itemsOfType(InventoryItemType type) {
         return items.stream()
                 .filter(item -> item.type() == type)
+                .toList();
+    }
+
+    private List<InventoryItem> itemsOfTypeSortedByExtension(InventoryItemType type) {
+        return items.stream()
+                .filter(item -> item.type() == type)
+                .sorted(Comparator.comparing(InventoryItem::extension).thenComparing(InventoryItem::sourcePath))
                 .toList();
     }
 }

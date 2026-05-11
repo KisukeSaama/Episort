@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import javafx.collections.FXCollections;
@@ -33,7 +34,12 @@ public final class SettingsPane {
     private final Label workspaceValue;
     private final Label preferencesTitle;
     private final Label preferencesDescription;
+    private final Label tvdbTitle;
+    private final Label tvdbDescription;
+    private final Label tvdbStatus;
+    private final Region tvdbStatusDot;
     private final Button chooseWorkspace;
+    private final Button tvdbTestAndSave;
     private final ComboBox<AppLanguage> languageCombo;
     private final Supplier<Optional<Path>> currentWorkspace;
     @SuppressWarnings("unused")
@@ -45,6 +51,7 @@ public final class SettingsPane {
             Function<Path, AppShellViewModel> configureWorkspace,
             Supplier<Optional<Path>> currentWorkspace,
             Consumer<AppLanguage> onLanguageChange,
+            BiFunction<String, Optional<String>, AppShellViewModel> configureTvdb,
             Runnable onClose,
             Consumer<AppShellViewModel> onConfigured) {
         this.currentWorkspace = currentWorkspace;
@@ -139,10 +146,48 @@ public final class SettingsPane {
         VBox preferencesSection = new VBox(10, preferencesTitle, preferencesDescription, divider(), preferencesRow);
         preferencesSection.getStyleClass().add("settings-section");
 
+        // ---- TVDB section ------------------------------------------
+        tvdbTitle = new Label();
+        tvdbTitle.getStyleClass().add("settings-section-title");
+
+        tvdbDescription = new Label();
+        tvdbDescription.getStyleClass().add("settings-section-description");
+        tvdbDescription.setWrapText(true);
+
+        tvdbTestAndSave = new Button();
+        tvdbTestAndSave.getStyleClass().add("primary");
+        tvdbStatusDot = new Region();
+        tvdbStatusDot.getStyleClass().addAll("dot", "dot-idle");
+        tvdbStatus = new Label();
+        tvdbStatus.getStyleClass().add("settings-section-description");
+        tvdbStatus.setWrapText(true);
+        tvdbTestAndSave.setOnAction(event -> {
+            if (configureTvdb == null) {
+                tvdbStatus.setText(UiText.tvdbSettingsUnavailable(currentLanguage));
+                setTvdbStatusDot(false);
+                return;
+            }
+            tvdbStatus.setText(UiText.tvdbSettingsChecking(currentLanguage));
+            tvdbStatusDot.getStyleClass().setAll("dot", "dot-warn");
+            AppShellViewModel result = configureTvdb.apply("", Optional.empty());
+            onConfigured.accept(result);
+            boolean ok = result.errorCode().isEmpty();
+            setTvdbStatusDot(ok);
+            tvdbStatus.setText(ok ? UiText.tvdbSettingsOnline(currentLanguage) : result.description());
+        });
+
+        HBox tvdbInputs = new HBox(12, tvdbStatusDot, tvdbStatus, tvdbTestAndSave);
+        HBox.setHgrow(tvdbStatus, Priority.ALWAYS);
+        tvdbInputs.setAlignment(Pos.CENTER_LEFT);
+        tvdbInputs.getStyleClass().add("settings-row");
+
+        VBox tvdbSection = new VBox(10, tvdbTitle, divider(), tvdbInputs);
+        tvdbSection.getStyleClass().add("settings-section");
+
         applyLanguage(AppLanguage.FRENCH);
         refreshWorkspaceValue(currentWorkspace.get());
 
-        root = new VBox(18, header, workspaceSection, preferencesSection);
+        root = new VBox(18, header, workspaceSection, tvdbSection, preferencesSection);
         root.getStyleClass().add("settings-page");
         root.setMaxWidth(960);
     }
@@ -177,6 +222,12 @@ public final class SettingsPane {
 
         preferencesTitle.setText(UiText.preferencesSectionTitle(language));
         preferencesDescription.setText(UiText.preferencesSectionDescription(language));
+        tvdbTitle.setText(UiText.tvdbSettingsSectionTitle(language));
+        tvdbDescription.setText(UiText.tvdbSettingsSectionDescription(language));
+        tvdbTestAndSave.setText(UiText.tvdbSettingsTestAndSave(language));
+        if (tvdbStatus.getText() == null || tvdbStatus.getText().isBlank()) {
+            tvdbStatus.setText(UiText.tvdbSettingsNotChecked(language));
+        }
 
         languageCombo.setValue(language);
         refreshWorkspaceValue(currentWorkspace.get());
@@ -188,6 +239,10 @@ public final class SettingsPane {
 
     private void refreshWorkspaceValue(Optional<Path> workspace) {
         workspaceValue.setText(UiText.workspaceValue(currentLanguage, workspace));
+    }
+
+    private void setTvdbStatusDot(boolean ok) {
+        tvdbStatusDot.getStyleClass().setAll("dot", ok ? "dot-good" : "dot-error");
     }
 
     private static Region divider() {

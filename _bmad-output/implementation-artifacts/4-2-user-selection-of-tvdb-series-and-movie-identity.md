@@ -1,6 +1,6 @@
 # Story 4.2: User Selection of TVDB Series and Movie Identity
 
-Status: ready-for-dev
+Status: done
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -21,12 +21,12 @@ so that matching uses the right official metadata source.
 
 ## Tasks / Subtasks
 
-- [ ] Add adapter/mapper tests using fake TVDB responses; avoid live-network unit tests. (AC: #1)
-- [ ] Implement provider DTOs inside `tvdb.dto` and map them to domain objects before planning logic sees them. (AC: #1)
-- [ ] Represent recoverable TVDB errors, retry, token refresh, and fallback titles explicitly. (AC: #1)
-- [ ] Keep lookup and matching non-mutating and advisory until review validation. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Add adapter/mapper tests using fake TVDB responses; avoid live-network unit tests. (AC: #1)
+- [x] Implement provider DTOs inside `tvdb.dto` and map them to domain objects before planning logic sees them. (AC: #1)
+- [x] Represent recoverable TVDB errors, retry, token refresh, and fallback titles explicitly. (AC: #1)
+- [x] Keep lookup and matching non-mutating and advisory until review validation. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
 
 ## Dev Notes
 
@@ -116,10 +116,27 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex.
 
 ### Debug Log References
 
+- `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=/home/kisuke/dev/Episort/.gradle sh gradlew test`
+
 ### Completion Notes List
 
+- Added `TvdbIdentitySelectionService` to store current-session TVDB identity choices by group key.
+- Selection can be changed before validation, same-identity groups are surfaced as mergeable, and selection explicitly does not authorize validation or execution.
+- Scan detail UI now populates the TVDB candidate combo from lookup results. Applying a candidate stores it on the current row for the current session and triggers metadata retrieval so the proposed filename reflects TVDB-backed title/year or episode title.
+- No developer-facing command changed.
+
 ### File List
+
+- src/main/java/com/episort/workflow/TvdbIdentitySelectionService.java
+- src/main/java/com/episort/ui/scan/RowDetailPanel.java
+- src/main/java/com/episort/ui/scan/ScanScreen.java
+- src/main/java/com/episort/ui/settings/SettingsPane.java
+- src/test/java/com/episort/workflow/TvdbIdentitySelectionServiceTest.java
+
+### Change Log
+
+- 2026-05-11: Implemented current-session TVDB identity selection state.

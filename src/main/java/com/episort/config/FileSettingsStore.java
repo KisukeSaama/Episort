@@ -20,7 +20,11 @@ public final class FileSettingsStore implements SettingsStore {
     private final Path settingsFile;
 
     public FileSettingsStore(Path settingsFile) {
-        this.settingsFile = settingsFile.toAbsolutePath().normalize();
+        this(settingsFile, true);
+    }
+
+    private FileSettingsStore(Path settingsFile, boolean normalizeAbsolute) {
+        this.settingsFile = normalizeAbsolute ? settingsFile.toAbsolutePath().normalize() : settingsFile.normalize();
     }
 
     public static FileSettingsStore userProfileStore() {
@@ -35,9 +39,9 @@ public final class FileSettingsStore implements SettingsStore {
         if (normalizedOsName.contains("win")) {
             String localAppData = environment.get("LOCALAPPDATA");
             if (localAppData != null && !localAppData.isBlank()) {
-                return new FileSettingsStore(Path.of(localAppData, "Episort", "settings.properties"));
+                return new FileSettingsStore(Path.of(localAppData + "\\Episort\\settings.properties"), false);
             }
-            return new FileSettingsStore(userHome.resolve(Path.of("AppData", "Local", "Episort", "settings.properties")));
+            return new FileSettingsStore(Path.of(userHome + "\\AppData\\Local\\Episort\\settings.properties"), false);
         }
 
         if (normalizedOsName.contains("mac")) {

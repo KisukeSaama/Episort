@@ -1,6 +1,5 @@
 package com.episort.ai;
 
-import java.nio.file.Path;
 import java.util.List;
 
 public record AiPatternSuggestionRequest(
@@ -41,7 +40,9 @@ public record AiPatternSuggestionRequest(
         if (selectedItemPath.isBlank()) {
             return List.of();
         }
-        Path fileName = Path.of(selectedItemPath).getFileName();
-        return fileName == null ? List.of() : List.of(fileName.toString());
+        String normalized = selectedItemPath.replace('\\', '/');
+        int slash = normalized.lastIndexOf('/');
+        String fileName = slash >= 0 ? normalized.substring(slash + 1) : normalized;
+        return fileName.isBlank() ? List.of() : List.of(fileName);
     }
 }

@@ -158,6 +158,7 @@ public final class AppShell {
                     configureWorkspace,
                     this.currentWorkspace,
                     this::applyLanguage,
+                    configureTvdb,
                     this::onSettingsClose,
                     this::apply);
         } else {

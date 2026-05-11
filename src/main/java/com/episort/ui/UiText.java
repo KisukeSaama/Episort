@@ -275,6 +275,13 @@ public final class UiText {
     public static String settingsPageSubtitle(AppLanguage language) { return t(language, "settings.page.subtitle"); }
     public static String preferencesSectionTitle(AppLanguage language) { return t(language, "preferences.section.title"); }
     public static String preferencesSectionDescription(AppLanguage language) { return t(language, "preferences.section.description"); }
+    public static String tvdbSettingsSectionTitle(AppLanguage language) { return t(language, "tvdb.settings.section.title"); }
+    public static String tvdbSettingsSectionDescription(AppLanguage language) { return t(language, "tvdb.settings.section.description"); }
+    public static String tvdbSettingsTestAndSave(AppLanguage language) { return t(language, "tvdb.settings.testAndSave"); }
+    public static String tvdbSettingsNotChecked(AppLanguage language) { return t(language, "tvdb.settings.notChecked"); }
+    public static String tvdbSettingsChecking(AppLanguage language) { return t(language, "tvdb.settings.checking"); }
+    public static String tvdbSettingsOnline(AppLanguage language) { return t(language, "tvdb.settings.online"); }
+    public static String tvdbSettingsUnavailable(AppLanguage language) { return t(language, "tvdb.settings.unavailable"); }
     public static String safetySectionTitle(AppLanguage language) { return t(language, "safety.section.title"); }
     public static String safetySectionDescription(AppLanguage language) { return t(language, "safety.section.description"); }
     public static String safetySectionPlaceholder(AppLanguage language) { return t(language, "safety.section.placeholder"); }

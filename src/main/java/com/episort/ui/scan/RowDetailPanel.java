@@ -247,6 +247,14 @@ public final class RowDetailPanel {
         this.onApplyInputPattern = handler == null ? (r, p) -> {} : handler;
     }
 
+    public void setTvdbCandidateOptions(java.util.List<String> candidates) {
+        String current = tvdbCandidate.getValue();
+        tvdbCandidate.getItems().setAll(candidates == null ? java.util.List.of() : candidates);
+        if (current != null && tvdbCandidate.getItems().contains(current)) {
+            tvdbCandidate.setValue(current);
+        }
+    }
+
     public void applyLanguage(AppLanguage language) {
         currentLanguage = language;
         emptyTitle.setText(UiText.detailEmptyTitle(language));

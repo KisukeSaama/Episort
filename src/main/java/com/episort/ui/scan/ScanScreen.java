@@ -9,10 +9,27 @@ import com.episort.ai.AiPatternRefinementResult;
 import com.episort.ai.AiPatternSuggestion;
 import com.episort.ai.AiPatternSuggestionRequest;
 import com.episort.ai.AiPatternToken;
+import com.episort.config.TvdbCredentials;
+import com.episort.matching.EpisodeMovieMatchService;
+import com.episort.matching.MediaMatchProposal;
+import com.episort.matching.MediaMatchType;
+import com.episort.matching.TvdbEpisodeMetadata;
+import com.episort.matching.TvdbMovieMetadata;
+import com.episort.matching.TvdbSeriesMetadata;
 import com.episort.scanner.InventoryGroup;
 import com.episort.scanner.InventoryGroupType;
+import com.episort.scanner.InventoryItem;
+import com.episort.scanner.InventoryItemType;
 import com.episort.scanner.InventoryScanResult;
 import com.episort.scanner.InventorySummary;
+import com.episort.tvdb.TvdbCandidate;
+import com.episort.tvdb.TvdbClient;
+import com.episort.tvdb.TvdbEpisode;
+import com.episort.tvdb.TvdbException;
+import com.episort.tvdb.TvdbIdentity;
+import com.episort.tvdb.TvdbMovieDetails;
+import com.episort.tvdb.TvdbSearchResult;
+import com.episort.tvdb.TvdbSeriesDetails;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,6 +42,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.function.Supplier;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -113,7 +131,8 @@ public final class ScanScreen {
     private final Map<ScanRow, BatchTvdbMatch> rowToGroupMatch = new HashMap<>();
     private final Map<ScanRow, InventoryGroup> rowToGroup = new HashMap<>();
     private final Map<ScanRow, java.util.List<ScanRow>> groupRows = new HashMap<>();
-    private final java.util.List<String> tvdbCandidatesForCurrentGroup = new java.util.ArrayList<>();
+    private final Map<String, TvdbCandidate> tvdbCandidatesByLabel = new HashMap<>();
+    private final EpisodeMovieMatchService matchService = new EpisodeMovieMatchService();
     private final CheckBox selectAllCheckbox = new CheckBox();
     private final SimpleObjectProperty<ScanRow> selectedRow = new SimpleObjectProperty<>(null);
     private final SimpleBooleanProperty syncingSelection = new SimpleBooleanProperty(false);
@@ -128,6 +147,8 @@ public final class ScanScreen {
     private boolean stackedLayout = false;
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
     private AiPatternAssistant aiPatternAssistant;
+    private TvdbClient tvdbClient;
+    private Supplier<Optional<TvdbCredentials>> tvdbCredentialsSupplier = Optional::empty;
 
     public ScanScreen() {
         heading = new Label();
@@ -247,6 +268,11 @@ public final class ScanScreen {
 
     public void setAiPatternAssistant(AiPatternAssistant assistant) {
         this.aiPatternAssistant = assistant;
+    }
+
+    public void setTvdbLookup(TvdbClient tvdbClient, Supplier<Optional<TvdbCredentials>> credentialsSupplier) {
+        this.tvdbClient = tvdbClient;
+        this.tvdbCredentialsSupplier = credentialsSupplier == null ? Optional::empty : credentialsSupplier;
     }
 
     public void refreshAiChatAvailability() {
@@ -690,6 +716,7 @@ public final class ScanScreen {
                 detailPanel.clear();
             } else {
                 detailPanel.show(newValue, rowToGroupMatch.get(newValue));
+                loadTvdbCandidates(newValue);
             }
             updateAiChatTargetFromSelection();
         });
@@ -1609,6 +1636,13 @@ public final class ScanScreen {
 
     private void applyTvdbCandidate(ScanRow row, String candidate) {
         row.setTvdbMatch(java.util.Optional.of(candidate));
+        row.setStatus(ScanRowStatus.TVDB);
+        row.setNoteText(Optional.of("TVDB identity selected. Loading metadata..."));
+        TvdbCandidate selectedCandidate = tvdbCandidatesByLabel.get(candidate);
+        Optional<TvdbCredentials> credentials = tvdbCredentialsSupplier.get();
+        if (selectedCandidate != null && credentials.isPresent()) {
+            loadSelectedTvdbMetadata(row, selectedCandidate.identity(), credentials.orElseThrow());
+        }
         table.refresh();
         if (selectedRow.get() == row) {
             detailPanel.show(row, rowToGroupMatch.get(row));
@@ -1620,10 +1654,192 @@ public final class ScanScreen {
         row.setOrder(java.util.Optional.empty());
         row.setProposedFilename(java.util.Optional.empty());
         row.setDestination(java.util.Optional.empty());
+        row.setNoteText(Optional.empty());
         table.refresh();
         if (selectedRow.get() == row) {
             detailPanel.show(row, rowToGroupMatch.get(row));
         }
+    }
+
+    private void loadTvdbCandidates(ScanRow row) {
+        if (tvdbClient == null || row == null
+                || row.mediaType() == ScanMediaType.UNKNOWN
+                || row.mediaType() == ScanMediaType.IGNORED) {
+            detailPanel.setTvdbCandidateOptions(java.util.List.of());
+            return;
+        }
+        Optional<TvdbCredentials> credentials = tvdbCredentialsSupplier.get();
+        if (credentials.isEmpty()) {
+            detailPanel.setTvdbCandidateOptions(java.util.List.of());
+            row.setNoteText(Optional.of("TVDB credentials are not configured."));
+            table.refresh();
+            return;
+        }
+        String query = tvdbQuery(row);
+        if (query.isBlank()) {
+            detailPanel.setTvdbCandidateOptions(java.util.List.of());
+            return;
+        }
+        java.util.concurrent.CompletableFuture
+                .supplyAsync(() -> tvdbClient.search(query, credentials.orElseThrow()))
+                .thenAccept(result -> javafx.application.Platform.runLater(() -> applyTvdbCandidates(row, result)))
+                .exceptionally(throwable -> {
+                    javafx.application.Platform.runLater(() -> applyTvdbLookupFailure(row, throwable));
+                    return null;
+                });
+    }
+
+    private void applyTvdbCandidates(ScanRow row, TvdbSearchResult result) {
+        if (selectedRow.get() != row) {
+            return;
+        }
+        java.util.List<TvdbCandidate> candidates = row.mediaType() == ScanMediaType.MOVIE
+                ? result.movieCandidates()
+                : result.seriesCandidates();
+        tvdbCandidatesByLabel.clear();
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        for (TvdbCandidate candidate : candidates) {
+            String label = candidateLabel(candidate);
+            labels.add(label);
+            tvdbCandidatesByLabel.put(label, candidate);
+        }
+        detailPanel.setTvdbCandidateOptions(labels);
+        row.setNoteText(labels.isEmpty()
+                ? Optional.of("No TVDB candidates found for " + tvdbQuery(row) + ".")
+                : Optional.of("TVDB candidates loaded; select one to keep it for this session."));
+        table.refresh();
+        detailPanel.show(row, rowToGroupMatch.get(row));
+    }
+
+    private void applyTvdbLookupFailure(ScanRow row, Throwable throwable) {
+        if (selectedRow.get() != row) {
+            return;
+        }
+        Throwable cause = throwable instanceof java.util.concurrent.CompletionException && throwable.getCause() != null
+                ? throwable.getCause()
+                : throwable;
+        String message = cause instanceof TvdbException tvdbException
+                ? tvdbException.error().safeMessage()
+                : "TVDB lookup failed.";
+        row.setStatus(ScanRowStatus.ERROR);
+        row.setAlertText(Optional.of(message));
+        table.refresh();
+        detailPanel.show(row, rowToGroupMatch.get(row));
+    }
+
+    private String tvdbQuery(ScanRow row) {
+        InventoryGroup group = rowToGroup.get(row);
+        if (group != null && group.seedName() != null && !group.seedName().isBlank()) {
+            return group.seedName();
+        }
+        if (row.mediaType() == ScanMediaType.MOVIE) {
+            return derivedMovieTitle(row);
+        }
+        return row.inputParse()
+                .flatMap(parse -> parse.tokenValue(ScanInputRole.SERIES))
+                .orElse(row.originalFilename());
+    }
+
+    private static String candidateLabel(TvdbCandidate candidate) {
+        StringBuilder label = new StringBuilder();
+        label.append(candidate.identity().displayName());
+        candidate.year().ifPresent(year -> label.append(" (").append(year).append(")"));
+        label.append(" [TVDB ").append(candidate.identity().id()).append("]");
+        candidate.network().ifPresent(network -> label.append(" · ").append(network));
+        candidate.country().ifPresent(country -> label.append(" · ").append(country));
+        return label.toString();
+    }
+
+    private void loadSelectedTvdbMetadata(ScanRow row, TvdbIdentity identity, TvdbCredentials credentials) {
+        java.util.concurrent.CompletableFuture
+                .supplyAsync(() -> identity.mediaType() == com.episort.tvdb.TvdbMediaType.MOVIE
+                        ? tvdbClient.movieDetails(identity, credentials)
+                        : tvdbClient.seriesDetails(identity, credentials))
+                .thenAccept(details -> javafx.application.Platform.runLater(() -> applySelectedTvdbMetadata(row, details)))
+                .exceptionally(throwable -> {
+                    javafx.application.Platform.runLater(() -> applyTvdbLookupFailure(row, throwable));
+                    return null;
+                });
+    }
+
+    private void applySelectedTvdbMetadata(ScanRow row, Object details) {
+        if (details instanceof TvdbMovieDetails movie) {
+            applyMovieMetadata(row, movie);
+        } else if (details instanceof TvdbSeriesDetails series) {
+            applySeriesMetadata(row, series);
+        }
+        table.refresh();
+        if (selectedRow.get() == row) {
+            detailPanel.show(row, rowToGroupMatch.get(row));
+        }
+    }
+
+    private void applyMovieMetadata(ScanRow row, TvdbMovieDetails movie) {
+        String extension = row.extension().isBlank() ? "" : "." + row.extension().toLowerCase(Locale.ROOT);
+        String year = movie.releaseYear().map(value -> " (" + value + ")").orElse("");
+        row.setMediaType(ScanMediaType.MOVIE);
+        row.setProposedFilename(Optional.of(movie.identity().displayName() + year + extension));
+        row.setOrder(Optional.of("N/A"));
+        row.setNoteText(Optional.of("TVDB movie metadata applied from " + movie.identity().displayName() + "."));
+        MediaMatchProposal proposal = matchService.proposeMovieMatches(
+                java.util.List.of(inventoryItemFor(row)),
+                new TvdbMovieMetadata(movie.identity().id(), movie.identity().displayName(), movie.releaseYear()))
+                .getFirst();
+        if (proposal.type() == MediaMatchType.UNMATCHED) {
+            row.setAlertText(Optional.of(proposal.reason()));
+        }
+    }
+
+    private void applySeriesMetadata(ScanRow row, TvdbSeriesDetails series) {
+        java.util.List<MediaMatchProposal> proposals = matchService.proposeSeriesMatches(
+                java.util.List.of(inventoryItemFor(row)),
+                new TvdbSeriesMetadata(
+                        series.identity().id(),
+                        series.identity().displayName(),
+                        series.airedEpisodes().stream().map(ScanScreen::toMatchingEpisode).toList()));
+        MediaMatchProposal proposal = proposals.isEmpty()
+                ? MediaMatchProposal.unmatched(row.sourcePath(), "No TVDB episode proposal.")
+                : proposals.getFirst();
+        if (proposal.type() == MediaMatchType.UNMATCHED) {
+            row.setAlertText(Optional.of(proposal.reason()));
+            row.setNoteText(Optional.of("TVDB series metadata loaded, but this file did not match an episode."));
+            return;
+        }
+        row.setMediaType(ScanMediaType.SERIES);
+        row.setOrder(Optional.of(String.format("S%02dE%02d",
+                proposal.seasonNumber().orElse(0),
+                proposal.episodeNumber().orElse(0))));
+        String extension = row.extension().isBlank() ? "" : "." + row.extension().toLowerCase(Locale.ROOT);
+        String proposed = String.format("%s - S%02dE%02d - %s%s",
+                series.identity().displayName(),
+                proposal.seasonNumber().orElse(0),
+                proposal.episodeNumber().orElse(0),
+                proposal.title().orElse("Untitled episode"),
+                extension);
+        row.setProposedFilename(Optional.of(proposed));
+        row.setConfidence(proposal.confidence());
+        row.setAlertText(Optional.empty());
+        row.setNoteText(Optional.of("TVDB episode metadata applied from " + series.identity().displayName() + "."));
+    }
+
+    private static TvdbEpisodeMetadata toMatchingEpisode(TvdbEpisode episode) {
+        return new TvdbEpisodeMetadata(
+                episode.id(),
+                episode.seasonNumber(),
+                episode.episodeNumber(),
+                episode.absoluteNumber(),
+                episode.title(),
+                episode.special());
+    }
+
+    private static InventoryItem inventoryItemFor(ScanRow row) {
+        return new InventoryItem(
+                row.sourcePath(),
+                row.originalFilename(),
+                row.extension(),
+                row.sourcePath().getParent(),
+                InventoryItemType.SUPPORTED_VIDEO,
+                true);
     }
 
     private void onProposeRename() {

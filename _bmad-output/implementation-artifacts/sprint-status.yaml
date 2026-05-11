@@ -62,13 +62,13 @@ development_status:
   3-5-real-bundled-qwen3-llm-runtime: done
   3-6-embedded-llama-cpp-runtime: done
   epic-3-retrospective: optional
-  epic-4: backlog
-  4-1-tvdb-series-and-movie-candidate-search: ready-for-dev
-  4-2-user-selection-of-tvdb-series-and-movie-identity: ready-for-dev
-  4-3-series-metadata-retrieval-and-episode-orders: ready-for-dev
-  4-4-movie-metadata-retrieval: ready-for-dev
-  4-5-episode-and-movie-match-proposals: ready-for-dev
-  4-6-tvdb-authentication-and-token-lifecycle: ready-for-dev
+  epic-4: done
+  4-1-tvdb-series-and-movie-candidate-search: done
+  4-2-user-selection-of-tvdb-series-and-movie-identity: done
+  4-3-series-metadata-retrieval-and-episode-orders: done
+  4-4-movie-metadata-retrieval: done
+  4-5-episode-and-movie-match-proposals: done
+  4-6-tvdb-authentication-and-token-lifecycle: done
   epic-4-retrospective: optional
   epic-5: backlog
   5-1-review-screen-for-groups-and-match-states: ready-for-dev

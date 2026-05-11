@@ -33,6 +33,7 @@ import com.episort.workflow.InventoryWorkflowService;
 import com.episort.workflow.TvdbCredentialConfigurationService;
 import com.episort.workflow.WorkspaceConfigurationService;
 import com.episort.tvdb.HttpTvdbConnectionTester;
+import com.episort.tvdb.HttpTvdbClient;
 import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ErrorSeverity;
 import com.episort.ui.platform.WindowsTitleBar;
@@ -84,10 +85,11 @@ public class EpisortApplication extends Application {
     public void start(Stage stage) {
         FileSettingsStore settingsStore = settingsStoreEarly;
         aiEnabledAtStartup = settingsStore.loadAiEnabled();
+        FileTvdbCredentialStore tvdbCredentialStore = FileTvdbCredentialStore.userProfileStore();
         StartupWorkflow startupWorkflow = new StartupWorkflow(
                 new WorkspaceConfigurationService(settingsStore),
                 new TvdbCredentialConfigurationService(
-                        FileTvdbCredentialStore.userProfileStore(),
+                        tvdbCredentialStore,
                         new HttpTvdbConnectionTester()));
         EmbeddedTvdbCredentialsProvider.load()
                 .ifPresent(startupWorkflow::configureAndTestTvdb);
@@ -104,7 +106,7 @@ public class EpisortApplication extends Application {
                 workspace -> AppShellViewModel.fromWorkspaceConfiguration(
                         startupWorkflow.configureWorkspace(workspace)),
                 inputFolder -> scanInputFolder(startupWorkflow, inputFolder, runEventStore),
-                (apiKey, subscriberPin) -> configureTvdb(startupWorkflow, apiKey, subscriberPin),
+                (apiKey, subscriberPin) -> configureTvdb(subscriberPin),
                 () -> startupWorkflow.loadWorkspaceConfiguration().settings().workspaceDirectory(),
                 () -> startupWorkflow.loadWorkspaceConfiguration().success(),
                 () -> {},
@@ -139,6 +141,9 @@ public class EpisortApplication extends Application {
         });
         attachAiModelsSection(appShell, viewModel.language(), settingsStore);
         appShell.scanScreen().setAiAssistanceEnabled(aiEnabledAtStartup);
+        appShell.scanScreen().setTvdbLookup(
+                new HttpTvdbClient(),
+                () -> EmbeddedTvdbCredentialsProvider.load().or(tvdbCredentialStore::load));
         if (aiEnabledAtStartup) {
             appShell.scanScreen().setAiChatBackend(aiChatService);
             appShell.scanScreen().setAiPatternAssistant(aiPatternAssistant);
@@ -368,19 +373,21 @@ public class EpisortApplication extends Application {
         }
     }
 
-    private AppShellViewModel configureTvdb(
-            StartupWorkflow startupWorkflow,
-            String apiKey,
-            java.util.Optional<String> subscriberPin) {
+    private AppShellViewModel configureTvdb(java.util.Optional<String> subscriberPin) {
         try {
-            return AppShellViewModel.fromTvdbConfiguration(
-                    startupWorkflow.configureAndTestTvdb(new TvdbCredentials(apiKey, subscriberPin)));
-        } catch (IllegalArgumentException exception) {
+            TvdbCredentials embeddedCredentials = EmbeddedTvdbCredentialsProvider.load()
+                    .map(credentials -> new TvdbCredentials(credentials.apiKey(), subscriberPin))
+                    .orElseThrow(() -> new IllegalStateException("Embedded TVDB API key is not configured."));
+            var testResult = new HttpTvdbConnectionTester().test(embeddedCredentials);
+            return AppShellViewModel.fromTvdbConfiguration(testResult.success()
+                    ? com.episort.workflow.TvdbCredentialConfigurationResult.passed()
+                    : com.episort.workflow.TvdbCredentialConfigurationResult.failure(testResult.error().orElseThrow()));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
             return AppShellViewModel.fromError(ApplicationError.recoverable(
                     "TVDB_CONFIGURATION_REQUIRED",
                     ErrorSeverity.BLOCKING,
-                    "Enter and test TVDB access before metadata-backed organization.",
-                    "TVDB API key was blank."));
+                    "TVDB access is not available in this build.",
+                    "Embedded TVDB API key is missing or invalid."));
         }
     }
 }

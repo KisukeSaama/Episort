@@ -1,6 +1,6 @@
 # Story 4.6: TVDB Authentication and Token Lifecycle
 
-Status: ready-for-dev
+Status: done
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -22,12 +22,12 @@ so that metadata lookups fail clearly instead of silently corrupting matches.
 
 ## Tasks / Subtasks
 
-- [ ] Add adapter/mapper tests using fake TVDB responses; avoid live-network unit tests. (AC: #1)
-- [ ] Implement provider DTOs inside `tvdb.dto` and map them to domain objects before planning logic sees them. (AC: #1)
-- [ ] Represent recoverable TVDB errors, retry, token refresh, and fallback titles explicitly. (AC: #1)
-- [ ] Keep lookup and matching non-mutating and advisory until review validation. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Add adapter/mapper tests using fake TVDB responses; avoid live-network unit tests. (AC: #1)
+- [x] Implement provider DTOs inside `tvdb.dto` and map them to domain objects before planning logic sees them. (AC: #1)
+- [x] Represent recoverable TVDB errors, retry, token refresh, and fallback titles explicitly. (AC: #1)
+- [x] Keep lookup and matching non-mutating and advisory until review validation. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
 
 ## Dev Notes
 
@@ -117,10 +117,28 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex with Amelia worker support requested; local implementation completed after worker timeout.
 
 ### Debug Log References
 
+- `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=/home/kisuke/dev/Episort/.gradle sh gradlew test`
+
 ### Completion Notes List
 
+- `HttpTvdbClient` authenticates through TVDB v4 login with API key and optional subscriber PIN, then sends `Authorization: Bearer ...` on metadata calls.
+- 401 responses clear and reacquire the bearer token before one retry; transient statuses are retried before surfacing a recoverable error.
+- Recoverable error details intentionally omit credentials, response bodies, API keys, PINs, and bearer tokens.
+- Existing `HttpTvdbConnectionTester` remains compatible with credential setup checks and is now reachable from the Settings screen via TVDB status retest. The user is not asked for the TVDB API key or PIN; the app uses the embedded build credential.
+
 ### File List
+
+- src/main/java/com/episort/tvdb/HttpTvdbClient.java
+- src/main/java/com/episort/tvdb/TvdbErrorCode.java
+- src/main/java/com/episort/tvdb/TvdbException.java
+- src/main/java/com/episort/tvdb/dto/TvdbLoginResponseDto.java
+- src/main/java/com/episort/ui/settings/SettingsPane.java
+- src/test/java/com/episort/tvdb/HttpTvdbClientTest.java
+
+### Change Log
+
+- 2026-05-11: Implemented TVDB bearer token lifecycle and recoverable auth errors.

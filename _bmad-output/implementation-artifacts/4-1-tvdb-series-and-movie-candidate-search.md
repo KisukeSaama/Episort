@@ -1,6 +1,6 @@
 # Story 4.1: TVDB Series and Movie Candidate Search
 
-Status: ready-for-dev
+Status: done
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -23,13 +23,13 @@ so that I can choose the correct official metadata identity.
 
 ## Tasks / Subtasks
 
-- [ ] Keep adapter/mapper tests minimal: thin smoke fixtures for the few deterministic cases (auth refresh, error mapping); push realistic coverage to a tagged integration test that hits real TVDB. (AC: #1)
-- [ ] Implement provider DTOs inside `tvdb.dto` and map them to domain objects before planning logic sees them. (AC: #1)
-- [ ] Represent recoverable TVDB errors, retry, token refresh, and fallback titles explicitly. (AC: #1)
-- [ ] Wire optional `AiPatternAssistant` ranking hook so candidate lists can be reordered by advisory AI score; keep the unranked TVDB result available and never mark AI ranking as authoritative. (AC: #1)
-- [ ] Keep lookup and matching non-mutating and advisory until review validation. (AC: #1)
-- [ ] Document how to run the integration test against TVDB with developer credentials. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Keep adapter/mapper tests minimal: thin smoke fixtures for the few deterministic cases (auth refresh, error mapping); push realistic coverage to a tagged integration test that hits real TVDB. (AC: #1)
+- [x] Implement provider DTOs inside `tvdb.dto` and map them to domain objects before planning logic sees them. (AC: #1)
+- [x] Represent recoverable TVDB errors, retry, token refresh, and fallback titles explicitly. (AC: #1)
+- [x] Wire optional `AiPatternAssistant` ranking hook so candidate lists can be reordered by advisory AI score; keep the unranked TVDB result available and never mark AI ranking as authoritative. (AC: #1)
+- [x] Keep lookup and matching non-mutating and advisory until review validation. (AC: #1)
+- [x] Document how to run the integration test against TVDB with developer credentials. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
 
 ## Dev Notes
 
@@ -119,10 +119,51 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex with Amelia worker support requested; local implementation completed after worker timeout.
 
 ### Debug Log References
 
+- `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=/home/kisuke/dev/Episort/.gradle sh gradlew test --tests com.episort.tvdb.HttpTvdbClientTest --tests com.episort.tvdb.AiTvdbCandidateRankerTest --tests com.episort.workflow.TvdbIdentitySelectionServiceTest --tests com.episort.matching.EpisodeMovieMatchServiceTest`
+- `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=/home/kisuke/dev/Episort/.gradle sh gradlew test`
+
 ### Completion Notes List
 
+- Added TVDB domain objects for candidates, identities, search results, typed media kinds, and advisory AI scores.
+- Added provider DTOs under `com.episort.tvdb.dto`; HTTP mapping converts DTOs to domain objects before workflow/matching code sees them.
+- Added `HttpTvdbClient` candidate search with separate series/movie result lists, transient retry, recoverable errors, bearer authentication, and 401 token reacquire.
+- Added `AiTvdbCandidateRanker` so AI can reorder candidates with explicit advisory scores while preserving original TVDB rank.
+- Wired settings UI to show TVDB service status with a green/red indicator and retest action, without asking the user for TVDB credentials. Scan detail UI loads TVDB candidates for the selected row using the embedded credential; candidate lookup remains advisory.
+- Lookups remain non-mutating; no filesystem operations are introduced.
+- Live TVDB integration remains gated by developer credentials; unit coverage uses fake local TVDB responses.
+
 ### File List
+
+- src/main/java/com/episort/tvdb/AiTvdbCandidateRanker.java
+- src/main/java/com/episort/tvdb/HttpTvdbClient.java
+- src/main/java/com/episort/tvdb/OptionalDoubleScore.java
+- src/main/java/com/episort/tvdb/TvdbCandidate.java
+- src/main/java/com/episort/tvdb/TvdbClient.java
+- src/main/java/com/episort/tvdb/TvdbErrorCode.java
+- src/main/java/com/episort/tvdb/TvdbEpisodeOrder.java
+- src/main/java/com/episort/tvdb/TvdbException.java
+- src/main/java/com/episort/tvdb/TvdbIdentity.java
+- src/main/java/com/episort/tvdb/TvdbMediaType.java
+- src/main/java/com/episort/tvdb/TvdbSearchResult.java
+- src/main/java/com/episort/tvdb/dto/TvdbAliasDto.java
+- src/main/java/com/episort/tvdb/dto/TvdbLoginResponseDto.java
+- src/main/java/com/episort/tvdb/dto/TvdbSearchResponseDto.java
+- src/main/java/com/episort/EpisortApplication.java
+- src/main/java/com/episort/ui/scan/RowDetailPanel.java
+- src/main/java/com/episort/ui/scan/ScanScreen.java
+- src/main/java/com/episort/ui/settings/SettingsPane.java
+- src/main/java/com/episort/ui/AppShell.java
+- src/main/java/com/episort/ui/UiText.java
+- src/main/resources/i18n/messages.properties
+- src/main/resources/i18n/messages_fr.properties
+- src/test/java/com/episort/tvdb/AiTvdbCandidateRankerTest.java
+- src/test/java/com/episort/tvdb/HttpTvdbClientTest.java
+- src/test/java/com/episort/tvdb/TvdbLiveIntegrationTest.java
+
+### Change Log
+
+- 2026-05-11: Implemented TVDB candidate search foundation and advisory AI ranking.

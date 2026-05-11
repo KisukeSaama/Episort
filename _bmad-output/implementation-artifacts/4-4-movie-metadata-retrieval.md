@@ -1,6 +1,6 @@
 # Story 4.4: Movie Metadata Retrieval
 
-Status: ready-for-dev
+Status: done
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -20,12 +20,12 @@ so that movie files can be organized with official naming.
 
 ## Tasks / Subtasks
 
-- [ ] Add adapter/mapper tests using fake TVDB responses; avoid live-network unit tests. (AC: #1)
-- [ ] Implement provider DTOs inside `tvdb.dto` and map them to domain objects before planning logic sees them. (AC: #1)
-- [ ] Represent recoverable TVDB errors, retry, token refresh, and fallback titles explicitly. (AC: #1)
-- [ ] Keep lookup and matching non-mutating and advisory until review validation. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Add adapter/mapper tests using fake TVDB responses; avoid live-network unit tests. (AC: #1)
+- [x] Implement provider DTOs inside `tvdb.dto` and map them to domain objects before planning logic sees them. (AC: #1)
+- [x] Represent recoverable TVDB errors, retry, token refresh, and fallback titles explicitly. (AC: #1)
+- [x] Keep lookup and matching non-mutating and advisory until review validation. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
 
 ## Dev Notes
 
@@ -115,10 +115,26 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5 Codex.
 
 ### Debug Log References
 
+- `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 GRADLE_USER_HOME=/home/kisuke/dev/Episort/.gradle sh gradlew test`
+
 ### Completion Notes List
 
+- Added movie detail domain model with official/fallback title and release year.
+- `HttpTvdbClient.movieDetails` maps provider DTOs to domain details using fallback names and release date/year extraction.
+- Selecting a movie candidate in the scan detail UI now fetches movie metadata and applies official title/year to the proposed filename.
+- Homonymous movie candidates retain TVDB identity information from candidate search.
+
 ### File List
+
+- src/main/java/com/episort/tvdb/TvdbMovieDetails.java
+- src/main/java/com/episort/tvdb/dto/TvdbMovieResponseDto.java
+- src/main/java/com/episort/ui/scan/ScanScreen.java
+- src/test/java/com/episort/tvdb/HttpTvdbClientTest.java
+
+### Change Log
+
+- 2026-05-11: Implemented TVDB movie detail mapping.

@@ -26,7 +26,8 @@ public final class MediaInventoryScanner {
         List<Path> files;
         try (var stream = Files.walk(inputFolder)) {
             files = stream.filter(Files::isRegularFile)
-                    .sorted(Comparator.naturalOrder())
+                    .sorted(Comparator.comparing(MediaInventoryScanner::scanCategoryOrder)
+                            .thenComparing(Comparator.naturalOrder()))
                     .toList();
         }
 
@@ -144,6 +145,21 @@ public final class MediaInventoryScanner {
     private static String extension(String filename) {
         int dotIndex = filename.lastIndexOf('.');
         return dotIndex < 0 ? "" : filename.substring(dotIndex).toLowerCase(Locale.ROOT);
+    }
+
+    private static int scanCategoryOrder(Path file) {
+        String filename = file.getFileName().toString();
+        String extension = extension(filename);
+        if (filename.startsWith(".")) {
+            return 3;
+        }
+        if (SUPPORTED_VIDEO_EXTENSIONS.contains(extension)) {
+            return 0;
+        }
+        if (SIDECAR_EXTENSIONS.contains(extension)) {
+            return 1;
+        }
+        return 2;
     }
 
     private static String removeExtension(String filename) {
