@@ -301,6 +301,8 @@ public final class UiText {
     public static String tvdbSearch(AppLanguage language) { return t(language, "tvdb.search"); }
     public static String tvdbSearchPlaceholder(AppLanguage language) { return t(language, "tvdb.searchPlaceholder"); }
     public static String tvdbNoResults(AppLanguage language) { return t(language, "tvdb.noResults"); }
+    public static String tvdbNoResultsHint(AppLanguage language) { return t(language, "tvdb.noResultsHint"); }
+    public static String tvdbInitialSearchHint(AppLanguage language) { return t(language, "tvdb.initialSearchHint"); }
     public static String tvdbNoMatchSelected(AppLanguage language) { return t(language, "tvdb.noMatchSelected"); }
     public static String tvdbResolveNow(AppLanguage language) { return t(language, "tvdb.resolveNow"); }
     public static String tvdbIgnore(AppLanguage language) { return t(language, "tvdb.ignore"); }

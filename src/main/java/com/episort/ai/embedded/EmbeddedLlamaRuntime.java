@@ -202,11 +202,11 @@ public class EmbeddedLlamaRuntime implements AutoCloseable {
         args.add("127.0.0.1");
         args.add("--port");
         args.add(String.valueOf(port));
-        // GPU offload: all layers to VRAM. Qwen3 1.7B Q8_0 (~2.2 GB) fits
+        // GPU offload: all layers to VRAM. Qwen3 4B Q4_K_M (~2.5 GB) fits
         // comfortably on modest discrete GPUs.
         args.add("-ngl");
         args.add("999");
-        // 32K context: Qwen3 1.7B supports 32,768 tokens and this keeps large
+        // 32K context: Qwen3 4B Instruct 2507 supports 32,768 tokens and this keeps large
         // selected batches in-context without relying on reasoning mode.
         args.add("--ctx-size");
         args.add("32768");
@@ -222,7 +222,7 @@ public class EmbeddedLlamaRuntime implements AutoCloseable {
         args.add("--threads");
         args.add(String.valueOf(Math.min(8, Math.max(2, Runtime.getRuntime().availableProcessors() / 2))));
         // Single slot. Tried --parallel 4 to fan out the per-file pass, but on
-        // a 1.7B Q8 model on one GPU, four concurrent decode streams are
+        // a 4B Q4 model on one GPU, four concurrent decode streams are
         // bandwidth-bound and per-call latency 3-4x'd; aggregate throughput
         // also dropped because each slot keeps its own KV cache so the
         // system-prompt prefix is prefilled once per slot, not once total.

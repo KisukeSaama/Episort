@@ -167,8 +167,8 @@ public final class RowDetailPanel {
             }
         });
 
-        tvdbPoster.setFitWidth(150);
-        tvdbPoster.setFitHeight(220);
+        tvdbPoster.setFitWidth(118);
+        tvdbPoster.setFitHeight(176);
         tvdbPoster.setPreserveRatio(true);
         tvdbPoster.getStyleClass().add("tvdb-poster-image");
         tvdbPosterPlaceholder.getStyleClass().add("tvdb-poster-placeholder");
@@ -180,12 +180,16 @@ public final class RowDetailPanel {
         tvdbMatchId.getStyleClass().add("tvdb-match-meta");
         tvdbMatchOverview.getStyleClass().add("tvdb-match-overview");
         tvdbMatchOverview.setWrapText(true);
+        tvdbMatchOverview.setMaxHeight(62);
         tvdbTargetHint.getStyleClass().add("tvdb-match-meta");
         tvdbTargetHint.setWrapText(true);
         VBox matchText = new VBox(6, tvdbMatchTitle, tvdbMatchMeta, tvdbMatchId, tvdbMatchOverview);
+        HBox.setHgrow(matchText, Priority.ALWAYS);
         StackPane posterHost = new StackPane(posterPane);
         posterHost.getStyleClass().add("tvdb-detail-poster-host");
-        tvdbMatchCard = new VBox(10, posterHost, matchText);
+        HBox matchBody = new HBox(10, posterHost, matchText);
+        matchBody.setAlignment(Pos.TOP_LEFT);
+        tvdbMatchCard = new VBox(10, matchBody);
         tvdbMatchCard.getStyleClass().add("tvdb-selected-card");
 
         tvdbCandidate.setMaxWidth(Double.MAX_VALUE);
@@ -442,8 +446,8 @@ public final class RowDetailPanel {
         tvdbMatchMeta.setText(mediaTypeText(value.identity().mediaType(), currentLanguage)
                 + value.year().map(year -> " • " + year).orElse(""));
         tvdbMatchId.setText(UiText.tvdbIdLabel(currentLanguage) + ": " + value.identity().id());
-        tvdbMatchOverview.setText(localizedOverview(value).filter(v -> !v.isBlank())
-                .orElseGet(() -> UiText.tvdbNoDescription(currentLanguage)));
+        tvdbMatchOverview.setText(shortOverview(localizedOverview(value).filter(v -> !v.isBlank())
+                .orElseGet(() -> UiText.tvdbNoDescription(currentLanguage))));
         tvdbPosterPlaceholder.setText("TVDB");
         tvdbPoster.setVisible(false);
         tvdbPoster.setImage(null);
@@ -451,6 +455,8 @@ public final class RowDetailPanel {
             Image image = new Image(url, true);
             image.errorProperty().addListener((obs, was, failed) -> {
                 if (failed) {
+                    System.getLogger(RowDetailPanel.class.getName())
+                            .log(System.Logger.Level.DEBUG, "TVDB poster failed to load: " + url);
                     tvdbPoster.setImage(null);
                     tvdbPoster.setVisible(false);
                 }
@@ -461,6 +467,14 @@ public final class RowDetailPanel {
         tvdbReset.setDisable(false);
         tvdbApply.setDisable(false);
         updateTvdbTargetHint();
+    }
+
+    private static String shortOverview(String value) {
+        String normalized = value == null ? "" : value.replaceAll("\\s+", " ").trim();
+        if (normalized.length() <= 360) {
+            return normalized;
+        }
+        return normalized.substring(0, 357).stripTrailing() + "...";
     }
 
     private Optional<String> localizedOverview(TvdbCandidate candidate) {

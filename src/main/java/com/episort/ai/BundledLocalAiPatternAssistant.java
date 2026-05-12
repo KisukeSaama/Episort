@@ -19,7 +19,7 @@ import java.util.function.Supplier;
 
 /**
  * Pattern assistant backed by the embedded Episort local AI runtime
- * (llama.cpp / Qwen3 1.7B). Runs in two passes to stay within the model's
+ * (llama.cpp / Qwen3 4B Instruct 2507). Runs in two passes to stay within the model's
  * reliable structured-output window:
  *
  * <ol>
@@ -28,7 +28,7 @@ import java.util.function.Supplier;
  *       truncated even on large groups.</li>
  *   <li>One per-file call per filename returning {@code {filename, pattern,
  *       tokens, normalizedOrder, confidence}}. We tried packing N filenames
- *       into one batched call to amortize round-trips, but a 1.7B model
+ *       into one batched call to amortize round-trips, but a small local model
  *       loses track when asked to emit a structured entry per item in one
  *       shot — entries got merged, dropped, or cross-contaminated. Per-file
  *       calls stay sharp, and {@code cache_prompt=true} on the server reuses

@@ -78,10 +78,12 @@ import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.Node;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -142,6 +144,7 @@ public final class ScanScreen {
 
     private final RowDetailPanel detailPanel = new RowDetailPanel();
     private final Region detailRoot;
+    private final VBox detailStack;
     private final AiChatPanel aiChatPanel = new AiChatPanel();
     private final Map<ScanRow, BatchTvdbMatch> rowToGroupMatch = new HashMap<>();
     private final Map<ScanRow, InventoryGroup> rowToGroup = new HashMap<>();
@@ -208,21 +211,25 @@ public final class ScanScreen {
         detailRoot.setMinWidth(320);
         detailRoot.setPrefWidth(380);
         detailRoot.setMaxWidth(420);
+        detailStack = new VBox(10, resolveManualMatchesButton, detailRoot);
+        detailStack.getStyleClass().add("scan-detail-stack");
         aiChatPanel.setApplyHandler(this::applyToolCall);
         aiChatPanel.setProposeHandler(this::onProposeRename);
 
         VBox tableStack = new VBox(12, filterBar, table, aiChatPanel.root());
         VBox.setVgrow(table, Priority.ALWAYS);
-        HBox initialBody = new HBox(16, tableStack, detailRoot);
+        HBox initialBody = new HBox(16, tableStack, detailStack);
         HBox.setHgrow(tableStack, Priority.ALWAYS);
         HBox.setHgrow(table, Priority.ALWAYS);
-        HBox.setHgrow(detailRoot, Priority.NEVER);
+        HBox.setHgrow(detailStack, Priority.NEVER);
         VBox.setVgrow(detailRoot, Priority.ALWAYS);
+        VBox.setVgrow(detailStack, Priority.ALWAYS);
         currentBody = initialBody;
 
         root = new VBox(14, heading, workflow, metricGrid, currentBody);
         root.getStyleClass().add("screen-root");
         VBox.setVgrow(currentBody, Priority.ALWAYS);
+        root.addEventFilter(MouseEvent.MOUSE_PRESSED, this::clearFileSelectionOnOutsideClick);
 
         applyLanguage(AppLanguage.FRENCH);
         clear();
@@ -863,7 +870,7 @@ public final class ScanScreen {
         try {
             ScanInputRole role = ScanInputRole.valueOf(token.role().toUpperCase(Locale.ROOT));
             // Drop tokens whose normalizedValue carries no letter/digit (e.g.
-            // "(", ")", "-"): these come from a 1.7B model misaligning offsets
+            // "(", ")", "-"): these come from small local models misaligning offsets
             // around bracketed segments and would otherwise pollute the token
             // columns and the proposed name. Numeric roles still need digits;
             // textual roles still need letters.
@@ -928,22 +935,27 @@ public final class ScanScreen {
         Pane next;
         if (stacked) {
             detailRoot.setMaxWidth(Double.MAX_VALUE);
+            detailStack.setMaxWidth(Double.MAX_VALUE);
             VBox tableStack = new VBox(12, filterBar, table, aiChatPanel.root());
             VBox.setVgrow(table, Priority.ALWAYS);
-            VBox stack = new VBox(16, tableStack, detailRoot);
+            VBox stack = new VBox(16, tableStack, detailStack);
             VBox.setVgrow(tableStack, Priority.ALWAYS);
             VBox.setVgrow(table, Priority.ALWAYS);
             VBox.setVgrow(detailRoot, Priority.ALWAYS);
+            VBox.setVgrow(detailStack, Priority.ALWAYS);
             next = stack;
         } else {
             detailRoot.setMaxWidth(420);
             detailRoot.setPrefWidth(380);
+            detailStack.setMaxWidth(420);
+            detailStack.setPrefWidth(380);
             VBox tableStack = new VBox(12, filterBar, table, aiChatPanel.root());
             VBox.setVgrow(table, Priority.ALWAYS);
-            HBox row = new HBox(16, tableStack, detailRoot);
+            HBox row = new HBox(16, tableStack, detailStack);
             HBox.setHgrow(tableStack, Priority.ALWAYS);
-            HBox.setHgrow(detailRoot, Priority.NEVER);
+            HBox.setHgrow(detailStack, Priority.NEVER);
             VBox.setVgrow(detailRoot, Priority.ALWAYS);
+            VBox.setVgrow(detailStack, Priority.ALWAYS);
             next = row;
         }
         replaceCurrentBody(next);
@@ -1052,18 +1064,6 @@ public final class ScanScreen {
                 event.consume();
             });
             row.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
-                if (row.isEmpty() || event.getButton() != MouseButton.PRIMARY) {
-                    return;
-                }
-                ScanRow item = row.getItem();
-                if (item == null || item.isIgnored()) {
-                    event.consume();
-                    return;
-                }
-                handleSelectionCellClick(item, event);
-                event.consume();
-            });
-            row.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
                 if (row.isEmpty() || event.getButton() != MouseButton.SECONDARY) {
                     return;
                 }
@@ -1083,6 +1083,7 @@ public final class ScanScreen {
         selectionColumn.setMinWidth(46);
         selectionColumn.setPrefWidth(46);
         selectionColumn.setMaxWidth(60);
+        selectionColumn.setEditable(false);
         selectionColumn.setSortable(false);
         selectionColumn.setReorderable(false);
         selectionColumn.getStyleClass().add("selection-column");
@@ -1109,14 +1110,13 @@ public final class ScanScreen {
                 getStyleClass().add("selection-cell");
                 addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
                     if (!isEmpty() && event.getButton() == MouseButton.PRIMARY) {
+                        if (boundRow != null) {
+                            handleSelectionCellClick(boundRow, event);
+                        }
                         event.consume();
                     }
                 });
                 setOnMouseClicked(event -> {
-                    if (boundRow == null || event.getButton() != MouseButton.PRIMARY) {
-                        return;
-                    }
-                    handleSelectionCellClick(boundRow, event);
                     event.consume();
                 });
             }
@@ -1140,6 +1140,7 @@ public final class ScanScreen {
     private void configureOriginalColumn() {
         originalColumn.setMinWidth(280);
         originalColumn.setPrefWidth(430);
+        originalColumn.setEditable(false);
         originalColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().originalFilename()));
         originalColumn.setCellFactory(monoEllipsisCellFactory());
         originalColumn.setComparator(ScanRowTableSupport.NATURAL_TEXT);
@@ -1149,6 +1150,7 @@ public final class ScanScreen {
         arrowColumn.setMinWidth(34);
         arrowColumn.setPrefWidth(38);
         arrowColumn.setMaxWidth(44);
+        arrowColumn.setEditable(false);
         arrowColumn.setSortable(false);
         arrowColumn.setReorderable(false);
         arrowColumn.setCellValueFactory(data -> new SimpleStringProperty("→"));
@@ -1169,6 +1171,7 @@ public final class ScanScreen {
     private void configureProposedColumn() {
         proposedColumn.setMinWidth(280);
         proposedColumn.setPrefWidth(430);
+        proposedColumn.setEditable(true);
         proposedColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().proposedFilename().orElse(EMPTY)));
         proposedColumn.setCellFactory(column -> {
             CommitOnFocusLossStringCell<ScanRow> cell = new CommitOnFocusLossStringCell<>();
@@ -1195,6 +1198,7 @@ public final class ScanScreen {
     private void configureRoleColumn(TableColumn<ScanRow, String> column, ScanInputRole role, double prefWidth) {
         column.setMinWidth(60);
         column.setPrefWidth(prefWidth);
+        column.setEditable(true);
         column.setCellValueFactory(data -> new SimpleStringProperty(roleValue(data.getValue(), role)));
         column.setCellFactory(c -> new CommitOnFocusLossStringCell<ScanRow>() {
             @Override
@@ -1366,6 +1370,7 @@ public final class ScanScreen {
         extensionColumn.setMinWidth(60);
         extensionColumn.setPrefWidth(72);
         extensionColumn.setMaxWidth(96);
+        extensionColumn.setEditable(false);
         extensionColumn.setCellValueFactory(data -> new SimpleStringProperty(
                 data.getValue().extension().isEmpty() ? EMPTY : data.getValue().extension()));
         extensionColumn.setCellFactory(column -> new TableCell<>() {
@@ -1394,6 +1399,7 @@ public final class ScanScreen {
     private void configureTypeColumn() {
         typeColumn.setMinWidth(150);
         typeColumn.setPrefWidth(170);
+        typeColumn.setEditable(false);
         typeColumn.setCellValueFactory(data -> new SimpleObjectProperty<>(data.getValue().mediaType()));
         typeColumn.setCellFactory(column -> new TableCell<>() {
             private final ComboBox<ScanMediaType> picker = new ComboBox<>();
@@ -1439,8 +1445,24 @@ public final class ScanScreen {
     private void configureOrderColumn() {
         orderColumn.setMinWidth(92);
         orderColumn.setPrefWidth(112);
+        orderColumn.setEditable(true);
         orderColumn.setCellValueFactory(data -> new SimpleStringProperty(orderText(data.getValue().order().orElse(""))));
-        orderColumn.setCellFactory(monoEllipsisCellFactory());
+        orderColumn.setCellFactory(column -> {
+            CommitOnFocusLossStringCell<ScanRow> cell = new CommitOnFocusLossStringCell<>();
+            cell.getStyleClass().add("cell-mono");
+            return cell;
+        });
+        orderColumn.setOnEditCommit(event -> {
+            ScanRow row = event.getRowValue();
+            String value = event.getNewValue() == null ? "" : event.getNewValue().trim();
+            if (EMPTY.equals(value) || value.isBlank()) {
+                row.setOrder(Optional.empty());
+            } else {
+                row.setOrder(Optional.of(value));
+            }
+            recomputeProposedName(row);
+            refreshAfterBatchEdit(row);
+        });
         orderColumn.setComparator(ScanRowTableSupport.NATURAL_TEXT);
     }
 
@@ -1457,6 +1479,7 @@ public final class ScanScreen {
     private void configureConfidenceColumn() {
         confidenceColumn.setMinWidth(70);
         confidenceColumn.setPrefWidth(80);
+        confidenceColumn.setEditable(false);
         confidenceColumn.setCellValueFactory(data -> new SimpleStringProperty(formatConfidence(data.getValue().confidence())));
         confidenceColumn.setCellFactory(monoEllipsisCellFactory());
         confidenceColumn.setComparator(ScanRowTableSupport.CONFIDENCE_PERCENT);
@@ -1465,6 +1488,7 @@ public final class ScanScreen {
     private void configureStatusColumn() {
         statusColumn.setMinWidth(96);
         statusColumn.setPrefWidth(112);
+        statusColumn.setEditable(false);
         statusColumn.setCellValueFactory(data -> new SimpleObjectProperty<>(data.getValue().status()));
         statusColumn.setCellFactory(column -> new TableCell<>() {
             private final Label pill = new Label();
@@ -1546,7 +1570,7 @@ public final class ScanScreen {
             detailPanel.show(row, rowToGroupMatch.get(row));
             openTvdbManualMatchDialog(row);
         }));
-        filterBar.getChildren().addAll(spacer, statusFilters, resolveManualMatchesButton);
+        filterBar.getChildren().addAll(spacer, statusFilters);
     }
 
     private void addFilterButton(ScanRowFilter filter) {
@@ -1771,13 +1795,17 @@ public final class ScanScreen {
             selectVisibleRange(selectionAnchorIndex, clickedIndex);
             return;
         }
-        if (event.isControlDown() || event.isMetaDown()) {
-            setRowSelected(row, !row.isSelected());
-            selectionAnchorIndex = clickedIndex;
-            return;
-        }
-        selectOnlyForAction(row);
+        setRowSelected(row, !row.isSelected());
         selectionAnchorIndex = clickedIndex;
+    }
+
+    private void syncTableSelectionFromRows() {
+        table.getSelectionModel().clearSelection();
+        for (ScanRow row : sorted) {
+            if (row.isSelected() && !row.isIgnored()) {
+                table.getSelectionModel().select(row);
+            }
+        }
     }
 
     private void selectVisibleRange(int anchorIndex, int clickedIndex) {
@@ -1799,6 +1827,7 @@ public final class ScanScreen {
                     table.getSelectionModel().select(row);
                 }
             }
+            syncTableSelectionFromRows();
             ScanRow clicked = sorted.get(clickedIndex);
             selectedRow.set(clicked);
             detailPanel.show(clicked, rowToGroupMatch.get(clicked));
@@ -1822,15 +1851,8 @@ public final class ScanScreen {
         syncingSelection.set(true);
         try {
             row.setSelected(selected);
-            if (selected) {
-                if (!table.getSelectionModel().getSelectedItems().contains(row)) {
-                    table.getSelectionModel().select(row);
-                }
-            } else {
-                int visibleIndex = sorted.indexOf(row);
-                if (visibleIndex >= 0) {
-                    table.getSelectionModel().clearSelection(visibleIndex);
-                }
+            syncTableSelectionFromRows();
+            if (!selected) {
                 if (selectedRow.get() == row) {
                     ScanRow fallback = table.getSelectionModel().getSelectedItem();
                     selectedRow.set(fallback);
@@ -1849,23 +1871,73 @@ public final class ScanScreen {
         }
     }
 
-    private void selectOnlyForContextMenu(ScanRow row) {
-        if (row.isIgnored()) {
-            syncingSelection.set(true);
-            try {
-                table.getSelectionModel().clearSelection();
-                selectedRow.set(row);
-                detailPanel.show(row, rowToGroupMatch.get(row));
-                detailPanel.setTvdbTargetCount(0);
-            } finally {
-                syncingSelection.set(false);
-                updateSelectAllCheckbox();
-                updateAiChatTargetFromSelection();
-                table.refresh();
-            }
+    private void clearFileSelectionOnOutsideClick(MouseEvent event) {
+        if (event.getButton() != MouseButton.PRIMARY || !hasSelectedRows()) {
             return;
         }
-        selectOnlyForAction(row);
+        if (isEventInside(event, table)
+                || isEventInside(event, detailStack)
+                || isEventInside(event, aiChatPanel.root())) {
+            return;
+        }
+        clearFileSelection();
+    }
+
+    private boolean hasSelectedRows() {
+        for (ScanRow row : rows) {
+            if (row.isSelected()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isEventInside(MouseEvent event, Node node) {
+        Object target = event.getTarget();
+        return target instanceof Node targetNode && isDescendantOf(targetNode, node);
+    }
+
+    private boolean isDescendantOf(Node node, Node ancestor) {
+        for (Node current = node; current != null; current = current.getParent()) {
+            if (current == ancestor) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void clearFileSelection() {
+        syncingSelection.set(true);
+        try {
+            for (ScanRow row : rows) {
+                row.setSelected(false);
+            }
+            selectionAnchorIndex = -1;
+            table.getSelectionModel().clearSelection();
+            selectedRow.set(null);
+            detailPanel.clear();
+        } finally {
+            syncingSelection.set(false);
+            updateSelectAllCheckbox();
+            updateAiChatTargetFromSelection();
+            table.refresh();
+        }
+    }
+
+    private void selectOnlyForContextMenu(ScanRow row) {
+        syncingSelection.set(true);
+        try {
+            table.getSelectionModel().clearSelection();
+            table.getSelectionModel().select(row);
+            selectedRow.set(row);
+            detailPanel.show(row, rowToGroupMatch.get(row));
+            detailPanel.setTvdbTargetCount(row.isIgnored() ? 0 : tvdbTargetRows(row).size());
+        } finally {
+            syncingSelection.set(false);
+            updateSelectAllCheckbox();
+            updateAiChatTargetFromSelection();
+            table.refresh();
+        }
     }
 
     private void selectOnlyForAction(ScanRow row) {
@@ -1874,9 +1946,8 @@ public final class ScanScreen {
             for (ScanRow visible : sorted) {
                 visible.setSelected(false);
             }
-            table.getSelectionModel().clearSelection();
             row.setSelected(true);
-            table.getSelectionModel().select(row);
+            syncTableSelectionFromRows();
             selectedRow.set(row);
             detailPanel.show(row, rowToGroupMatch.get(row));
             detailPanel.setTvdbTargetCount(tvdbTargetRows(row).size());
@@ -1891,15 +1962,12 @@ public final class ScanScreen {
     private void setAllVisibleSelected(boolean selected) {
         syncingSelection.set(true);
         try {
-            table.getSelectionModel().clearSelection();
             selectionAnchorIndex = -1;
             for (ScanRow row : filtered) {
                 boolean include = selected && !row.isIgnored();
                 row.setSelected(include);
-                if (include) {
-                    table.getSelectionModel().select(row);
-                }
             }
+            syncTableSelectionFromRows();
             ScanRow current = table.getSelectionModel().getSelectedItem();
             selectionAnchorIndex = current == null ? -1 : sorted.indexOf(current);
             selectedRow.set(current);
@@ -2309,14 +2377,15 @@ public final class ScanScreen {
     private String tvdbQuery(ScanRow row) {
         InventoryGroup group = rowToGroup.get(row);
         if (group != null && group.seedName() != null && !group.seedName().isBlank()) {
-            return group.seedName();
+            return TvdbSearchQueryCleaner.clean(group.seedName());
         }
         if (row.mediaType() == ScanMediaType.MOVIE) {
-            return derivedMovieTitle(row);
+            return TvdbSearchQueryCleaner.clean(derivedMovieTitle(row));
         }
-        return row.inputParse()
+        String query = row.inputParse()
                 .flatMap(parse -> parse.tokenValue(ScanInputRole.SERIES))
                 .orElse(row.originalFilename());
+        return TvdbSearchQueryCleaner.clean(query);
     }
 
     private static String candidateLabel(TvdbCandidate candidate) {
@@ -2627,7 +2696,7 @@ public final class ScanScreen {
             // Per-row media-type takes precedence in the SERIES direction (a
             // single SxxExx-tagged file inside an otherwise-movie batch is
             // legitimately an episode). But a confident global MOVIE classification
-            // overrides per-file SERIES guesses, because a 1.7B model routinely
+            // overrides per-file SERIES guesses, because small local models routinely
             // mis-parses files like "Movie (1985).mkv" — the year digits get
             // grabbed as an episode number and the file gets a phantom S01E85.
             // Falling back to the global classification only when the per-file
@@ -2914,6 +2983,7 @@ public final class ScanScreen {
      */
     private static class CommitOnFocusLossStringCell<S> extends TextFieldTableCell<S, String> {
         private boolean focusListenerInstalled;
+        private boolean cancelingEdit;
 
         CommitOnFocusLossStringCell() {
             super(new DefaultStringConverter());
@@ -2925,11 +2995,44 @@ public final class ScanScreen {
             if (!isEditing() || focusListenerInstalled) return;
             if (getGraphic() instanceof TextField field) {
                 focusListenerInstalled = true;
+                field.setOnKeyPressed(event -> {
+                    if (event.getCode() == KeyCode.ESCAPE) {
+                        cancelingEdit = true;
+                        cancelEdit();
+                        clearTableEdit();
+                        event.consume();
+                    }
+                });
                 field.focusedProperty().addListener((obs, was, isFocused) -> {
-                    if (!isFocused && isEditing()) {
+                    if (!isFocused && isEditing() && !cancelingEdit) {
                         commitEdit(field.getText());
                     }
                 });
+            }
+        }
+
+        @Override
+        public void commitEdit(String newValue) {
+            if (isEditing()) {
+                super.commitEdit(newValue);
+            }
+            cancelingEdit = false;
+            clearTableEdit();
+            updateItem(newValue, isEmpty());
+        }
+
+        @Override
+        public void cancelEdit() {
+            cancelingEdit = true;
+            super.cancelEdit();
+            clearTableEdit();
+            cancelingEdit = false;
+        }
+
+        private void clearTableEdit() {
+            TableView<S> tableView = getTableView();
+            if (tableView != null) {
+                tableView.edit(-1, null);
             }
         }
     }

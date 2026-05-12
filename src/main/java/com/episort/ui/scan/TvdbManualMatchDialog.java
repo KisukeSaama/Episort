@@ -48,6 +48,8 @@ final class TvdbManualMatchDialog {
     private final Button ignoreButton = new Button();
     private final ListView<TvdbCandidate> results = new ListView<>();
     private final Label message = new Label();
+    private final Label emptyTitle = new Label();
+    private final Label emptyHint = new Label();
     private final ProgressIndicator loading = new ProgressIndicator();
     private Optional<TvdbCandidate> selected = Optional.empty();
     private double dragOffsetX;
@@ -70,10 +72,10 @@ final class TvdbManualMatchDialog {
 
         queryField.setText(initialQuery == null ? "" : initialQuery);
         queryField.setPromptText(UiText.tvdbSearchPlaceholder(language));
-        queryField.getStyleClass().add("tvdb-search-text-field");
+        queryField.getStyleClass().addAll("episort-search-field", "tvdb-search-text-field");
         searchButton.setText(UiText.tvdbSearch(language));
         searchButton.getStyleClass().add("primary");
-        clearSearchButton.getStyleClass().add("tvdb-search-clear");
+        clearSearchButton.getStyleClass().addAll("episort-search-clear", "tvdb-search-clear");
         clearSearchButton.setTooltip(new Tooltip(UiText.tvdbSearch(language)));
         clearSearchButton.setVisible(!queryField.getText().isBlank());
         clearSearchButton.setManaged(!queryField.getText().isBlank());
@@ -82,14 +84,17 @@ final class TvdbManualMatchDialog {
 
         results.getStyleClass().add("tvdb-search-results");
         results.setCellFactory(view -> new ResultCell());
-        results.setPlaceholder(new Label(UiText.tvdbNoResults(language)));
+        results.setPlaceholder(emptyState(UiText.tvdbInitialSearchHint(language), ""));
         results.getItems().setAll(initialResults == null ? List.of() : initialResults);
 
         loading.setMaxSize(24, 24);
+        loading.getStyleClass().add("tvdb-search-loader");
         loading.setVisible(false);
         loading.setManaged(false);
         message.getStyleClass().add("tvdb-dialog-message");
         message.setWrapText(true);
+        message.setVisible(false);
+        message.setManaged(false);
 
         searchButton.setOnAction(event -> search());
         queryField.setOnAction(event -> search());
@@ -97,6 +102,11 @@ final class TvdbManualMatchDialog {
             boolean hasText = newValue != null && !newValue.isBlank();
             clearSearchButton.setVisible(hasText);
             clearSearchButton.setManaged(hasText);
+            if (!hasText) {
+                results.getItems().clear();
+                setEmptyState(UiText.tvdbInitialSearchHint(language), "");
+                setMessage("");
+            }
         });
         clearSearchButton.setOnAction(event -> {
             queryField.clear();
@@ -130,9 +140,9 @@ final class TvdbManualMatchDialog {
         });
 
         Label searchIcon = new Label("⌕");
-        searchIcon.getStyleClass().add("tvdb-search-icon");
+        searchIcon.getStyleClass().addAll("episort-search-icon", "tvdb-search-icon");
         HBox searchBox = new HBox(8, searchIcon, queryField, clearSearchButton);
-        searchBox.getStyleClass().add("tvdb-search-box");
+        searchBox.getStyleClass().addAll("episort-search-box", "tvdb-search-box");
         HBox.setHgrow(queryField, Priority.ALWAYS);
         HBox searchRow = new HBox(10, searchBox, searchButton, loading);
         HBox.setHgrow(searchBox, Priority.ALWAYS);
@@ -170,11 +180,12 @@ final class TvdbManualMatchDialog {
         String query = queryField.getText() == null ? "" : queryField.getText().trim();
         if (query.isBlank()) {
             results.getItems().clear();
-            message.setText(UiText.tvdbNoResults(language));
+            setEmptyState(UiText.tvdbInitialSearchHint(language), "");
+            setMessage("");
             return;
         }
         setBusy(true);
-        message.setText(UiText.tvdbLoadingResults(language));
+        setMessage(UiText.tvdbLoadingResults(language));
         CompletableFuture
                 .supplyAsync(() -> tvdbClient.search(query, credentials))
                 .thenAccept(searchResult -> Platform.runLater(() -> showResults(searchResult)))
@@ -195,9 +206,10 @@ final class TvdbManualMatchDialog {
         fade.setToValue(1.0);
         fade.play();
         if (combined.isEmpty()) {
-            message.setText(UiText.tvdbNoResults(language));
+            setEmptyState(UiText.tvdbNoResults(language), UiText.tvdbNoResultsHint(language));
+            setMessage("");
         } else {
-            message.setText("");
+            setMessage("");
         }
     }
 
@@ -206,7 +218,7 @@ final class TvdbManualMatchDialog {
         Throwable cause = throwable instanceof java.util.concurrent.CompletionException && throwable.getCause() != null
                 ? throwable.getCause()
                 : throwable;
-        message.setText(cause instanceof TvdbException tvdbException
+        setMessage(cause instanceof TvdbException tvdbException
                 ? tvdbException.error().safeMessage()
                 : "TVDB lookup failed.");
     }
@@ -217,6 +229,32 @@ final class TvdbManualMatchDialog {
         searchButton.setDisable(busy);
         queryField.setDisable(busy);
         searchButton.setText(busy ? UiText.tvdbSearching(language) : UiText.tvdbSearch(language));
+    }
+
+    private VBox emptyState(String title, String hint) {
+        emptyTitle.getStyleClass().add("tvdb-empty-title");
+        emptyHint.getStyleClass().add("tvdb-empty-hint");
+        emptyHint.setWrapText(true);
+        VBox box = new VBox(5, emptyTitle, emptyHint);
+        box.getStyleClass().add("tvdb-empty-state");
+        box.setAlignment(Pos.CENTER);
+        setEmptyState(title, hint);
+        return box;
+    }
+
+    private void setEmptyState(String title, String hint) {
+        emptyTitle.setText(title == null ? "" : title);
+        emptyHint.setText(hint == null ? "" : hint);
+        boolean hasHint = hint != null && !hint.isBlank();
+        emptyHint.setVisible(hasHint);
+        emptyHint.setManaged(hasHint);
+    }
+
+    private void setMessage(String text) {
+        message.setText(text == null ? "" : text);
+        boolean visible = text != null && !text.isBlank();
+        message.setVisible(visible);
+        message.setManaged(visible);
     }
 
     private void choose(TvdbCandidate candidate) {
@@ -252,6 +290,8 @@ final class TvdbManualMatchDialog {
                 Image image = new Image(url, true);
                 image.errorProperty().addListener((obs, was, failed) -> {
                     if (failed) {
+                        System.getLogger(TvdbManualMatchDialog.class.getName())
+                                .log(System.Logger.Level.DEBUG, "TVDB poster failed to load: " + url);
                         poster.setImage(null);
                         poster.setVisible(false);
                     }

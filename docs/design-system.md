@@ -123,7 +123,7 @@ inventing new ones.
 | `radius.pill`        | `999px`                                                                            | Status pill, status dots             |
 | `border.width`       | `1px`                                                                              | All borders. Never thicker.          |
 | `elevation.panel`    | `dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.05, 0, 6)`                           | Cards, widgets, table, settings      |
-| `elevation.glow.acc` | `dropshadow(gaussian, rgba(249,115,22,0.45), 14, 0, 0, 0)`                         | Focused inputs                       |
+| `elevation.glow.acc` | `dropshadow(gaussian, rgba(249,115,22,0.68), 18, 0, 0, 0)`                         | Focused search inputs                |
 | `elevation.glow.btn` | `dropshadow(gaussian, rgba(249,115,22,0.55), 16, 0, 0, 0)`                         | Hovered button                       |
 | `elevation.glow.pri` | `dropshadow(gaussian, rgba(249,115,22,0.65), 18, 0, 0, 0)`                         | Hovered primary button               |
 | `elevation.dot.good` | `dropshadow(gaussian, rgba(74,222,128,0.55), 8, 0, 0, 0)`                          | `.dot-good`                          |
@@ -204,8 +204,9 @@ Each component is documented as **Anatomy → Class → Rules**.
 - **Anatomy:** workspace chip → search field with `>_` prefix → spacer →
   status pill → language label + combo → single **primary action** button.
 - **Classes:** `.top-bar`, `.workspace-chip`, `.workspace-chip-prefix`,
-  `.workspace-chip-label`, `.top-search`, `.search-prefix`, `.status-pill`,
-  `.language-label`.
+  `.workspace-chip-label`, `.episort-search-box`, `.episort-search-field`,
+  `.episort-search-icon`, `.episort-search-clear`, `.top-search`,
+  `.search-prefix`, `.status-pill`, `.language-label`.
 - **Rules:**
   - The status pill is **derived from `AppShellViewModel.errorCode()`**:
     - empty → `OK`
@@ -214,6 +215,12 @@ Each component is documented as **Anatomy → Class → Rules**.
   - The search prompt must be neutral (`Rechercher…` / `Search…`) until a
     real command palette ships. The Scan screen wires the search field to
     the preview-table filter (substring match on filename / extension).
+  - Search fields use `.episort-search-box` + `.episort-search-field`
+    with shared `.episort-search-icon` / `.episort-search-clear` controls:
+    dark surface, fixed height, a low-intensity orange inactive border, a
+    high-contrast orange focus border, and orange glow without an inner white
+    text-field flash. TVDB, Scan, and History searches reuse this
+    active/focus treatment while keeping separate text state.
   - The workspace chip mirrors the configured workspace (mono, accent
     color). When no workspace is configured it shows the localized empty
     placeholder. Always shows a tooltip with the absolute path.
@@ -277,10 +284,11 @@ Each component is documented as **Anatomy → Class → Rules**.
 
 ### 4.7 Buttons
 
-- **Scan topbar:** use `.menu-button.primary` for the `Charger` / `Load`
-  dropdown. It opens `Load folder`, `Load files`, and `Add files`; the existing
-  validate action remains a disabled/enabled `.button.ghost` until active rows
-  have valid proposed names.
+- **Scan topbar:** use `.menu-button.load-primary` for the `Charger` / `Load`
+  dropdown: dark surface, orange border/accent, and visible chevron. It opens
+  `Load folder`, `Load files`, and `Add files`. Use `.button.validate-action`
+  for `Valider l'aperçu` / `Validate preview`; disabled is muted grey-green,
+  enabled is a restrained green validation action.
 - **Pressed state:** all `.button` and `.menu-button` variants keep a subtle
   `:pressed` state with 1 px downward translation, tighter shadow, and slightly
   stronger orange border/fill.
@@ -524,7 +532,9 @@ rejected on review.
 - Manual TVDB search uses `.tvdb-dialog`, `.tvdb-search-results`,
   `.tvdb-result-card`, `.tvdb-selected-card`, `.tvdb-poster-frame`,
   `.tvdb-poster-placeholder`, `.tvdb-match-title`, `.tvdb-match-meta`,
-  and `.tvdb-match-overview`. Results are visual rows with a poster/placeholder,
-  metadata, short overview, and a select action; loading and errors stay inside
-  the dialog instead of blocking the scan table.
+  `.tvdb-match-overview`, and the top-search-compatible `.tvdb-search-box`.
+  Results are visual rows with a poster/placeholder, metadata, short overview,
+  and a select action; no-result and initial states use one centered
+  `.tvdb-empty-state`; loading and errors stay inside the dialog instead of
+  blocking the scan table.
 - App-level modals (e.g. local-AI bootstrap) use `.modal-overlay` (dimmed backplate), `.modal-card` (glass card with orange border), `.modal-header` + `.modal-header-icon` + `.modal-title-block` (`.modal-title` Inter / `.modal-subtitle` Inter muted), `.modal-body` containing `.modal-info-row`s (`.modal-info-label` JetBrains Mono caption + `.modal-info-value` Inter, or `.modal-info-value-mono` for technical values), `.modal-progress` (orange-filled `.progress-bar` + `.modal-progress-status` mono), and `.modal-footer` aligned right with `.button.ghost` then `.button.primary`. Hosted in a `StageStyle.TRANSPARENT` window sized to the owner so the overlay actually dims the app — never use a native `Alert`/`Dialog`.

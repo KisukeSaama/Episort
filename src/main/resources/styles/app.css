@@ -67,27 +67,33 @@
     -fx-alignment: center-left;
 }
 
+.episort-search-box,
 .top-search {
     -fx-spacing: 8;
     -fx-padding: 6 11 6 11;
     -fx-background-color: rgba(20,23,30,0.85);
     -fx-background-radius: 8;
     -fx-border-radius: 8;
-    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-color: rgba(249,115,22,0.30);
     -fx-border-width: 1;
     -fx-alignment: center-left;
     -fx-min-height: 34;
     -fx-pref-height: 34;
 }
 
+.episort-search-box:focused-within,
 .top-search:focused-within {
-    -fx-border-color: #f97316;
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 14, 0, 0, 0);
+    -fx-border-color: rgba(249,115,22,1.0);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.68), 18, 0, 0, 0);
 }
 
+.episort-search-field,
 .top-search .text-field {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
+    -fx-background-insets: 0;
+    -fx-border-insets: 0;
+    -fx-effect: null;
     -fx-padding: 2 4 2 4;
     -fx-prompt-text-fill: #5a6271;
     -fx-text-fill: #f5f7fb;
@@ -802,6 +808,116 @@
     -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.32), 8, 0, 0, 0);
 }
 
+.episort-search-icon {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(90,98,113,1.0);
+}
+
+.episort-search-clear {
+    -fx-min-width: 24;
+    -fx-pref-width: 24;
+    -fx-min-height: 24;
+    -fx-pref-height: 24;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: rgba(138,147,163,1.0);
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-effect: null;
+}
+
+.episort-search-clear:hover {
+    -fx-background-color: rgba(249,115,22,0.12);
+    -fx-background-radius: 6;
+    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-effect: null;
+}
+
+.episort-search-field:focused {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-effect: null;
+}
+
+.episort-search-box:hover,
+.top-search:hover,
+.tvdb-search-box:hover {
+    -fx-background-color: rgba(23,27,35,0.92);
+    -fx-border-color: rgba(249,115,22,0.48);
+}
+
+.episort-search-box:focused-within:hover,
+.top-search:focused-within:hover,
+.tvdb-search-box:focused-within:hover {
+    -fx-border-color: rgba(249,115,22,1.0);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.72), 20, 0, 0, 0);
+}
+
+.menu-button.load-primary {
+    -fx-background-color: rgba(20,23,30,0.90);
+    -fx-border-color: rgba(249,115,22,0.62);
+    -fx-text-fill: #f5f7fb;
+    -fx-padding: 7 14 7 14;
+}
+
+.menu-button.load-primary:hover {
+    -fx-background-color: rgba(249,115,22,0.12);
+    -fx-border-color: rgba(249,115,22,0.78);
+    -fx-text-fill: #fff7ed;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.28), 12, 0, 0, 0);
+}
+
+.menu-button.load-primary:pressed,
+.menu-button.load-primary:showing {
+    -fx-background-color: rgba(249,115,22,0.18);
+    -fx-border-color: rgba(249,115,22,0.88);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.18), 8, 0, 0, 0);
+}
+
+.menu-button.load-primary .label {
+    -fx-text-fill: #f5f7fb;
+}
+
+.menu-button.load-primary .arrow {
+    -fx-background-color: #fb923c;
+}
+
+.button.validate-action {
+    -fx-background-color: rgba(249,115,22,1.0);
+    -fx-border-color: transparent;
+    -fx-text-fill: rgba(17,24,39,1.0);
+    -fx-padding: 7 15 7 15;
+    -fx-font-weight: 800;
+}
+
+.button.validate-action:hover {
+    -fx-background-color: rgba(251,146,60,1.0);
+    -fx-border-color: transparent;
+    -fx-text-fill: rgba(17,24,39,1.0);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.65), 18, 0, 0, 0);
+}
+
+.button.validate-action:pressed {
+    -fx-translate-y: 1;
+    -fx-background-color: rgba(234,88,12,1.0);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.32), 8, 0, 0, 0);
+}
+
+.button.validate-action:disabled {
+    -fx-background-color: rgba(138,147,163,0.06);
+    -fx-border-color: rgba(138,147,163,0.14);
+    -fx-text-fill: rgba(184,192,204,0.52);
+    -fx-opacity: 0.58;
+    -fx-effect: null;
+}
+
+.scan-detail-stack {
+    -fx-alignment: top-center;
+}
+
 .button.ghost {
     -fx-background-color: transparent;
     -fx-border-color: rgba(249,115,22,0.25);
@@ -849,6 +965,12 @@
 .combo-box:focused {
     -fx-border-color: #f97316;
     -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 14, 0, 0, 0);
+}
+
+.top-search .text-field:focused,
+.episort-search-field:focused {
+    -fx-border-color: transparent;
+    -fx-effect: null;
 }
 
 .combo-box .list-cell {
@@ -1766,33 +1888,6 @@
     -fx-alignment: center-left;
 }
 
-.top-search-icon {
-    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
-    -fx-font-size: 13px;
-    -fx-font-weight: 700;
-    -fx-text-fill: #5a6271;
-}
-
-.top-search-clear {
-    -fx-min-width: 24;
-    -fx-pref-width: 24;
-    -fx-min-height: 24;
-    -fx-pref-height: 24;
-    -fx-padding: 0;
-    -fx-background-color: transparent;
-    -fx-border-color: transparent;
-    -fx-text-fill: #8a93a3;
-    -fx-font-size: 16px;
-    -fx-font-weight: 700;
-    -fx-effect: null;
-}
-
-.top-search-clear:hover {
-    -fx-background-color: rgba(249,115,22,0.12);
-    -fx-text-fill: #f5f7fb;
-    -fx-effect: null;
-}
-
 .preview-table .column-header {
     -fx-border-color: transparent rgba(255,255,255,0.16) rgba(255,255,255,0.06) transparent;
     -fx-border-width: 0 1 1 0;
@@ -1876,16 +1971,16 @@
 }
 
 .tvdb-selected-card .tvdb-poster-frame {
-    -fx-min-width: 154;
-    -fx-pref-width: 154;
-    -fx-max-width: 154;
-    -fx-min-height: 224;
-    -fx-pref-height: 224;
-    -fx-max-height: 224;
+    -fx-min-width: 122;
+    -fx-pref-width: 122;
+    -fx-max-width: 122;
+    -fx-min-height: 180;
+    -fx-pref-height: 180;
+    -fx-max-height: 180;
 }
 
 .tvdb-detail-poster-host {
-    -fx-alignment: center;
+    -fx-alignment: top-center;
 }
 
 .tvdb-poster-placeholder {
@@ -1913,6 +2008,25 @@
     -fx-font-size: 12.5px;
     -fx-text-fill: rgba(245,247,251,0.72);
     -fx-max-width: infinity;
+}
+
+.tvdb-empty-state {
+    -fx-padding: 24 18 24 18;
+    -fx-alignment: center;
+}
+
+.tvdb-empty-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 14px;
+    -fx-font-weight: 800;
+    -fx-text-fill: rgba(245,247,251,0.86);
+}
+
+.tvdb-empty-hint {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 12.5px;
+    -fx-text-fill: rgba(138,147,163,1.0);
+    -fx-text-alignment: center;
 }
 
 .tvdb-dialog {
@@ -2102,60 +2216,12 @@
     -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.18), 10, 0, 0, 0);
 }
 
-.tvdb-search-box {
-    -fx-spacing: 8;
-    -fx-padding: 6 10 6 10;
-    -fx-background-color: rgba(20,23,30,0.85);
-    -fx-background-radius: 8;
-    -fx-border-radius: 8;
-    -fx-border-color: rgba(255,255,255,0.06);
-    -fx-border-width: 1;
-    -fx-alignment: center-left;
-    -fx-min-height: 36;
-    -fx-pref-height: 36;
-}
-
-.tvdb-search-box:focused-within {
-    -fx-border-color: rgba(249,115,22,0.42);
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.18), 10, 0, 0, 0);
-}
-
-.tvdb-search-icon {
-    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
-    -fx-font-size: 14px;
-    -fx-font-weight: 700;
-    -fx-text-fill: rgba(90,98,113,1.0);
+.tvdb-search-loader {
+    -fx-progress-color: rgba(249,115,22,0.92);
 }
 
 .tvdb-search-text-field {
-    -fx-background-color: transparent;
-    -fx-border-color: transparent;
-    -fx-padding: 2 4 2 4;
     -fx-prompt-text-fill: rgba(90,98,113,1.0);
-    -fx-text-fill: rgba(245,247,251,1.0);
-    -fx-font-size: 13px;
-    -fx-font-weight: 400;
-}
-
-.tvdb-search-clear {
-    -fx-min-width: 24;
-    -fx-pref-width: 24;
-    -fx-min-height: 24;
-    -fx-pref-height: 24;
-    -fx-padding: 0;
-    -fx-background-color: transparent;
-    -fx-border-color: transparent;
-    -fx-text-fill: rgba(138,147,163,1.0);
-    -fx-font-size: 16px;
-    -fx-font-weight: 700;
-    -fx-effect: null;
-}
-
-.tvdb-search-clear:hover {
-    -fx-background-color: rgba(249,115,22,0.12);
-    -fx-background-radius: 6;
-    -fx-text-fill: rgba(245,247,251,1.0);
-    -fx-effect: null;
 }
 
 .tvdb-detail-controls .button {

@@ -62,13 +62,14 @@ public final class TopBar {
         workspaceChip.setAlignment(Pos.CENTER_LEFT);
 
         searchIcon = new Label("⌕");
-        searchIcon.getStyleClass().add("top-search-icon");
+        searchIcon.getStyleClass().addAll("episort-search-icon", "top-search-icon");
 
         searchField = new TextField();
+        searchField.getStyleClass().add("episort-search-field");
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
         clearSearchAction = new Button("×");
-        clearSearchAction.getStyleClass().add("top-search-clear");
+        clearSearchAction.getStyleClass().addAll("episort-search-clear", "top-search-clear");
         clearSearchAction.setVisible(false);
         clearSearchAction.setManaged(false);
         clearSearchAction.setOnAction(event -> clearSearch());
@@ -81,7 +82,7 @@ public final class TopBar {
         });
 
         searchBox = new HBox(searchIcon, searchField, clearSearchAction);
-        searchBox.getStyleClass().add("top-search");
+        searchBox.getStyleClass().addAll("episort-search-box", "top-search");
         HBox.setHgrow(searchBox, Priority.ALWAYS);
         searchBox.setMaxWidth(420);
 
@@ -100,14 +101,14 @@ public final class TopBar {
         addFilesItem = new MenuItem();
         addFilesItem.setOnAction(event -> onAddFiles.run());
         loadAction = new MenuButton();
-        loadAction.getStyleClass().add("primary");
+        loadAction.getStyleClass().add("load-primary");
         loadAction.getItems().addAll(loadFolderItem, loadFilesItem, addFilesItem);
 
         resetFolderAction = secondaryButton(onResetFolder);
         rescanAction = secondaryButton(onRescan);
 
         primaryAction = new Button();
-        primaryAction.getStyleClass().add("ghost");
+        primaryAction.getStyleClass().add("validate-action");
         primaryAction.setOnAction(event -> onPrimaryAction.run());
 
         root = new HBox(12,
