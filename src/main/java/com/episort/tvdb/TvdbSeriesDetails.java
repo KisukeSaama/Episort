@@ -20,4 +20,12 @@ public record TvdbSeriesDetails(
         dvdEpisodes = dvdEpisodes == null ? List.of() : List.copyOf(dvdEpisodes);
         absoluteEpisodes = absoluteEpisodes == null ? List.of() : List.copyOf(absoluteEpisodes);
     }
+
+    public List<TvdbEpisode> episodesFor(TvdbEpisodeOrder order) {
+        return switch (order == null ? TvdbEpisodeOrder.AIRED : order) {
+            case AIRED -> airedEpisodes;
+            case DVD -> dvdEpisodes;
+            case ABSOLUTE -> absoluteEpisodes;
+        };
+    }
 }

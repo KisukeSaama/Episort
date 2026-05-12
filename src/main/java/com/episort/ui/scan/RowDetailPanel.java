@@ -6,6 +6,8 @@ import java.nio.file.Path;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.function.BiConsumer;
+import com.episort.tvdb.TvdbCandidate;
+import com.episort.tvdb.TvdbEpisodeOrder;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -13,9 +15,12 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 public final class RowDetailPanel {
@@ -43,8 +48,17 @@ public final class RowDetailPanel {
     private final Label tvdbSeedValue;
     private final Label tvdbTypeValue;
     private final Label tvdbStatusValue;
+    private final ImageView tvdbPoster = new ImageView();
+    private final Label tvdbPosterPlaceholder = new Label();
+    private final Label tvdbMatchTitle = new Label();
+    private final Label tvdbMatchMeta = new Label();
+    private final Label tvdbMatchId = new Label();
+    private final Label tvdbMatchOverview = new Label();
+    private final Label tvdbTargetHint = new Label();
+    private final VBox tvdbMatchCard;
     private final ComboBox<String> tvdbCandidate = new ComboBox<>();
     private final ComboBox<String> tvdbOrder = new ComboBox<>();
+    private final Button tvdbSearch = new Button();
     private final Button tvdbApply = new Button();
     private final Button tvdbReset = new Button();
 
@@ -80,8 +94,11 @@ public final class RowDetailPanel {
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
     private ScanRow currentRow;
     private BatchTvdbMatch currentGroupMatch;
+    private int tvdbTargetCount = 0;
     private BiConsumer<ScanRow, String> onApplyCandidate = (r, c) -> {};
     private BiConsumer<ScanRow, String> onApplyInputPattern = (r, p) -> {};
+    private java.util.function.BiConsumer<ScanRow, TvdbEpisodeOrder> onApplySelectedMatch = (r, o) -> {};
+    private java.util.function.Consumer<ScanRow> onSearchMatch = r -> {};
     private java.util.function.Consumer<ScanRow> onResetMatch = r -> {};
 
     public RowDetailPanel() {
@@ -150,13 +167,46 @@ public final class RowDetailPanel {
             }
         });
 
+        tvdbPoster.setFitWidth(150);
+        tvdbPoster.setFitHeight(220);
+        tvdbPoster.setPreserveRatio(true);
+        tvdbPoster.getStyleClass().add("tvdb-poster-image");
+        tvdbPosterPlaceholder.getStyleClass().add("tvdb-poster-placeholder");
+        tvdbPosterPlaceholder.setAlignment(Pos.CENTER);
+        StackPane posterPane = new StackPane(tvdbPosterPlaceholder, tvdbPoster);
+        posterPane.getStyleClass().add("tvdb-poster-frame");
+        tvdbMatchTitle.getStyleClass().add("tvdb-match-title");
+        tvdbMatchMeta.getStyleClass().add("tvdb-match-meta");
+        tvdbMatchId.getStyleClass().add("tvdb-match-meta");
+        tvdbMatchOverview.getStyleClass().add("tvdb-match-overview");
+        tvdbMatchOverview.setWrapText(true);
+        tvdbTargetHint.getStyleClass().add("tvdb-match-meta");
+        tvdbTargetHint.setWrapText(true);
+        VBox matchText = new VBox(6, tvdbMatchTitle, tvdbMatchMeta, tvdbMatchId, tvdbMatchOverview);
+        StackPane posterHost = new StackPane(posterPane);
+        posterHost.getStyleClass().add("tvdb-detail-poster-host");
+        tvdbMatchCard = new VBox(10, posterHost, matchText);
+        tvdbMatchCard.getStyleClass().add("tvdb-selected-card");
+
         tvdbCandidate.setMaxWidth(Double.MAX_VALUE);
+        tvdbCandidate.setVisible(false);
+        tvdbCandidate.setManaged(false);
+        tvdbSearch.getStyleClass().add("ghost");
+        tvdbSearch.setOnAction(e -> {
+            if (currentRow != null) {
+                onSearchMatch.accept(currentRow);
+            }
+        });
         tvdbApply.getStyleClass().add("primary");
         tvdbReset.getStyleClass().add("ghost");
         tvdbApply.setOnAction(e -> {
             String selected = tvdbCandidate.getValue();
             if (selected != null && !selected.isBlank() && currentRow != null) {
                 onApplyCandidate.accept(currentRow, selected);
+                return;
+            }
+            if (currentRow != null && currentRow.tvdbCandidate().isPresent()) {
+                onApplySelectedMatch.accept(currentRow, selectedOrder());
             }
         });
         tvdbReset.setOnAction(e -> {
@@ -164,8 +214,15 @@ public final class RowDetailPanel {
                 onResetMatch.accept(currentRow);
             }
         });
-        HBox tvdbControls = new HBox(8, tvdbApply, tvdbReset);
-        tvdbControls.setAlignment(Pos.CENTER_LEFT);
+        tvdbSearch.setMaxWidth(Double.MAX_VALUE);
+        tvdbApply.setMaxWidth(Double.MAX_VALUE);
+        tvdbReset.setMaxWidth(Double.MAX_VALUE);
+        HBox tvdbSecondaryControls = new HBox(8, tvdbSearch, tvdbReset);
+        tvdbSecondaryControls.getStyleClass().add("tvdb-detail-secondary-controls");
+        HBox.setHgrow(tvdbSearch, Priority.ALWAYS);
+        HBox.setHgrow(tvdbReset, Priority.ALWAYS);
+        VBox tvdbControls = new VBox(8, tvdbSecondaryControls, tvdbOrder, tvdbApply);
+        tvdbControls.getStyleClass().add("tvdb-detail-controls");
 
         VBox sourceSection = new VBox(6,
                 sourceHeading,
@@ -189,8 +246,8 @@ public final class RowDetailPanel {
                 fieldRow(tvdbSeedLabel, tvdbSeedValue),
                 fieldRow(tvdbTypeLabel, tvdbTypeValue),
                 fieldRow(tvdbStatusLabel, tvdbStatusValue),
-                tvdbCandidate,
-                tvdbOrder,
+                tvdbMatchCard,
+                tvdbTargetHint,
                 tvdbControls);
         tvdbSection.getStyleClass().add("detail-panel-section");
 
@@ -207,7 +264,7 @@ public final class RowDetailPanel {
                 fieldRow(noteLabel, noteValue));
         notesSection.getStyleClass().add("detail-panel-section");
 
-        content = new VBox(12, sourceSection, detectionSection, tvdbSection, destinationSection, notesSection);
+        content = new VBox(12, tvdbSection, destinationSection, notesSection);
 
         contentScroll = new ScrollPane(content);
         contentScroll.getStyleClass().add("detail-scroll");
@@ -245,6 +302,19 @@ public final class RowDetailPanel {
 
     public void setOnApplyInputPattern(BiConsumer<ScanRow, String> handler) {
         this.onApplyInputPattern = handler == null ? (r, p) -> {} : handler;
+    }
+
+    public void setOnApplySelectedMatch(java.util.function.BiConsumer<ScanRow, TvdbEpisodeOrder> handler) {
+        this.onApplySelectedMatch = handler == null ? (r, o) -> {} : handler;
+    }
+
+    public void setOnSearchMatch(java.util.function.Consumer<ScanRow> handler) {
+        this.onSearchMatch = handler == null ? r -> {} : handler;
+    }
+
+    public void setTvdbTargetCount(int count) {
+        tvdbTargetCount = Math.max(0, count);
+        updateTvdbTargetHint();
     }
 
     public void setTvdbCandidateOptions(java.util.List<String> candidates) {
@@ -285,13 +355,16 @@ public final class RowDetailPanel {
         noteLabel.setText(UiText.detailFieldNote(language));
 
         tvdbCandidate.setPromptText(UiText.scanBatchTvdbCandidatePlaceholder(language));
+        tvdbSearch.setText(UiText.tvdbSearchForMatch(language));
         tvdbOrder.setPromptText(UiText.scanBatchTvdbOrderPlaceholder(language));
         tvdbOrder.getItems().setAll(
                 UiText.scanBatchTvdbOrderAired(language),
                 UiText.scanBatchTvdbOrderDvd(language),
                 UiText.scanBatchTvdbOrderAbsolute(language));
-        tvdbApply.setText(UiText.scanBatchTvdbApply(language));
-        tvdbReset.setText(UiText.scanBatchTvdbReset(language));
+        tvdbApply.setText(UiText.tvdbApply(language));
+        tvdbReset.setText(UiText.detailResetButton(language));
+        updateTvdbCard(currentRow);
+        updateTvdbTargetHint();
     }
 
     public void show(ScanRow row) {
@@ -341,12 +414,91 @@ public final class RowDetailPanel {
         }
         tvdbCandidate.setValue(currentMatch);
         tvdbReset.setDisable(row.tvdbMatch().isEmpty());
+        updateTvdbCard(row);
 
         proposedValue.setText(row.proposedFilename().orElse(EMPTY));
         destinationValue.setText(destinationText(row.destination()));
         conflictValue.setText(row.conflictText().orElse(EMPTY));
         alertValue.setText(row.alertText().orElse(EMPTY));
         noteValue.setText(row.noteText().orElse(EMPTY));
+    }
+
+    private void updateTvdbCard(ScanRow row) {
+        Optional<TvdbCandidate> candidate = row == null ? Optional.empty() : row.tvdbCandidate();
+        if (candidate.isEmpty()) {
+            tvdbPoster.setImage(null);
+            tvdbPoster.setVisible(false);
+            tvdbPosterPlaceholder.setText("TVDB");
+            tvdbMatchTitle.setText(UiText.tvdbNoMatchSelected(currentLanguage));
+            tvdbMatchMeta.setText(EMPTY);
+            tvdbMatchId.setText(EMPTY);
+            tvdbMatchOverview.setText("");
+            tvdbReset.setDisable(true);
+            tvdbApply.setDisable(true);
+            return;
+        }
+        TvdbCandidate value = candidate.orElseThrow();
+        tvdbMatchTitle.setText(value.identity().displayName());
+        tvdbMatchMeta.setText(mediaTypeText(value.identity().mediaType(), currentLanguage)
+                + value.year().map(year -> " • " + year).orElse(""));
+        tvdbMatchId.setText(UiText.tvdbIdLabel(currentLanguage) + ": " + value.identity().id());
+        tvdbMatchOverview.setText(localizedOverview(value).filter(v -> !v.isBlank())
+                .orElseGet(() -> UiText.tvdbNoDescription(currentLanguage)));
+        tvdbPosterPlaceholder.setText("TVDB");
+        tvdbPoster.setVisible(false);
+        tvdbPoster.setImage(null);
+        value.posterUrl().ifPresent(url -> {
+            Image image = new Image(url, true);
+            image.errorProperty().addListener((obs, was, failed) -> {
+                if (failed) {
+                    tvdbPoster.setImage(null);
+                    tvdbPoster.setVisible(false);
+                }
+            });
+            tvdbPoster.setImage(image);
+            tvdbPoster.setVisible(true);
+        });
+        tvdbReset.setDisable(false);
+        tvdbApply.setDisable(false);
+        updateTvdbTargetHint();
+    }
+
+    private Optional<String> localizedOverview(TvdbCandidate candidate) {
+        Optional<String> primary = currentLanguage == AppLanguage.FRENCH
+                ? candidate.frenchOverview()
+                : candidate.englishOverview();
+        Optional<String> secondary = currentLanguage == AppLanguage.FRENCH
+                ? candidate.englishOverview()
+                : candidate.frenchOverview();
+        return primary.or(() -> secondary).or(candidate::overview);
+    }
+
+    private TvdbEpisodeOrder selectedOrder() {
+        String value = tvdbOrder.getValue();
+        if (value == null || value.isBlank()) {
+            return TvdbEpisodeOrder.AIRED;
+        }
+        if (value.equals(UiText.scanBatchTvdbOrderDvd(currentLanguage))) {
+            return TvdbEpisodeOrder.DVD;
+        }
+        if (value.equals(UiText.scanBatchTvdbOrderAbsolute(currentLanguage))) {
+            return TvdbEpisodeOrder.ABSOLUTE;
+        }
+        return TvdbEpisodeOrder.AIRED;
+    }
+
+    private void updateTvdbTargetHint() {
+        if (tvdbTargetCount <= 0) {
+            tvdbTargetHint.setText(UiText.tvdbNoFileSelected(currentLanguage));
+            return;
+        }
+        tvdbTargetHint.setText(UiText.tvdbMatchWillApplyTo(currentLanguage, tvdbTargetCount));
+    }
+
+    private static String mediaTypeText(com.episort.tvdb.TvdbMediaType mediaType, AppLanguage language) {
+        return mediaType == com.episort.tvdb.TvdbMediaType.MOVIE
+                ? UiText.tvdbMovie(language)
+                : UiText.tvdbSeries(language);
     }
 
     public void clear() {

@@ -23,13 +23,22 @@ class ScanRowTableSupportTest {
     @Test
     void naturalSortOrdersSeasonEpisodeNumbersNumerically() {
         List<String> values = new ArrayList<>(List.of(
+                "Show.S10E01.mkv",
                 "Show.S01E10.mkv",
                 "Show.S01E02.mkv",
-                "Show.S01E01.mkv"));
+                "Show.S01E01.mkv",
+                "Show.S09E99.mkv",
+                "Show.S09E100.mkv"));
 
         values.sort(ScanRowTableSupport.NATURAL_TEXT);
 
-        assertEquals(List.of("Show.S01E01.mkv", "Show.S01E02.mkv", "Show.S01E10.mkv"), values);
+        assertEquals(List.of(
+                "Show.S01E01.mkv",
+                "Show.S01E02.mkv",
+                "Show.S01E10.mkv",
+                "Show.S09E99.mkv",
+                "Show.S09E100.mkv",
+                "Show.S10E01.mkv"), values);
     }
 
     @Test
@@ -103,6 +112,27 @@ class ScanRowTableSupportTest {
         assertFalse(ScanRowTableSupport.matchesFilter(series, ScanRowFilter.MOVIES));
         assertTrue(ScanRowTableSupport.matchesFilter(series, ScanRowFilter.SERIES));
         assertTrue(ScanRowTableSupport.matchesFilter(movie, ScanRowFilter.ALL));
+    }
+
+    @Test
+    void statusFiltersCanFindIgnoredRowsButExcludeThemFromActiveBuckets() {
+        ScanRow ignored = row("Ignored.mkv", ScanMediaType.SERIES, ScanRowStatus.IGNORED);
+        ScanRow review = row("Review.mkv", ScanMediaType.SERIES, ScanRowStatus.REVIEW);
+        ScanRow tvdb = row("Tvdb.mkv", ScanMediaType.SERIES, ScanRowStatus.TVDB);
+
+        assertTrue(ScanRowTableSupport.matchesStatusFilter(ignored, ScanRowStatusFilter.IGNORED));
+        assertFalse(ScanRowTableSupport.matchesStatusFilter(ignored, ScanRowStatusFilter.TO_PROCESS));
+        assertTrue(ScanRowTableSupport.matchesStatusFilter(review, ScanRowStatusFilter.TO_PROCESS));
+        assertTrue(ScanRowTableSupport.matchesStatusFilter(tvdb, ScanRowStatusFilter.TVDB));
+    }
+
+    @Test
+    void ignoredRowsCannotBeActionSelected() {
+        ScanRow ignored = row("Ignored.mkv", ScanMediaType.SERIES, ScanRowStatus.IGNORED);
+
+        ignored.setSelected(true);
+
+        assertFalse(ignored.isSelected());
     }
 
     private static ScanRow row(String filename, ScanMediaType type, ScanRowStatus status) {

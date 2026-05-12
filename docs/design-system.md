@@ -65,7 +65,7 @@ introduce parallel styles.
 
 | Token             | Family                                                            | Used by                                              |
 | ----------------- | ----------------------------------------------------------------- | ---------------------------------------------------- |
-| `font.sans`       | `"Inter", "Segoe UI", "Helvetica Neue", sans-serif`               | Default `*` font, body, titles                       |
+| `font.sans`       | `"Inter", "Segoe UI", system-ui, "Helvetica Neue", sans-serif`   | Default `*` font, body, titles, controls             |
 | `font.mono`       | `"JetBrains Mono", "Cascadia Mono", "Consolas", monospace`        | `.mono`, all system labels, paths, codes, headings   |
 
 | Role               | Class                       | Size | Weight | Family |
@@ -81,11 +81,14 @@ introduce parallel styles.
 | Card hint          | `.card-hint`                | 11.5 | —      | sans   |
 | Widget title       | `.widget-title`             | 11   | 700    | mono   |
 | Widget line        | `.widget-line`              | 11.5 | —      | mono   |
-| Sidebar brand name | `.sidebar-brand-name`       | 25   | 800    | sans   |
+| Sidebar brand name | `.sidebar-brand-name`       | 23   | 800    | sans   |
 | Sidebar section    | `.sidebar-section-label`    | 10.5 | 700    | mono   |
 | Nav item           | `.nav-item`                 | 13   | 600    | sans   |
 | Nav item icon      | `.nav-item-icon`            | 18   | 800    | mono   |
 | Status pill        | `.status-pill`              | 11.5 | 700    | mono   |
+| Label              | `.ui-label`                 | 12.5 | —      | sans   |
+| Technical text     | `.technical-text`           | 12   | —      | mono   |
+| Button             | `.button`                   | 12.5 | 700    | sans   |
 | Settings section   | `.settings-section-title`   | 14   | 700    | mono   |
 | Body / control     | (default)                   | 13   | —      | sans   |
 | Language label     | `.language-label`           | 11.5 | —      | mono   |
@@ -186,9 +189,10 @@ Each component is documented as **Anatomy → Class → Rules**.
     the sidebar. The safety model is communicated by in-screen workflow
     progress, banners (§4.10), and pill statuses (§4.2), not by sidebar chrome.
   - One nav-item carries the `active` class at a time.
-  - Sidebar branding is intentionally stronger than navigation: the logo is
-    44 px, the brand name uses `.sidebar-brand-name` at 25 px, and nav glyphs
-    use `.nav-item-icon` at 18 px.
+  - Sidebar branding is intentionally stronger than navigation without
+    overpowering it: the logo is 44 px, the brand name uses
+    `.sidebar-brand-name` at 23 px, and nav glyphs use `.nav-item-icon` at
+    18 px.
   - Do not add hotkey hints (`[1]`, `ctrl+k`) unless the binding actually
     exists in the application.
   - At narrow widths (< 900 px) the sidebar receives the
@@ -273,6 +277,13 @@ Each component is documented as **Anatomy → Class → Rules**.
 
 ### 4.7 Buttons
 
+- **Scan topbar:** use `.menu-button.primary` for the `Charger` / `Load`
+  dropdown. It opens `Load folder`, `Load files`, and `Add files`; the existing
+  validate action remains a disabled/enabled `.button.ghost` until active rows
+  have valid proposed names.
+- **Pressed state:** all `.button` and `.menu-button` variants keep a subtle
+  `:pressed` state with 1 px downward translation, tighter shadow, and slightly
+  stronger orange border/fill.
 - **Variants:**
   - default `.button` — orange-on-translucent, glow on hover, the workhorse.
   - `.button.primary` — solid orange, dark text. Use for the single primary
@@ -282,6 +293,10 @@ Each component is documented as **Anatomy → Class → Rules**.
 - **Rules:**
   - At most **one** `.primary` button per screen.
   - Disabled state is provided by the framework; never manually grey-out.
+  - Button typography is centralized in `.button`: Inter/system sans, 12.5 px,
+    700 weight, 34 px minimum height, and ellipsis overrun for long FR/EN
+    labels. Screen-specific buttons should add only semantic variants
+    (`.primary`, `.ghost`, `.destructive`) rather than inline font rules.
 
 ### 4.7b Custom confirmation dialogs
 
@@ -406,6 +421,10 @@ Each component is documented as **Anatomy → Class → Rules**.
 
 ### 4.13 Filter chip
 
+- **Scan filters:** the Scan screen keeps type filters left-aligned and status
+  filters right-aligned on the same row. The two predicates combine. Ignored
+  rows remain discoverable through the Ignored status filter but are excluded
+  from active selection and batch operations.
 - **Anatomy:** `ToggleButton` arranged in an `HBox`. Exactly one button
   in the toggle group is selected at a time.
 - **Class:** `.filter-chip` (and `.active` is auto-applied via the
@@ -489,8 +508,23 @@ rules. PRs that add inline styles in JavaFX without a corresponding class are
 rejected on review.
 ## UI Pass Addendum
 
+- File properties uses `.file-properties-dialog`, `.file-properties-header`,
+  `.file-properties-section`, `.file-properties-grid`,
+  `.file-properties-label`, `.file-properties-value`, and
+  `.file-properties-path`. It is a compact dark modal with orange section
+  headings, label/value grids, wrapped long paths, and copy-path feedback.
+  Values must come from the clicked `ScanRow` or lightweight filesystem
+  metadata; unavailable media metadata displays the localized unavailable text.
 - Sidebar navigation uses `.nav-item-icon` and `.nav-item-label` inside the existing `.nav-item` button. Icons are restrained text glyphs because the app has no icon dependency.
 - Scan extensions render as `.extension-badge` plus `.mkv`, `.mp4`, `.avi`, `.srt`, or `.fallback`; new extensions must use tokenized CSS colors, not inline hex literals in Java.
 - Batch-level TVDB controls live in `.batch-tvdb-section` below the scan table. Candidate/order controls may be disabled until real TVDB candidate data exists, and labels must come from `UiText`.
 - `.preview-table` owns complete dark scrollbar styling for bars, tracks, buttons, thumbs, and corners.
+- Ignored scan rows use `.ignored-row`: reduced opacity, muted background, and
+  disabled action checkbox. They remain readable and context-menu reactivable.
+- Manual TVDB search uses `.tvdb-dialog`, `.tvdb-search-results`,
+  `.tvdb-result-card`, `.tvdb-selected-card`, `.tvdb-poster-frame`,
+  `.tvdb-poster-placeholder`, `.tvdb-match-title`, `.tvdb-match-meta`,
+  and `.tvdb-match-overview`. Results are visual rows with a poster/placeholder,
+  metadata, short overview, and a select action; loading and errors stay inside
+  the dialog instead of blocking the scan table.
 - App-level modals (e.g. local-AI bootstrap) use `.modal-overlay` (dimmed backplate), `.modal-card` (glass card with orange border), `.modal-header` + `.modal-header-icon` + `.modal-title-block` (`.modal-title` Inter / `.modal-subtitle` Inter muted), `.modal-body` containing `.modal-info-row`s (`.modal-info-label` JetBrains Mono caption + `.modal-info-value` Inter, or `.modal-info-value-mono` for technical values), `.modal-progress` (orange-filled `.progress-bar` + `.modal-progress-status` mono), and `.modal-footer` aligned right with `.button.ghost` then `.button.primary`. Hosted in a `StageStyle.TRANSPARENT` window sized to the owner so the overlay actually dims the app — never use a native `Alert`/`Dialog`.

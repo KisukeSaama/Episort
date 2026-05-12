@@ -1,10 +1,13 @@
 package com.episort.tvdb;
 
 import com.episort.config.TvdbCredentials;
+import com.episort.tvdb.debug.TvdbRequestBus;
+import com.episort.tvdb.debug.TvdbRequestTrace;
 import com.episort.tvdb.dto.TvdbLoginResponseDto;
 import com.episort.tvdb.dto.TvdbMovieResponseDto;
 import com.episort.tvdb.dto.TvdbSearchResponseDto;
 import com.episort.tvdb.dto.TvdbSeriesResponseDto;
+import com.episort.tvdb.dto.TvdbTranslationResponseDto;
 import com.google.gson.Gson;
 import java.io.IOException;
 import java.net.URI;
@@ -14,6 +17,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -24,6 +28,7 @@ import java.util.Set;
 
 public final class HttpTvdbClient implements TvdbClient {
     private static final URI DEFAULT_BASE_URI = URI.create("https://api4.thetvdb.com/v4/");
+    private static final URI TVDB_IMAGE_BASE_URI = URI.create("https://artworks.thetvdb.com/");
     private static final Set<Integer> TRANSIENT_STATUS_CODES = Set.of(408, 429, 500, 502, 503, 504);
 
     private final HttpClient httpClient;
@@ -51,11 +56,9 @@ public final class HttpTvdbClient implements TvdbClient {
         List<TvdbCandidate> series = new ArrayList<>();
         List<TvdbCandidate> movies = new ArrayList<>();
         int rank = 0;
-        List<TvdbSearchResponseDto.Item> items = dto.data == null || dto.data.items == null
-                ? List.of()
-                : dto.data.items;
+        List<TvdbSearchResponseDto.Item> items = dto.data == null ? List.of() : dto.data;
         for (TvdbSearchResponseDto.Item item : items) {
-            Optional<TvdbCandidate> candidate = mapCandidate(item, rank++);
+            Optional<TvdbCandidate> candidate = mapCandidate(item, rank++, credentials);
             candidate.ifPresent(value -> {
                 if (value.identity().mediaType() == TvdbMediaType.SERIES) {
                     series.add(value);
@@ -70,55 +73,155 @@ public final class HttpTvdbClient implements TvdbClient {
     @Override
     public TvdbSeriesDetails seriesDetails(TvdbIdentity identity, TvdbCredentials credentials) {
         Objects.requireNonNull(identity, "identity");
-        TvdbSeriesResponseDto dto = send("series/" + encodePath(identity.id()) + "/extended?meta=episodes", credentials,
-                TvdbSeriesResponseDto.class);
+        // The localized episodes endpoint returns the series name and every
+        // episode title in the requested language, with automatic fallback to
+        // the original when no translation exists. One call, English-first.
+        TvdbSeriesResponseDto dto = fetchSeriesEpisodes(identity.id(), "default", credentials)
+                .orElseThrow(() -> TvdbException.recoverable("TVDB_SERIES_EMPTY", "TVDB returned no series details.",
+                        "Empty data object from TVDB series details response."));
         if (dto.data == null) {
             throw TvdbException.recoverable("TVDB_SERIES_EMPTY", "TVDB returned no series details.",
                     "Empty data object from TVDB series details response.");
         }
-        String name = fallback(dto.data.name, dto.data.translationsName, identity.displayName());
-        List<TvdbEpisode> episodes = (dto.data.episodes == null ? List.<TvdbSeriesResponseDto.Episode>of() : dto.data.episodes)
-                .stream()
+        TvdbSeriesResponseDto.Series series = dto.data.series;
+        String seriesId = series == null ? identity.id() : fallback(series.id, identity.id());
+        // The episodes endpoint returns series.name in TVDB's canonical
+        // language (often Japanese for anime, etc.). Fetch the English
+        // translation explicitly to override it when available.
+        String englishSeriesName = fetchEnglishSeriesName(identity.id(), credentials);
+        String name = fallback(
+                englishSeriesName,
+                series == null ? null : series.name,
+                identity.displayName());
+        List<TvdbSeriesResponseDto.Episode> raw = dto.data.episodes == null ? List.of() : dto.data.episodes;
+        List<TvdbEpisode> episodes = raw.stream()
                 .map(HttpTvdbClient::mapEpisode)
                 .flatMap(Optional::stream)
                 .toList();
-        Set<TvdbEpisodeOrder> orders = detectOrders(dto.data.airsOrder, episodes);
+        List<TvdbEpisode> dvdEpisodes = fetchSeriesEpisodes(identity.id(), "dvd", credentials)
+                .map(HttpTvdbClient::mapEpisodes)
+                .orElse(List.of());
+        List<TvdbEpisode> absoluteEpisodes = fetchSeriesEpisodes(identity.id(), "absolute", credentials)
+                .map(HttpTvdbClient::mapEpisodes)
+                .orElseGet(() -> episodes.stream().filter(episode -> episode.absoluteNumber().isPresent()).toList());
+        Set<TvdbEpisodeOrder> orders = detectOrders(series == null ? null : series.airsOrder,
+                episodes, dvdEpisodes, absoluteEpisodes);
         return new TvdbSeriesDetails(
-                new TvdbIdentity(fallback(dto.data.id, identity.id()), TvdbMediaType.SERIES, name),
+                new TvdbIdentity(seriesId, TvdbMediaType.SERIES, name),
                 orders,
                 episodes,
-                episodes,
-                episodes.stream().filter(episode -> episode.absoluteNumber().isPresent()).toList());
+                dvdEpisodes.isEmpty() ? episodes : dvdEpisodes,
+                absoluteEpisodes);
     }
 
     @Override
     public TvdbMovieDetails movieDetails(TvdbIdentity identity, TvdbCredentials credentials) {
         Objects.requireNonNull(identity, "identity");
-        TvdbMovieResponseDto dto = send("movies/" + encodePath(identity.id()) + "/extended", credentials,
+        TvdbMovieResponseDto dto = send(
+                "movies/" + encodePath(identity.id()) + "/extended?meta=translations&short=false",
+                credentials,
                 TvdbMovieResponseDto.class);
         if (dto.data == null) {
             throw TvdbException.recoverable("TVDB_MOVIE_EMPTY", "TVDB returned no movie details.",
                     "Empty data object from TVDB movie details response.");
         }
-        String name = fallback(dto.data.name, dto.data.translationsName, identity.displayName());
+        String englishName = pickEnglishTranslation(dto.data.translations);
+        String name = fallback(englishName, dto.data.name, dto.data.translationsName, identity.displayName());
         return new TvdbMovieDetails(
                 new TvdbIdentity(fallback(dto.data.id, identity.id()), TvdbMediaType.MOVIE, name),
                 parseYear(fallback(dto.data.year, firstFour(dto.data.releaseDate), "")));
     }
 
+    private String fetchEnglishSeriesName(String id, TvdbCredentials credentials) {
+        try {
+            TvdbTranslationResponseDto dto = send(
+                    "series/" + encodePath(id) + "/translations/eng",
+                    credentials,
+                    TvdbTranslationResponseDto.class);
+            if (dto != null && dto.data != null && dto.data.name != null && !dto.data.name.isBlank()) {
+                return dto.data.name.trim();
+            }
+        } catch (TvdbException ignored) {
+            // English translation may not exist; fall back to original.
+        }
+        return null;
+    }
+
+    private Optional<TvdbSeriesResponseDto> fetchSeriesEpisodes(
+            String id, String order, TvdbCredentials credentials) {
+        try {
+            return Optional.of(send(
+                    "series/" + encodePath(id) + "/episodes/" + encodePath(order) + "/eng?page=0",
+                    credentials,
+                    TvdbSeriesResponseDto.class));
+        } catch (TvdbException ex) {
+            return Optional.empty();
+        }
+    }
+
+    private static String pickEnglishTranslation(TvdbMovieResponseDto.Translations translations) {
+        if (translations == null || translations.nameTranslations == null) return null;
+        for (TvdbMovieResponseDto.NameTranslation entry : translations.nameTranslations) {
+            if (entry != null && "eng".equalsIgnoreCase(entry.language) && entry.name != null && !entry.name.isBlank()) {
+                return entry.name;
+            }
+        }
+        return null;
+    }
+
+    private static String fallback(String primary, String secondary, String tertiary, String quaternary) {
+        if (primary != null && !primary.isBlank()) return primary.trim();
+        if (secondary != null && !secondary.isBlank()) return secondary.trim();
+        if (tertiary != null && !tertiary.isBlank()) return tertiary.trim();
+        return quaternary == null ? "" : quaternary.trim();
+    }
+
     private <T> T send(String path, TvdbCredentials credentials, Class<T> type) {
         ensureToken(credentials);
-        HttpResponse<String> response = sendWithRetry(request(path, bearerToken));
+        Instant start = Instant.now();
+        HttpResponse<String> response;
+        try {
+            response = sendWithRetry(request(path, bearerToken));
+        } catch (TvdbException ex) {
+            publishFailure("GET", path, java.time.Duration.between(start, Instant.now()).toMillis(), ex.getMessage());
+            throw ex;
+        }
         if (response.statusCode() == 401) {
             bearerToken = null;
             ensureToken(credentials);
+            start = Instant.now();
             response = sendWithRetry(request(path, bearerToken));
         }
+        long ms = java.time.Duration.between(start, Instant.now()).toMillis();
+        publishTrace("GET", path, response, ms, null);
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw TvdbException.recoverable("TVDB_REQUEST_FAILED", "TVDB lookup failed.",
+            throw TvdbException.recoverable("TVDB_REQUEST_FAILED",
+                    "TVDB lookup failed (HTTP " + response.statusCode() + ").",
                     "TVDB returned HTTP " + response.statusCode() + ". Response body omitted.");
         }
         return gson.fromJson(response.body(), type);
+    }
+
+    private static void publishTrace(String method, String path, HttpResponse<String> response, long ms, String error) {
+        try {
+            String body = response == null ? "" : response.body();
+            if (body == null) body = "";
+            if (body.length() > 4000) body = body.substring(0, 4000) + "…";
+            int status = response == null ? 0 : response.statusCode();
+            TvdbRequestBus.get().publish(new TvdbRequestTrace(
+                    Instant.now(), method, path, status, ms, body, error, false));
+        } catch (RuntimeException ignored) {
+            // Instrumentation must never break the request path.
+        }
+    }
+
+    private static void publishFailure(String method, String path, long ms, String error) {
+        try {
+            TvdbRequestBus.get().publish(new TvdbRequestTrace(
+                    Instant.now(), method, path, 0, ms, "", error, false));
+        } catch (RuntimeException ignored) {
+            // ignore
+        }
     }
 
     private void ensureToken(TvdbCredentials credentials) {
@@ -132,7 +235,8 @@ public final class HttpTvdbClient implements TvdbClient {
                 .build();
         HttpResponse<String> response = sendWithRetry(request);
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw TvdbException.recoverable("TVDB_AUTH_FAILED", "TVDB authentication failed.",
+            throw TvdbException.recoverable("TVDB_AUTH_FAILED",
+                    "TVDB authentication failed (HTTP " + response.statusCode() + ").",
                     "TVDB login failed with HTTP " + response.statusCode() + ". Credentials and body omitted.");
         }
         TvdbLoginResponseDto dto = gson.fromJson(response.body(), TvdbLoginResponseDto.class);
@@ -173,6 +277,7 @@ public final class HttpTvdbClient implements TvdbClient {
                 .timeout(Duration.ofSeconds(20))
                 .header("Authorization", "Bearer " + token)
                 .header("Accept", "application/json")
+                .header("Accept-Language", "eng, fra;q=0.9")
                 .GET()
                 .build();
     }
@@ -185,7 +290,7 @@ public final class HttpTvdbClient implements TvdbClient {
         return builder.append("}").toString();
     }
 
-    private static Optional<TvdbCandidate> mapCandidate(TvdbSearchResponseDto.Item item, int rank) {
+    private Optional<TvdbCandidate> mapCandidate(TvdbSearchResponseDto.Item item, int rank, TvdbCredentials credentials) {
         if (item == null) {
             return Optional.empty();
         }
@@ -194,18 +299,49 @@ public final class HttpTvdbClient implements TvdbClient {
             return Optional.empty();
         }
         String id = fallback(item.tvdb_id, item.id, "");
-        String name = fallback(item.name, item.translationsName, "");
+        String englishName = item.translations == null ? null : item.translations.get("eng");
+        String name = fallback(englishName, item.name, item.translationsName);
         if (id.isBlank() || name.isBlank()) {
             return Optional.empty();
         }
+        Optional<String> englishOverview = optional(item.overviews == null ? null : item.overviews.get("eng"));
+        Optional<String> frenchOverview = optional(item.overviews == null ? null : item.overviews.get("fra"));
+        if (englishOverview.isEmpty() || frenchOverview.isEmpty()) {
+            TranslationPair translations = fetchCandidateTranslations(id, mediaType.orElseThrow(), credentials);
+            englishOverview = englishOverview.or(translations::englishOverview);
+            frenchOverview = frenchOverview.or(translations::frenchOverview);
+        }
         return Optional.of(new TvdbCandidate(
                 new TvdbIdentity(id, mediaType.orElseThrow(), name),
+                optional(normalizeImageUrl(item.image_url)),
                 optional(item.overview),
+                englishOverview,
+                frenchOverview,
                 parseYear(item.year),
                 optional(item.country),
                 optional(item.network),
                 OptionalDoubleScore.empty(),
                 rank));
+    }
+
+    private TranslationPair fetchCandidateTranslations(String id, TvdbMediaType mediaType, TvdbCredentials credentials) {
+        return new TranslationPair(
+                fetchOverviewTranslation(id, mediaType, "eng", credentials),
+                fetchOverviewTranslation(id, mediaType, "fra", credentials));
+    }
+
+    private Optional<String> fetchOverviewTranslation(
+            String id, TvdbMediaType mediaType, String language, TvdbCredentials credentials) {
+        String prefix = mediaType == TvdbMediaType.MOVIE ? "movies/" : "series/";
+        try {
+            TvdbTranslationResponseDto dto = send(
+                    prefix + encodePath(id) + "/translations/" + encodePath(language),
+                    credentials,
+                    TvdbTranslationResponseDto.class);
+            return dto == null || dto.data == null ? Optional.empty() : optional(dto.data.overview);
+        } catch (TvdbException ex) {
+            return Optional.empty();
+        }
     }
 
     private static Optional<TvdbEpisode> mapEpisode(TvdbSeriesResponseDto.Episode episode) {
@@ -217,13 +353,31 @@ public final class HttpTvdbClient implements TvdbClient {
                 episode.seasonNumber,
                 episode.number,
                 Optional.ofNullable(episode.absoluteNumber),
-                fallback(episode.name, episode.translationsName, "Untitled episode"),
+                fallback(episode.name, "Untitled episode"),
                 episode.seasonNumber == 0));
     }
 
-    private static Set<TvdbEpisodeOrder> detectOrders(List<String> providerOrders, List<TvdbEpisode> episodes) {
+    private static List<TvdbEpisode> mapEpisodes(TvdbSeriesResponseDto dto) {
+        if (dto == null || dto.data == null || dto.data.episodes == null) {
+            return List.of();
+        }
+        return dto.data.episodes.stream()
+                .map(HttpTvdbClient::mapEpisode)
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
+    private static Set<TvdbEpisodeOrder> detectOrders(
+            List<String> providerOrders,
+            List<TvdbEpisode> airedEpisodes,
+            List<TvdbEpisode> dvdEpisodes,
+            List<TvdbEpisode> absoluteEpisodes) {
         EnumSet<TvdbEpisodeOrder> orders = EnumSet.of(TvdbEpisodeOrder.AIRED);
-        if (episodes.stream().anyMatch(episode -> episode.absoluteNumber().isPresent())) {
+        if (!dvdEpisodes.isEmpty()) {
+            orders.add(TvdbEpisodeOrder.DVD);
+        }
+        if (!absoluteEpisodes.isEmpty()
+                || airedEpisodes.stream().anyMatch(episode -> episode.absoluteNumber().isPresent())) {
             orders.add(TvdbEpisodeOrder.ABSOLUTE);
         }
         if (providerOrders != null) {
@@ -238,6 +392,21 @@ public final class HttpTvdbClient implements TvdbClient {
             }
         }
         return orders;
+    }
+
+    private static String normalizeImageUrl(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim().replace(" ", "%20");
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            return trimmed;
+        }
+        String relative = trimmed.startsWith("/") ? trimmed.substring(1) : trimmed;
+        return TVDB_IMAGE_BASE_URI.resolve(relative).toString();
+    }
+
+    private record TranslationPair(Optional<String> englishOverview, Optional<String> frenchOverview) {
     }
 
     private static Optional<TvdbMediaType> mediaType(String type) {

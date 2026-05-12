@@ -22,10 +22,10 @@ class HttpTvdbClientTest {
         FakeTvdbServer server = FakeTvdbServer.start();
         server.enqueue("/login", 200, "{\"data\":{\"token\":\"token-1\"}}");
         server.enqueue("/search", 200, """
-                {"data":{"items":[
-                  {"tvdb_id":"101","type":"series","name":"The Office","year":"2005","country":"USA","network":"NBC"},
+                {"data":[
+                  {"tvdb_id":"101","type":"series","name":"The Office","year":"2005","country":"USA","network":"NBC","image_url":"https://img.example/poster.jpg"},
                   {"tvdb_id":"202","type":"movie","name":"The Office","year":"1995","country":"US"}
-                ]}}
+                ]}
                 """);
         try {
             HttpTvdbClient client = new HttpTvdbClient(HttpClient.newHttpClient(), server.baseUri());
@@ -36,7 +36,34 @@ class HttpTvdbClientTest {
             assertEquals(1, result.movieCandidates().size());
             assertEquals(TvdbMediaType.SERIES, result.seriesCandidates().get(0).identity().mediaType());
             assertEquals(Optional.of(2005), result.seriesCandidates().get(0).year());
+            assertEquals(Optional.of("https://img.example/poster.jpg"), result.seriesCandidates().get(0).posterUrl());
             assertEquals("Bearer token-1", server.authorizationHeaders.get(0));
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void enrichesSearchCandidateOverviewsAndNormalizesRelativePosters() throws Exception {
+        FakeTvdbServer server = FakeTvdbServer.start();
+        server.enqueue("/login", 200, "{\"data\":{\"token\":\"token-1\"}}");
+        server.enqueue("/search", 200, """
+                {"data":[
+                  {"tvdb_id":"101","type":"series","name":"Show","image_url":"/banners/poster one.jpg","overview":"Default"}
+                ]}
+                """);
+        server.enqueue("/series/101/translations/eng", 200,
+                "{\"data\":{\"language\":\"eng\",\"overview\":\"English overview\"}}");
+        server.enqueue("/series/101/translations/fra", 200,
+                "{\"data\":{\"language\":\"fra\",\"overview\":\"Description francaise\"}}");
+        try {
+            HttpTvdbClient client = new HttpTvdbClient(HttpClient.newHttpClient(), server.baseUri());
+
+            TvdbCandidate candidate = client.search("Show", credentials()).seriesCandidates().getFirst();
+
+            assertEquals(Optional.of("English overview"), candidate.englishOverview());
+            assertEquals(Optional.of("Description francaise"), candidate.frenchOverview());
+            assertEquals(Optional.of("https://artworks.thetvdb.com/banners/poster%20one.jpg"), candidate.posterUrl());
         } finally {
             server.stop();
         }
@@ -47,7 +74,7 @@ class HttpTvdbClientTest {
         FakeTvdbServer server = FakeTvdbServer.start();
         server.enqueue("/login", 200, "{\"data\":{\"token\":\"token-1\"}}");
         server.enqueue("/search", 503, "{}");
-        server.enqueue("/search", 200, "{\"data\":{\"items\":[{\"tvdb_id\":\"101\",\"recordType\":\"series\",\"name\":\"Show\"}]}}");
+        server.enqueue("/search", 200, "{\"data\":[{\"tvdb_id\":\"101\",\"recordType\":\"series\",\"name\":\"Show\"}]}");
         try {
             HttpTvdbClient client = new HttpTvdbClient(HttpClient.newHttpClient(), server.baseUri());
 
@@ -66,14 +93,15 @@ class HttpTvdbClientTest {
         server.enqueue("/login", 200, "{\"data\":{\"token\":\"expired\"}}");
         server.enqueue("/search", 401, "{}");
         server.enqueue("/login", 200, "{\"data\":{\"token\":\"fresh\"}}");
-        server.enqueue("/search", 200, "{\"data\":{\"items\":[{\"tvdb_id\":\"101\",\"type\":\"series\",\"name\":\"Show\"}]}}");
+        server.enqueue("/search", 200, "{\"data\":[{\"tvdb_id\":\"101\",\"type\":\"series\",\"name\":\"Show\"}]}");
         try {
             HttpTvdbClient client = new HttpTvdbClient(HttpClient.newHttpClient(), server.baseUri());
 
             TvdbSearchResult result = client.search("Show", credentials());
 
             assertEquals(1, result.seriesCandidates().size());
-            assertEquals(List.of("Bearer expired", "Bearer fresh"), server.authorizationHeaders);
+            assertEquals(List.of("Bearer expired", "Bearer fresh"),
+                    server.authorizationHeaders.subList(0, 2));
         } finally {
             server.stop();
         }
@@ -83,17 +111,21 @@ class HttpTvdbClientTest {
     void mapsSeriesDetailsWithFallbackTitleOrdersAndSpecials() throws Exception {
         FakeTvdbServer server = FakeTvdbServer.start();
         server.enqueue("/login", 200, "{\"data\":{\"token\":\"token-1\"}}");
-        server.enqueue("/series/101/extended", 200, """
+        server.enqueue("/series/101/episodes/default/eng", 200, """
                 {"data":{
-                  "id":"101",
-                  "translationsName":"Fallback Show",
-                  "airsOrder":["aired","dvd","absolute"],
+                  "series":{
+                    "id":"101",
+                    "name":"Fallback Show",
+                    "airsOrder":["aired","dvd","absolute"]
+                  },
                   "episodes":[
-                    {"id":"e1","seasonNumber":1,"number":1,"absoluteNumber":1,"translationsName":"Pilot"},
+                    {"id":"e1","seasonNumber":1,"number":1,"absoluteNumber":1,"name":"Pilot"},
                     {"id":"s1","seasonNumber":0,"number":2,"name":"Special"}
                   ]
                 }}
                 """);
+        server.enqueue("/series/101/translations/eng", 200,
+                "{\"data\":{\"language\":\"eng\",\"name\":\"Fallback Show\"}}");
         try {
             HttpTvdbClient client = new HttpTvdbClient(HttpClient.newHttpClient(), server.baseUri());
 
@@ -111,11 +143,44 @@ class HttpTvdbClientTest {
     }
 
     @Test
+    void mapsSeriesDetailsForDvdAndAbsoluteOrders() throws Exception {
+        FakeTvdbServer server = FakeTvdbServer.start();
+        server.enqueue("/login", 200, "{\"data\":{\"token\":\"token-1\"}}");
+        server.enqueue("/series/101/episodes/default/eng", 200, """
+                {"data":{"series":{"id":"101","name":"Show","airsOrder":["aired","dvd","absolute"]},
+                "episodes":[{"id":"e29","seasonNumber":2,"number":1,"absoluteNumber":29,"name":"Aired 29"}]}}
+                """);
+        server.enqueue("/series/101/translations/eng", 200,
+                "{\"data\":{\"language\":\"eng\",\"name\":\"Show\"}}");
+        server.enqueue("/series/101/episodes/dvd/eng", 200, """
+                {"data":{"series":{"id":"101","name":"Show"},
+                "episodes":[{"id":"e29","seasonNumber":1,"number":29,"absoluteNumber":29,"name":"DVD 29"}]}}
+                """);
+        server.enqueue("/series/101/episodes/absolute/eng", 200, """
+                {"data":{"series":{"id":"101","name":"Show"},
+                "episodes":[{"id":"e29","seasonNumber":1,"number":29,"absoluteNumber":29,"name":"Absolute 29"}]}}
+                """);
+        try {
+            HttpTvdbClient client = new HttpTvdbClient(HttpClient.newHttpClient(), server.baseUri());
+
+            TvdbSeriesDetails details = client.seriesDetails(
+                    new TvdbIdentity("101", TvdbMediaType.SERIES, "Show"), credentials());
+
+            assertEquals(1, details.airedEpisodes().getFirst().episodeNumber());
+            assertEquals(29, details.dvdEpisodes().getFirst().episodeNumber());
+            assertEquals(29, details.absoluteEpisodes().getFirst().absoluteNumber().orElseThrow());
+            assertTrue(details.supportedOrders().contains(TvdbEpisodeOrder.DVD));
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
     void mapsMovieDetailsWithFallbackTitleAndReleaseYear() throws Exception {
         FakeTvdbServer server = FakeTvdbServer.start();
         server.enqueue("/login", 200, "{\"data\":{\"token\":\"token-1\"}}");
         server.enqueue("/movies/202/extended", 200,
-                "{\"data\":{\"id\":\"202\",\"translationsName\":\"Fallback Movie\",\"releaseDate\":\"1995-02-03\"}}");
+                "{\"data\":{\"id\":\"202\",\"name\":\"Fallback Movie\",\"releaseDate\":\"1995-02-03\"}}");
         try {
             HttpTvdbClient client = new HttpTvdbClient(HttpClient.newHttpClient(), server.baseUri());
 

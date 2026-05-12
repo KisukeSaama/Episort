@@ -40,6 +40,7 @@ public final class SettingsPane {
     private final Region tvdbStatusDot;
     private final Button chooseWorkspace;
     private final Button tvdbTestAndSave;
+    private final Button tvdbResetCache;
     private final ComboBox<AppLanguage> languageCombo;
     private final Supplier<Optional<Path>> currentWorkspace;
     @SuppressWarnings("unused")
@@ -52,6 +53,7 @@ public final class SettingsPane {
             Supplier<Optional<Path>> currentWorkspace,
             Consumer<AppLanguage> onLanguageChange,
             BiFunction<String, Optional<String>, AppShellViewModel> configureTvdb,
+            Supplier<Integer> resetTvdbCache,
             Runnable onClose,
             Consumer<AppShellViewModel> onConfigured) {
         this.currentWorkspace = currentWorkspace;
@@ -176,7 +178,22 @@ public final class SettingsPane {
             tvdbStatus.setText(ok ? UiText.tvdbSettingsOnline(currentLanguage) : result.description());
         });
 
-        HBox tvdbInputs = new HBox(12, tvdbStatusDot, tvdbStatus, tvdbTestAndSave);
+        tvdbResetCache = new Button();
+        tvdbResetCache.getStyleClass().add("secondary");
+        tvdbResetCache.setOnAction(event -> {
+            if (resetTvdbCache == null) {
+                tvdbStatus.setText(UiText.tvdbSettingsUnavailable(currentLanguage));
+                setTvdbStatusDot(false);
+                return;
+            }
+            int cleared = resetTvdbCache.get();
+            tvdbStatus.setText(cleared > 0
+                    ? UiText.tvdbSettingsCacheCleared(currentLanguage, cleared)
+                    : UiText.tvdbSettingsCacheAlreadyEmpty(currentLanguage));
+            tvdbStatusDot.getStyleClass().setAll("dot", "dot-good");
+        });
+
+        HBox tvdbInputs = new HBox(12, tvdbStatusDot, tvdbStatus, tvdbResetCache, tvdbTestAndSave);
         HBox.setHgrow(tvdbStatus, Priority.ALWAYS);
         tvdbInputs.setAlignment(Pos.CENTER_LEFT);
         tvdbInputs.getStyleClass().add("settings-row");
@@ -225,6 +242,7 @@ public final class SettingsPane {
         tvdbTitle.setText(UiText.tvdbSettingsSectionTitle(language));
         tvdbDescription.setText(UiText.tvdbSettingsSectionDescription(language));
         tvdbTestAndSave.setText(UiText.tvdbSettingsTestAndSave(language));
+        tvdbResetCache.setText(UiText.tvdbSettingsResetCache(language));
         if (tvdbStatus.getText() == null || tvdbStatus.getText().isBlank()) {
             tvdbStatus.setText(UiText.tvdbSettingsNotChecked(language));
         }

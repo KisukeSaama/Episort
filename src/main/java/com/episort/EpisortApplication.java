@@ -34,6 +34,12 @@ import com.episort.workflow.TvdbCredentialConfigurationService;
 import com.episort.workflow.WorkspaceConfigurationService;
 import com.episort.tvdb.HttpTvdbConnectionTester;
 import com.episort.tvdb.HttpTvdbClient;
+import com.episort.tvdb.CachedTvdbClient;
+import com.episort.tvdb.TvdbClient;
+import com.episort.tvdb.cache.TvdbResponseCache;
+import com.episort.tvdb.guard.TvdbRateLimitGuard;
+import com.episort.workflow.TvdbBatchMatchResult;
+import com.episort.workflow.TvdbBatchMatchService;
 import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ErrorSeverity;
 import com.episort.ui.platform.WindowsTitleBar;
@@ -81,11 +87,18 @@ public class EpisortApplication extends Application {
 
     private boolean aiEnabledAtStartup = true;
 
+    private final TvdbResponseCache tvdbCache = TvdbResponseCache.userProfileCache();
+    private final TvdbRateLimitGuard tvdbGuard = new TvdbRateLimitGuard();
+    private final TvdbClient tvdbClient = new CachedTvdbClient(new HttpTvdbClient(), tvdbCache, tvdbGuard);
+    private final TvdbBatchMatchService tvdbBatchMatchService = new TvdbBatchMatchService(tvdbClient);
+    private java.util.function.Supplier<Optional<TvdbCredentials>> tvdbCredentialsSupplier = Optional::empty;
+
     @Override
     public void start(Stage stage) {
         FileSettingsStore settingsStore = settingsStoreEarly;
         aiEnabledAtStartup = settingsStore.loadAiEnabled();
         FileTvdbCredentialStore tvdbCredentialStore = FileTvdbCredentialStore.userProfileStore();
+        tvdbCredentialsSupplier = () -> EmbeddedTvdbCredentialsProvider.load().or(tvdbCredentialStore::load);
         StartupWorkflow startupWorkflow = new StartupWorkflow(
                 new WorkspaceConfigurationService(settingsStore),
                 new TvdbCredentialConfigurationService(
@@ -110,8 +123,10 @@ public class EpisortApplication extends Application {
                 () -> startupWorkflow.loadWorkspaceConfiguration().settings().workspaceDirectory(),
                 () -> startupWorkflow.loadWorkspaceConfiguration().success(),
                 () -> {},
-                runEventStore);
+                runEventStore,
+                tvdbCache::clear);
         this.appShellRef = appShell;
+        appShell.setInputSourcesLoader(paths -> scanInputSources(startupWorkflow, paths, runEventStore));
         stage.setTitle("Episort");
         stage.getIcons().add(AppShell.logoImage());
         appShell.setLoading(true, com.episort.ui.UiText.loadingStartup(viewModel.language()));
@@ -141,9 +156,7 @@ public class EpisortApplication extends Application {
         });
         attachAiModelsSection(appShell, viewModel.language(), settingsStore);
         appShell.scanScreen().setAiAssistanceEnabled(aiEnabledAtStartup);
-        appShell.scanScreen().setTvdbLookup(
-                new HttpTvdbClient(),
-                () -> EmbeddedTvdbCredentialsProvider.load().or(tvdbCredentialStore::load));
+        appShell.scanScreen().setTvdbLookup(tvdbClient, tvdbCredentialsSupplier);
         if (aiEnabledAtStartup) {
             appShell.scanScreen().setAiChatBackend(aiChatService);
             appShell.scanScreen().setAiPatternAssistant(aiPatternAssistant);
@@ -274,11 +287,11 @@ public class EpisortApplication extends Application {
         return service.scan(selectedFolder, progress -> {})
                 .thenApply(result -> {
                     InventoryScanResult scanResult = new InventoryScanResult(result.items(), result.groups(), result.summary());
-                    AiPatternRefinementResult refinement = aiPatternRefinementService.refine(
-                            scanResult, Optional.of(selectedFolder),
-                            (done, total) -> updateLoadingForAiProgress(done, total));
+                    setScanWorkflowPhase(com.episort.ui.scan.ScanScreen.WorkflowPhase.AI_SCAN, true);
+                    AiPatternRefinementResult refinement = runAiRefinement(scanResult, selectedFolder);
+                    TvdbBatchMatchResult batchResult = runTvdbBatch(scanResult);
                     recordScanCompleted(runEventStore, workspace, selectedFolder, scanResult, refinement);
-                    pushRefinementAfterApply(refinement);
+                    pushPostScanResultsAfterApply(refinement, batchResult);
                     return AppShellViewModel.fromInventoryScan(selectedFolder, scanResult);
                 })
                 .exceptionally(throwable -> {
@@ -289,6 +302,59 @@ public class EpisortApplication extends Application {
                             "Inventory scan failed.",
                             ""));
                 });
+    }
+
+    private CompletableFuture<AppShellViewModel> scanInputSources(
+            StartupWorkflow startupWorkflow, java.util.List<Path> inputSources, RunEventStore runEventStore) {
+        var selection = startupWorkflow.selectInputSources(inputSources);
+        if (!selection.success()) {
+            return CompletableFuture.completedFuture(AppShellViewModel.fromError(selection.error().orElseThrow()));
+        }
+        java.util.List<Path> selectedSources = selection.sources();
+        Optional<Path> workspace = startupWorkflow.loadWorkspaceConfiguration().settings().workspaceDirectory();
+        InventoryWorkflowService service = new InventoryWorkflowService(new MediaInventoryScanner(), scanExecutor);
+        return service.scanSources(selectedSources, progress -> {})
+                .thenApply(result -> {
+                    InventoryScanResult scanResult = new InventoryScanResult(result.items(), result.groups(), result.summary());
+                    Path subject = selectedSources.size() == 1 ? selectedSources.getFirst()
+                            : workspace.orElse(selectedSources.getFirst().getParent());
+                    setScanWorkflowPhase(com.episort.ui.scan.ScanScreen.WorkflowPhase.AI_SCAN, true);
+                    AiPatternRefinementResult refinement = runAiRefinement(scanResult, subject);
+                    TvdbBatchMatchResult batchResult = runTvdbBatch(scanResult);
+                    recordScanCompleted(runEventStore, workspace, subject, scanResult, refinement);
+                    pushPostScanResultsAfterApply(refinement, batchResult);
+                    return AppShellViewModel.fromInventoryScan(subject, scanResult);
+                })
+                .exceptionally(throwable -> {
+                    Path subject = selectedSources.isEmpty() ? Path.of("") : selectedSources.getFirst();
+                    recordScanFailed(runEventStore, workspace, subject, throwable);
+                    return AppShellViewModel.fromError(ApplicationError.recoverable(
+                            "INPUT_SOURCE_INVALID",
+                            ErrorSeverity.BLOCKING,
+                            "Inventory scan failed.",
+                            ""));
+                });
+    }
+
+    private AiPatternRefinementResult runAiRefinement(InventoryScanResult scanResult, Path selectedFolder) {
+        try {
+            return aiPatternRefinementService.refine(
+                    scanResult, Optional.of(selectedFolder),
+                    (done, total) -> updateLoadingForAiProgress(done, total));
+        } catch (RuntimeException ex) {
+            try {
+                com.episort.tvdb.debug.TvdbRequestBus.get().publish(new com.episort.tvdb.debug.TvdbRequestTrace(
+                        java.time.Instant.now(), "AI", "refinement", 0, 0L,
+                        "skipped: " + ex.getClass().getSimpleName(), null, false));
+            } catch (RuntimeException ignored) {
+                // ignore instrumentation failures
+            }
+            return AiPatternRefinementResult.skipped(ApplicationError.recoverable(
+                    "AI_REFINEMENT_SKIPPED",
+                    ErrorSeverity.WARNING,
+                    "AI refinement skipped.",
+                    ex.getMessage() == null ? "" : ex.getMessage()));
+        }
     }
 
     private void updateLoadingForAiProgress(int done, int total) {
@@ -303,15 +369,78 @@ public class EpisortApplication extends Application {
         });
     }
 
-    private void pushRefinementAfterApply(AiPatternRefinementResult refinement) {
+    private void pushPostScanResultsAfterApply(
+            AiPatternRefinementResult refinement, TvdbBatchMatchResult batchResult) {
         AppShell shell = appShellRef;
-        if (shell == null || refinement == null) return;
+        if (shell == null) return;
         // Outer runLater ensures we are on the JFX thread; inner runLater
         // re-enqueues us so we run *after* the AppShell has applied the
         // viewmodel and rebuilt scan rows.
         javafx.application.Platform.runLater(
-                () -> javafx.application.Platform.runLater(
-                        () -> shell.scanScreen().applyAiRefinement(refinement)));
+                () -> javafx.application.Platform.runLater(() -> {
+                    if (refinement != null) {
+                        shell.scanScreen().applyAiRefinement(refinement);
+                    }
+                    if (batchResult != null) {
+                        shell.scanScreen().applyTvdbBatchResult(batchResult);
+                    }
+                    shell.scanScreen().setWorkflowPhase(
+                            com.episort.ui.scan.ScanScreen.WorkflowPhase.PLAN_REVIEW, false);
+                }));
+    }
+
+    private TvdbBatchMatchResult runTvdbBatch(InventoryScanResult scanResult) {
+        Optional<TvdbCredentials> credentials = tvdbCredentialsSupplier.get();
+        if (credentials.isEmpty()) {
+            publishBatchInfo("skipped: no TVDB credentials available");
+            return TvdbBatchMatchResult.empty();
+        }
+        setScanWorkflowPhase(com.episort.ui.scan.ScanScreen.WorkflowPhase.TVDB_MATCHES, true);
+        updateLoadingTextForTvdb();
+        try {
+            return tvdbBatchMatchService.run(scanResult, credentials.orElseThrow(),
+                    (done, total) -> updateLoadingForTvdbProgress(done, total));
+        } catch (RuntimeException ex) {
+            publishBatchInfo("aborted: " + ex.getClass().getSimpleName()
+                    + (ex.getMessage() == null ? "" : " - " + ex.getMessage()));
+            return TvdbBatchMatchResult.empty();
+        }
+    }
+
+    private static void publishBatchInfo(String message) {
+        try {
+            com.episort.tvdb.debug.TvdbRequestBus.get().publish(new com.episort.tvdb.debug.TvdbRequestTrace(
+                    java.time.Instant.now(), "BATCH", "pre-run", 0, 0L, message, null, false));
+        } catch (RuntimeException ignored) {
+            // ignore
+        }
+    }
+
+    private void setScanWorkflowPhase(com.episort.ui.scan.ScanScreen.WorkflowPhase phase, boolean inProgress) {
+        AppShell shell = appShellRef;
+        if (shell == null) return;
+        javafx.application.Platform.runLater(() -> shell.scanScreen().setWorkflowPhase(phase, inProgress));
+    }
+
+    private void updateLoadingTextForTvdb() {
+        AppShell shell = appShellRef;
+        if (shell == null) return;
+        AppLanguage language = shell.currentLanguage();
+        javafx.application.Platform.runLater(() -> {
+            shell.updateLoadingText(com.episort.ui.UiText.loadingScanTvdb(language));
+            shell.setLoadingProgress(0.0);
+        });
+    }
+
+    private void updateLoadingForTvdbProgress(int done, int total) {
+        AppShell shell = appShellRef;
+        if (shell == null || total <= 0) return;
+        AppLanguage language = shell.currentLanguage();
+        double progress = (double) done / (double) total;
+        javafx.application.Platform.runLater(() -> {
+            shell.updateLoadingText(com.episort.ui.UiText.loadingScanTvdb(language));
+            shell.setLoadingProgress(progress);
+        });
     }
 
     private static void recordScanCompleted(
@@ -374,20 +503,29 @@ public class EpisortApplication extends Application {
     }
 
     private AppShellViewModel configureTvdb(java.util.Optional<String> subscriberPin) {
+        AppShellViewModel result;
         try {
             TvdbCredentials embeddedCredentials = EmbeddedTvdbCredentialsProvider.load()
                     .map(credentials -> new TvdbCredentials(credentials.apiKey(), subscriberPin))
                     .orElseThrow(() -> new IllegalStateException("Embedded TVDB API key is not configured."));
             var testResult = new HttpTvdbConnectionTester().test(embeddedCredentials);
-            return AppShellViewModel.fromTvdbConfiguration(testResult.success()
+            result = AppShellViewModel.fromTvdbConfiguration(testResult.success()
                     ? com.episort.workflow.TvdbCredentialConfigurationResult.passed()
                     : com.episort.workflow.TvdbCredentialConfigurationResult.failure(testResult.error().orElseThrow()));
         } catch (IllegalArgumentException | IllegalStateException exception) {
-            return AppShellViewModel.fromError(ApplicationError.recoverable(
+            result = AppShellViewModel.fromError(ApplicationError.recoverable(
                     "TVDB_CONFIGURATION_REQUIRED",
                     ErrorSeverity.BLOCKING,
                     "TVDB access is not available in this build.",
                     "Embedded TVDB API key is missing or invalid."));
         }
+        AppShell shell = appShellRef;
+        if (shell != null) {
+            var existingScan = shell.currentViewModel().inventoryScanResult();
+            if (existingScan.isPresent()) {
+                result = result.withInventoryScanResult(existingScan);
+            }
+        }
+        return result;
     }
 }

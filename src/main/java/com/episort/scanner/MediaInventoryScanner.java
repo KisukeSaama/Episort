@@ -23,9 +23,25 @@ public final class MediaInventoryScanner {
             "(?i)(.*?)[ ._\\-]+(?:S\\d{1,2}|Season[ ._\\-]?\\d{1,2})(?:[ ._\\-].*)?");
 
     public InventoryScanResult scan(Path inputFolder, InventoryProgressListener progressListener) throws IOException {
+        return scan(ScanSource.folder(inputFolder), progressListener);
+    }
+
+    public InventoryScanResult scanFiles(List<Path> selectedFiles, InventoryProgressListener progressListener) throws IOException {
+        return scan(ScanSource.files(selectedFiles), progressListener);
+    }
+
+    public InventoryScanResult scan(ScanSource source, InventoryProgressListener progressListener) throws IOException {
         List<Path> files;
-        try (var stream = Files.walk(inputFolder)) {
-            files = stream.filter(Files::isRegularFile)
+        if (source.type() == ScanSourceType.FOLDER) {
+            try (var stream = Files.walk(source.paths().getFirst())) {
+                files = stream.filter(Files::isRegularFile)
+                        .sorted(Comparator.comparing(MediaInventoryScanner::scanCategoryOrder)
+                                .thenComparing(Comparator.naturalOrder()))
+                        .toList();
+            }
+        } else {
+            files = source.paths().stream()
+                    .filter(Files::isRegularFile)
                     .sorted(Comparator.comparing(MediaInventoryScanner::scanCategoryOrder)
                             .thenComparing(Comparator.naturalOrder()))
                     .toList();

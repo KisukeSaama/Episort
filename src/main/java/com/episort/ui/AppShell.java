@@ -13,7 +13,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import javafx.application.Platform;
-import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
@@ -27,6 +26,7 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Window;
 
 public final class AppShell {
@@ -43,6 +43,7 @@ public final class AppShell {
     private final RunEventStore runEventStore;
 
     private final Function<Path, CompletableFuture<AppShellViewModel>> selectInputFolder;
+    private Function<java.util.List<Path>, CompletableFuture<AppShellViewModel>> selectInputSources;
     private final Supplier<Optional<Path>> currentWorkspace;
     private AppShellViewModel currentViewModel;
     private AppView currentView = AppView.SCAN;
@@ -135,6 +136,7 @@ public final class AppShell {
                 currentWorkspace,
                 canContinue,
                 onContinue,
+                null,
                 null);
     }
 
@@ -147,9 +149,29 @@ public final class AppShell {
             BooleanSupplier canContinue,
             Runnable onContinue,
             RunEventStore runEventStore) {
+        this(viewModel, configureWorkspace, selectInputFolder, configureTvdb, currentWorkspace,
+                canContinue, onContinue, runEventStore, null);
+    }
+
+    public AppShell(
+            AppShellViewModel viewModel,
+            Function<Path, AppShellViewModel> configureWorkspace,
+            Function<Path, CompletableFuture<AppShellViewModel>> selectInputFolder,
+            java.util.function.BiFunction<String, Optional<String>, AppShellViewModel> configureTvdb,
+            Supplier<Optional<Path>> currentWorkspace,
+            BooleanSupplier canContinue,
+            Runnable onContinue,
+            RunEventStore runEventStore,
+            Supplier<Integer> resetTvdbCache) {
         Fonts.loadAll();
         this.currentViewModel = viewModel;
         this.selectInputFolder = selectInputFolder;
+        this.selectInputSources = selectInputFolder == null ? null : paths -> {
+            if (paths == null || paths.isEmpty()) {
+                return CompletableFuture.completedFuture(currentViewModel);
+            }
+            return selectInputFolder.apply(paths.getFirst());
+        };
         this.currentWorkspace = currentWorkspace == null ? Optional::empty : currentWorkspace;
         this.runEventStore = runEventStore == null ? new InMemoryRunEventStore() : runEventStore;
 
@@ -159,6 +181,7 @@ public final class AppShell {
                     this.currentWorkspace,
                     this::applyLanguage,
                     configureTvdb,
+                    resetTvdbCache,
                     this::onSettingsClose,
                     this::apply);
         } else {
@@ -170,6 +193,8 @@ public final class AppShell {
                 this::onPrimaryAction,
                 this::onSearchChange,
                 this::openLoadFolderDialog,
+                this::openLoadFilesDialog,
+                this::openAddFilesDialog,
                 this::resetScanPreview,
                 this::reanalyzeLastFolder);
 
@@ -212,6 +237,14 @@ public final class AppShell {
 
     public ScanScreen scanScreen() {
         return scanScreen;
+    }
+
+    public void setInputSourcesLoader(Function<java.util.List<Path>, CompletableFuture<AppShellViewModel>> loader) {
+        this.selectInputSources = loader == null ? this.selectInputSources : loader;
+    }
+
+    public AppShellViewModel currentViewModel() {
+        return currentViewModel;
     }
 
     public void setLocalAiReadiness(java.util.function.BooleanSupplier supplier) {
@@ -289,9 +322,9 @@ public final class AppShell {
 
     private void buildPrereqOverlay() {
         prereqOverlayTitle = new Label();
-        prereqOverlayTitle.setStyle("-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #f1f5f9;");
+        prereqOverlayTitle.getStyleClass().add("prereq-title");
         prereqOverlaySubtitle = new Label();
-        prereqOverlaySubtitle.setStyle("-fx-font-size: 14px; -fx-text-fill: #cbd5e1;");
+        prereqOverlaySubtitle.getStyleClass().add("prereq-subtitle");
         prereqOverlaySubtitle.setWrapText(true);
         prereqOverlayList = new VBox(6);
         prereqOverlayButton = new Button();
@@ -300,17 +333,12 @@ public final class AppShell {
 
         VBox card = new VBox(14, prereqOverlayTitle, prereqOverlaySubtitle, prereqOverlayList, prereqOverlayButton);
         card.setAlignment(Pos.CENTER_LEFT);
-        card.setPadding(new Insets(28));
         card.setMaxWidth(520);
-        card.setStyle(
-                "-fx-background-color: rgba(15,18,24,0.92);"
-                        + " -fx-background-radius: 14;"
-                        + " -fx-border-color: rgba(249,115,22,0.35);"
-                        + " -fx-border-radius: 14; -fx-border-width: 1;");
+        card.getStyleClass().add("prereq-card");
 
         prereqOverlay = new VBox(card);
         prereqOverlay.setAlignment(Pos.CENTER);
-        prereqOverlay.setStyle("-fx-background-color: rgba(7,8,11,0.55);");
+        prereqOverlay.getStyleClass().add("prereq-overlay");
         prereqOverlay.setVisible(false);
         prereqOverlay.setManaged(false);
     }
@@ -345,7 +373,7 @@ public final class AppShell {
 
     private static Label bullet(String text) {
         Label l = new Label("•  " + text);
-        l.setStyle("-fx-font-size: 14px; -fx-text-fill: #f1f5f9;");
+        l.getStyleClass().add("prereq-bullet");
         l.setWrapText(true);
         return l;
     }
@@ -491,6 +519,68 @@ public final class AppShell {
         }
     }
 
+    private void openLoadFilesDialog() {
+        openFilesDialog(false);
+    }
+
+    private void openAddFilesDialog() {
+        openFilesDialog(true);
+    }
+
+    private void openFilesDialog(boolean append) {
+        if (selectInputSources == null || currentWorkspace.get().isEmpty()) {
+            return;
+        }
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle(currentViewModel.language() == AppLanguage.ENGLISH
+                ? "Choose files to load"
+                : "Choisir les fichiers a charger");
+        File initial = currentWorkspace.get().orElseThrow().toFile();
+        if (initial.isDirectory()) {
+            chooser.setInitialDirectory(initial);
+        }
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+                "Video files", "*.avi", "*.mp4", "*.mkv"));
+        Window owner = root.getScene() == null ? null : root.getScene().getWindow();
+        java.util.List<File> selected = chooser.showOpenMultipleDialog(owner);
+        if (selected == null || selected.isEmpty()) {
+            return;
+        }
+        java.util.List<Path> paths = selected.stream()
+                .map(file -> file.toPath().toAbsolutePath().normalize())
+                .toList();
+        if (!append) {
+            lastInputFolder = Optional.empty();
+        }
+        scanScreen.setLoading(true);
+        setLoading(true, UiText.loadingScan(currentViewModel.language()));
+        selectInputSources.apply(paths)
+                .thenAccept(viewModel -> Platform.runLater(() -> {
+                    if (append) {
+                        scanScreen.append(viewModel.inventoryScanResult());
+                    } else {
+                        apply(viewModel);
+                    }
+                    setLoading(false, "");
+                }))
+                .whenComplete((ignored, exception) -> Platform.runLater(() -> {
+                    scanScreen.setLoading(false);
+                    setLoading(false, "");
+                }))
+                .exceptionally(exception -> {
+                    Platform.runLater(() -> apply(new AppShellViewModel(
+                            "Episort",
+                            "Scan impossible",
+                            "Les fichiers n'ont pas pu etre scannes.",
+                            Optional.empty(),
+                            Optional.empty(),
+                            Optional.empty(),
+                            currentViewModel.theme(),
+                            currentViewModel.language())));
+                    return null;
+                });
+    }
+
     private void apply(AppShellViewModel viewModel) {
         currentViewModel = AppShellViewModel.preservingTheme(currentViewModel, viewModel);
         refreshShellState();
@@ -572,16 +662,15 @@ public final class AppShell {
             case SCAN -> {
                 if (scanScreen.hasLoadedFolder()) {
                     topBar.setPrimaryActionText(UiText.primaryActionValidate(language));
-                    topBar.setPrimaryActionDisabled(loading);
+                    topBar.setPrimaryActionDisabled(loading || !scanScreen.hasReadyActiveRows());
                 } else {
-                    topBar.setPrimaryActionText(UiText.primaryActionLoad(language));
-                    topBar.setPrimaryActionDisabled(loading || !(workspaceReady && selectInputFolder != null));
+                    topBar.setPrimaryActionText(UiText.primaryActionValidate(language));
+                    topBar.setPrimaryActionDisabled(true);
                 }
                 topBar.primaryAction().setVisible(true);
                 topBar.primaryAction().setManaged(true);
                 setTopSecondaryActionsVisible(true);
-                topBar.changeFolderAction().setDisable(
-                        loading || !(scanScreen.hasLoadedFolder() && workspaceReady && selectInputFolder != null));
+                topBar.loadAction().setDisable(loading || !(workspaceReady && selectInputFolder != null));
                 topBar.resetFolderAction().setDisable(loading || !scanScreen.hasLoadedFolder());
                 topBar.rescanAction().setDisable(loading || selectInputFolder == null || lastInputFolder.isEmpty());
             }
@@ -599,8 +688,8 @@ public final class AppShell {
     }
 
     private void setTopSecondaryActionsVisible(boolean visible) {
-        topBar.changeFolderAction().setVisible(visible);
-        topBar.changeFolderAction().setManaged(visible);
+        topBar.loadAction().setVisible(visible);
+        topBar.loadAction().setManaged(visible);
         topBar.resetFolderAction().setVisible(visible);
         topBar.resetFolderAction().setManaged(visible);
         topBar.rescanAction().setVisible(visible);

@@ -30,6 +30,7 @@ class AiTvdbCandidateRankerTest {
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
+                Optional.empty(),
                 OptionalDoubleScore.empty(),
                 rank);
     }

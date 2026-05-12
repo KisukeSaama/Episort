@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
+import com.episort.tvdb.TvdbCandidate;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 
@@ -24,6 +25,8 @@ public final class ScanRow {
     private Optional<String> inputPattern;
     private Optional<String> pattern;
     private Optional<String> tvdbMatch;
+    private Optional<TvdbCandidate> tvdbCandidate;
+    private boolean tvdbSelectedByUser;
     private Optional<String> order;
     private Optional<Path> destination;
     private OptionalDouble confidence;
@@ -48,6 +51,8 @@ public final class ScanRow {
         this.inputPattern = Optional.empty();
         this.pattern = Optional.empty();
         this.tvdbMatch = Optional.empty();
+        this.tvdbCandidate = Optional.empty();
+        this.tvdbSelectedByUser = false;
         this.order = Optional.empty();
         this.destination = Optional.empty();
         this.confidence = OptionalDouble.empty();
@@ -66,7 +71,11 @@ public final class ScanRow {
     }
 
     public void setSelected(boolean value) {
-        selected.set(value);
+        selected.set(value && !isIgnored());
+    }
+
+    public boolean isIgnored() {
+        return status == ScanRowStatus.IGNORED || mediaType == ScanMediaType.IGNORED;
     }
 
     public Path sourcePath() {
@@ -136,6 +145,22 @@ public final class ScanRow {
 
     public void setTvdbMatch(Optional<String> tvdbMatch) {
         this.tvdbMatch = Objects.requireNonNull(tvdbMatch, "tvdbMatch");
+    }
+
+    public Optional<TvdbCandidate> tvdbCandidate() {
+        return tvdbCandidate;
+    }
+
+    public void setTvdbCandidate(Optional<TvdbCandidate> tvdbCandidate) {
+        this.tvdbCandidate = Objects.requireNonNull(tvdbCandidate, "tvdbCandidate");
+    }
+
+    public boolean tvdbSelectedByUser() {
+        return tvdbSelectedByUser;
+    }
+
+    public void setTvdbSelectedByUser(boolean tvdbSelectedByUser) {
+        this.tvdbSelectedByUser = tvdbSelectedByUser;
     }
 
     public Optional<String> order() {

@@ -131,6 +131,12 @@ public final class UiText {
     public static String workspaceChipEmpty(AppLanguage language) { return t(language, "workspace.chip.empty"); }
     public static String primaryActionLoad(AppLanguage language) { return loadFolderButton(language); }
     public static String primaryActionValidate(AppLanguage language) { return t(language, "primary.action.validate"); }
+    public static String topActionLoad(AppLanguage language) { return t(language, "top.action.load"); }
+    public static String topActionLoadFolder(AppLanguage language) { return t(language, "top.action.loadFolder"); }
+    public static String topActionLoadFiles(AppLanguage language) { return t(language, "top.action.loadFiles"); }
+    public static String topActionAddFiles(AppLanguage language) { return t(language, "top.action.addFiles"); }
+    public static String topActionReset(AppLanguage language) { return t(language, "top.action.reset"); }
+    public static String topActionReanalyze(AppLanguage language) { return t(language, "top.action.reanalyze"); }
     public static String statusPillReady(AppLanguage language) { return t(language, "status.pill.ready"); }
 
     /* ---- Scan screen ------------------------------------------------- */
@@ -142,6 +148,10 @@ public final class UiText {
 
     public static String loadingScanAi(AppLanguage language) {
         return t(language, "loading.scan.ai");
+    }
+
+    public static String loadingScanTvdb(AppLanguage language) {
+        return t(language, "loading.scan.tvdb");
     }
 
     public static String[] scanWorkflowSteps(AppLanguage language) {
@@ -180,6 +190,13 @@ public final class UiText {
     public static String scanFilterMovies(AppLanguage language) { return t(language, "scan.filter.movies"); }
     public static String scanFilterSeries(AppLanguage language) { return t(language, "scan.filter.series"); }
     public static String scanFilterUnknown(AppLanguage language) { return t(language, "scan.filter.unknown"); }
+    public static String scanStatusFilterAll(AppLanguage language) { return t(language, "scan.statusFilter.all"); }
+    public static String scanStatusFilterToProcess(AppLanguage language) { return t(language, "scan.statusFilter.toProcess"); }
+    public static String scanStatusFilterOk(AppLanguage language) { return t(language, "scan.statusFilter.ok"); }
+    public static String scanStatusFilterTvdb(AppLanguage language) { return t(language, "scan.statusFilter.tvdb"); }
+    public static String scanStatusFilterConflicts(AppLanguage language) { return t(language, "scan.statusFilter.conflicts"); }
+    public static String scanStatusFilterIgnored(AppLanguage language) { return t(language, "scan.statusFilter.ignored"); }
+    public static String scanStatusFilterAlerts(AppLanguage language) { return t(language, "scan.statusFilter.alerts"); }
 
     public static String scanMediaTypeSeries(AppLanguage language) { return t(language, "scan.media.type.series"); }
     public static String scanMediaTypeMovie(AppLanguage language) { return t(language, "scan.media.type.movie"); }
@@ -208,9 +225,48 @@ public final class UiText {
     public static String scanTablePlaceholder(AppLanguage language) { return t(language, "scan.table.placeholder"); }
 
     public static String scanContextIgnore(AppLanguage language) { return t(language, "scan.context.ignore"); }
+    public static String scanContextStopIgnoring(AppLanguage language) { return t(language, "scan.context.stopIgnoring"); }
     public static String scanContextResetMatch(AppLanguage language) { return t(language, "scan.context.resetMatch"); }
     public static String scanContextCopyPath(AppLanguage language) { return t(language, "scan.context.copyPath"); }
     public static String scanContextOpenFolder(AppLanguage language) { return t(language, "scan.context.openFolder"); }
+
+    public static String filePropertiesAction(AppLanguage language) { return t(language, "file.properties.action"); }
+    public static String filePropertiesTitle(AppLanguage language) { return t(language, "file.properties.title"); }
+    public static String filePropertiesSectionFile(AppLanguage language) { return t(language, "file.properties.section.file"); }
+    public static String filePropertiesSectionDetection(AppLanguage language) { return t(language, "file.properties.section.detection"); }
+    public static String filePropertiesSectionTvdb(AppLanguage language) { return t(language, "file.properties.section.tvdb"); }
+    public static String filePropertiesSectionMedia(AppLanguage language) { return t(language, "file.properties.section.media"); }
+    public static String filePropertiesCurrentName(AppLanguage language) { return t(language, "file.properties.currentName"); }
+    public static String filePropertiesProposedName(AppLanguage language) { return t(language, "file.properties.proposedName"); }
+    public static String filePropertiesExtension(AppLanguage language) { return t(language, "file.properties.extension"); }
+    public static String filePropertiesSize(AppLanguage language) { return t(language, "file.properties.size"); }
+    public static String filePropertiesLocation(AppLanguage language) { return t(language, "file.properties.location"); }
+    public static String filePropertiesFullPath(AppLanguage language) { return t(language, "file.properties.fullPath"); }
+    public static String filePropertiesLastModified(AppLanguage language) { return t(language, "file.properties.lastModified"); }
+    public static String filePropertiesDetectedType(AppLanguage language) { return t(language, "file.properties.detectedType"); }
+    public static String filePropertiesSeason(AppLanguage language) { return t(language, "file.properties.season"); }
+    public static String filePropertiesEpisode(AppLanguage language) { return t(language, "file.properties.episode"); }
+    public static String filePropertiesDetectedTitle(AppLanguage language) { return t(language, "file.properties.detectedTitle"); }
+    public static String filePropertiesInputPattern(AppLanguage language) { return t(language, "file.properties.inputPattern"); }
+    public static String filePropertiesConfidence(AppLanguage language) { return t(language, "file.properties.confidence"); }
+    public static String filePropertiesSource(AppLanguage language) { return t(language, "file.properties.source"); }
+    public static String filePropertiesStatus(AppLanguage language) { return t(language, "file.properties.status"); }
+    public static String filePropertiesTvdbTitle(AppLanguage language) { return t(language, "file.properties.tvdbTitle"); }
+    public static String filePropertiesTvdbType(AppLanguage language) { return t(language, "file.properties.tvdbType"); }
+    public static String filePropertiesYear(AppLanguage language) { return t(language, "file.properties.year"); }
+    public static String filePropertiesTvdbId(AppLanguage language) { return t(language, "file.properties.tvdbId"); }
+    public static String filePropertiesOrder(AppLanguage language) { return t(language, "file.properties.order"); }
+    public static String filePropertiesMediaUnavailable(AppLanguage language) { return t(language, "file.properties.mediaUnavailable"); }
+    public static String filePropertiesVideoCodec(AppLanguage language) { return t(language, "file.properties.videoCodec"); }
+    public static String filePropertiesAudioCodec(AppLanguage language) { return t(language, "file.properties.audioCodec"); }
+    public static String filePropertiesResolution(AppLanguage language) { return t(language, "file.properties.resolution"); }
+    public static String filePropertiesDuration(AppLanguage language) { return t(language, "file.properties.duration"); }
+    public static String filePropertiesBitrate(AppLanguage language) { return t(language, "file.properties.bitrate"); }
+    public static String filePropertiesFramerate(AppLanguage language) { return t(language, "file.properties.framerate"); }
+    public static String filePropertiesContainer(AppLanguage language) { return t(language, "file.properties.container"); }
+    public static String filePropertiesClose(AppLanguage language) { return t(language, "file.properties.close"); }
+    public static String filePropertiesCopyPath(AppLanguage language) { return t(language, "file.properties.copyPath"); }
+    public static String filePropertiesPathCopied(AppLanguage language) { return t(language, "file.properties.pathCopied"); }
 
     /* ---- Detail panel ----------------------------------------------- */
 
@@ -240,6 +296,47 @@ public final class UiText {
     public static String detailApplyButton(AppLanguage language) { return t(language, "detail.apply.button"); }
     public static String detailApplyToSelection(AppLanguage language) { return t(language, "detail.apply.toSelection"); }
     public static String detailResetButton(AppLanguage language) { return t(language, "detail.reset.button"); }
+    public static String tvdbSearchForMatch(AppLanguage language) { return t(language, "tvdb.searchForMatch"); }
+    public static String tvdbChooseMatch(AppLanguage language) { return t(language, "tvdb.chooseMatch"); }
+    public static String tvdbSearch(AppLanguage language) { return t(language, "tvdb.search"); }
+    public static String tvdbSearchPlaceholder(AppLanguage language) { return t(language, "tvdb.searchPlaceholder"); }
+    public static String tvdbNoResults(AppLanguage language) { return t(language, "tvdb.noResults"); }
+    public static String tvdbNoMatchSelected(AppLanguage language) { return t(language, "tvdb.noMatchSelected"); }
+    public static String tvdbResolveNow(AppLanguage language) { return t(language, "tvdb.resolveNow"); }
+    public static String tvdbIgnore(AppLanguage language) { return t(language, "tvdb.ignore"); }
+    public static String tvdbSelect(AppLanguage language) { return t(language, "tvdb.select"); }
+    public static String tvdbApply(AppLanguage language) { return t(language, "tvdb.apply"); }
+    public static String tvdbApplyMatch(AppLanguage language) { return t(language, "tvdb.applyMatch"); }
+    public static String tvdbMatchApplied(AppLanguage language) { return t(language, "tvdb.matchApplied"); }
+    public static String tvdbNoFileSelected(AppLanguage language) { return t(language, "tvdb.noFileSelected"); }
+    public static String tvdbNoResultSelected(AppLanguage language) { return t(language, "tvdb.noResultSelected"); }
+    public static String tvdbNoDescription(AppLanguage language) { return t(language, "tvdb.noDescription"); }
+    public static String tvdbSearching(AppLanguage language) { return t(language, "tvdb.searching"); }
+    public static String tvdbLoadingResults(AppLanguage language) { return t(language, "tvdb.loadingResults"); }
+    public static String tvdbSeries(AppLanguage language) { return t(language, "tvdb.series"); }
+    public static String tvdbMovie(AppLanguage language) { return t(language, "tvdb.movie"); }
+    public static String tvdbIdLabel(AppLanguage language) { return t(language, "tvdb.id"); }
+    public static String tvdbClose(AppLanguage language) { return t(language, "tvdb.close"); }
+
+    public static String tvdbManualRequired(AppLanguage language, int count) {
+        return t(language, "tvdb.manualRequired").replace("{0}", Integer.toString(count));
+    }
+
+    public static String tvdbSelectedFiles(AppLanguage language, int count) {
+        String key = count == 1 ? "tvdb.selectedFiles.one" : "tvdb.selectedFiles.many";
+        return t(language, key).replace("{count}", Integer.toString(count));
+    }
+
+    public static String tvdbMatchWillApplyTo(AppLanguage language, int count) {
+        return t(language, "tvdb.matchWillApplyTo").replace("{count}", Integer.toString(count));
+    }
+
+    public static String tvdbFilesUpdated(AppLanguage language, int count) {
+        return t(language, "tvdb.filesUpdated").replace("{count}", Integer.toString(count));
+    }
+    public static String tvdbMatchSuggested(AppLanguage language) { return t(language, "tvdb.matchSuggested"); }
+    public static String tvdbAutomaticMatch(AppLanguage language) { return t(language, "tvdb.automaticMatch"); }
+    public static String tvdbSuggestionNeedsValidation(AppLanguage language) { return t(language, "tvdb.suggestionNeedsValidation"); }
 
     /* ---- History screen --------------------------------------------- */
 
@@ -282,6 +379,9 @@ public final class UiText {
     public static String tvdbSettingsChecking(AppLanguage language) { return t(language, "tvdb.settings.checking"); }
     public static String tvdbSettingsOnline(AppLanguage language) { return t(language, "tvdb.settings.online"); }
     public static String tvdbSettingsUnavailable(AppLanguage language) { return t(language, "tvdb.settings.unavailable"); }
+    public static String tvdbSettingsResetCache(AppLanguage language) { return t(language, "tvdb.settings.resetCache"); }
+    public static String tvdbSettingsCacheCleared(AppLanguage language, int count) { return t(language, "tvdb.settings.cacheCleared").replace("{0}", Integer.toString(count)); }
+    public static String tvdbSettingsCacheAlreadyEmpty(AppLanguage language) { return t(language, "tvdb.settings.cacheAlreadyEmpty"); }
     public static String safetySectionTitle(AppLanguage language) { return t(language, "safety.section.title"); }
     public static String safetySectionDescription(AppLanguage language) { return t(language, "safety.section.description"); }
     public static String safetySectionPlaceholder(AppLanguage language) { return t(language, "safety.section.placeholder"); }

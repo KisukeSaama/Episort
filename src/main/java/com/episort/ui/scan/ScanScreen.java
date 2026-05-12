@@ -13,6 +13,7 @@ import com.episort.config.TvdbCredentials;
 import com.episort.matching.EpisodeMovieMatchService;
 import com.episort.matching.MediaMatchProposal;
 import com.episort.matching.MediaMatchType;
+import com.episort.matching.TvdbEpisodeOrderMapper;
 import com.episort.matching.TvdbEpisodeMetadata;
 import com.episort.matching.TvdbMovieMetadata;
 import com.episort.matching.TvdbSeriesMetadata;
@@ -25,11 +26,13 @@ import com.episort.scanner.InventorySummary;
 import com.episort.tvdb.TvdbCandidate;
 import com.episort.tvdb.TvdbClient;
 import com.episort.tvdb.TvdbEpisode;
+import com.episort.tvdb.TvdbEpisodeOrder;
 import com.episort.tvdb.TvdbException;
 import com.episort.tvdb.TvdbIdentity;
 import com.episort.tvdb.TvdbMovieDetails;
 import com.episort.tvdb.TvdbSearchResult;
 import com.episort.tvdb.TvdbSeriesDetails;
+import com.episort.workflow.TvdbBatchMatchResult;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -43,6 +46,8 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -63,6 +68,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableCell;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
@@ -87,11 +93,17 @@ import javafx.util.converter.DefaultStringConverter;
 public final class ScanScreen {
     private static final String EMPTY = "—";
 
+    public enum WorkflowPhase {
+        CHOOSE_FOLDER, AI_SCAN, TVDB_MATCHES, PLAN_REVIEW, APPLY
+    }
+
     private final VBox root;
     private final Label heading;
     private final HBox workflowSteps;
     private final Label workflowHelp;
     private final java.util.List<WorkflowStep> steps = new java.util.ArrayList<>();
+    private WorkflowPhase workflowPhase = WorkflowPhase.CHOOSE_FOLDER;
+    private boolean workflowInProgress = false;
 
     private final FlowPane metricGrid;
     private final MetricCard cardTotal = new MetricCard();
@@ -110,6 +122,9 @@ public final class ScanScreen {
     private final HBox filterBar = new HBox(8);
     private final ToggleGroup filterGroup = new ToggleGroup();
     private final Map<ScanRowFilter, ToggleButton> filterButtons = new HashMap<>();
+    private final ToggleGroup statusFilterGroup = new ToggleGroup();
+    private final Map<ScanRowStatusFilter, ToggleButton> statusFilterButtons = new HashMap<>();
+    private final Button resolveManualMatchesButton = new Button();
     private final TableColumn<ScanRow, Boolean> selectionColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> originalColumn = new TableColumn<>();
     private final TableColumn<ScanRow, String> arrowColumn = new TableColumn<>();
@@ -133,15 +148,19 @@ public final class ScanScreen {
     private final Map<ScanRow, java.util.List<ScanRow>> groupRows = new HashMap<>();
     private final Map<String, TvdbCandidate> tvdbCandidatesByLabel = new HashMap<>();
     private final EpisodeMovieMatchService matchService = new EpisodeMovieMatchService();
+    private final TvdbEpisodeOrderMapper orderMapper = new TvdbEpisodeOrderMapper();
     private final CheckBox selectAllCheckbox = new CheckBox();
     private final SimpleObjectProperty<ScanRow> selectedRow = new SimpleObjectProperty<>(null);
     private final SimpleBooleanProperty syncingSelection = new SimpleBooleanProperty(false);
+    private int selectionAnchorIndex = -1;
+    private static final Pattern SXXEXX_PATTERN = Pattern.compile("[Ss](\\d{1,3})[\\s._-]?[Ee](\\d{1,4})");
     private boolean loadedFolder;
     private boolean loading;
     private boolean aiAssistanceEnabled = true;
     private Optional<java.nio.file.Path> workspaceRoot = Optional.empty();
     private String searchQuery = "";
     private ScanRowFilter activeFilter = ScanRowFilter.ALL;
+    private ScanRowStatusFilter activeStatusFilter = ScanRowStatusFilter.ALL;
 
     private Pane currentBody;
     private boolean stackedLayout = false;
@@ -181,8 +200,10 @@ public final class ScanScreen {
 
         configureTable();
         detailPanel.setOnApplyCandidate(this::applyTvdbCandidate);
+        detailPanel.setOnApplySelectedMatch(this::applySelectedTvdbMatchToSelection);
         detailPanel.setOnResetMatch(this::resetTvdbMatch);
         detailPanel.setOnApplyInputPattern(this::applyInputPatternToSelection);
+        detailPanel.setOnSearchMatch(this::openTvdbManualMatchDialog);
         detailRoot = detailPanel.root();
         detailRoot.setMinWidth(320);
         detailRoot.setPrefWidth(380);
@@ -244,6 +265,14 @@ public final class ScanScreen {
         setFilterButtonText(ScanRowFilter.MOVIES, UiText.scanFilterMovies(language));
         setFilterButtonText(ScanRowFilter.SERIES, UiText.scanFilterSeries(language));
         setFilterButtonText(ScanRowFilter.UNKNOWN, UiText.scanFilterUnknown(language));
+        setStatusFilterButtonText(ScanRowStatusFilter.ALL, UiText.scanStatusFilterAll(language));
+        setStatusFilterButtonText(ScanRowStatusFilter.TO_PROCESS, UiText.scanStatusFilterToProcess(language));
+        setStatusFilterButtonText(ScanRowStatusFilter.OK, UiText.scanStatusFilterOk(language));
+        setStatusFilterButtonText(ScanRowStatusFilter.TVDB, UiText.scanStatusFilterTvdb(language));
+        setStatusFilterButtonText(ScanRowStatusFilter.CONFLICTS, UiText.scanStatusFilterConflicts(language));
+        setStatusFilterButtonText(ScanRowStatusFilter.IGNORED, UiText.scanStatusFilterIgnored(language));
+        setStatusFilterButtonText(ScanRowStatusFilter.ALERTS, UiText.scanStatusFilterAlerts(language));
+        resolveManualMatchesButton.setText(UiText.tvdbResolveNow(language));
 
         table.setPlaceholder(buildEmptyState(
                 "◫",
@@ -253,6 +282,7 @@ public final class ScanScreen {
         detailPanel.applyLanguage(language);
         aiChatPanel.applyLanguage(language);
         table.refresh();
+        updateManualMatchNotice();
     }
 
     public void setAiChatBackend(AiChatBackend backend) {
@@ -305,10 +335,36 @@ public final class ScanScreen {
     }
 
     private void updateWorkflowActiveStep() {
-        int activeIndex = loading || loadedFolder ? 1 : 0;
+        int activeIndex = phaseToIndex(workflowPhase);
+        boolean inProgress = workflowInProgress || (loading && workflowPhase == WorkflowPhase.CHOOSE_FOLDER);
         for (int index = 0; index < steps.size(); index++) {
-            steps.get(index).setState(index, activeIndex, loading && index == activeIndex);
+            steps.get(index).setState(index, activeIndex, inProgress && index == activeIndex);
         }
+    }
+
+    private int phaseToIndex(WorkflowPhase phase) {
+        if (aiAssistanceEnabled) {
+            return switch (phase) {
+                case CHOOSE_FOLDER -> 0;
+                case AI_SCAN -> 1;
+                case TVDB_MATCHES -> 2;
+                case PLAN_REVIEW -> 3;
+                case APPLY -> 4;
+            };
+        }
+        return switch (phase) {
+            case CHOOSE_FOLDER -> 0;
+            case AI_SCAN, TVDB_MATCHES -> 1;
+            case PLAN_REVIEW -> 2;
+            case APPLY -> 3;
+        };
+    }
+
+    public void setWorkflowPhase(WorkflowPhase phase, boolean inProgress) {
+        if (phase == null) return;
+        this.workflowPhase = phase;
+        this.workflowInProgress = inProgress;
+        updateWorkflowActiveStep();
     }
 
     private static VBox buildEmptyState(String iconText, String title, String hint) {
@@ -348,13 +404,33 @@ public final class ScanScreen {
         updateWorkflowActiveStep();
         rows.setAll(ScanRowFactory.from(scan));
         rebuildGroupIndex(scan);
-        applyMetrics(scan.summary());
+        updateMetricsFromRows();
         selectedRow.set(null);
         detailPanel.clear();
         aiChatPanel.clear();
         aiChatPanel.refreshAvailability();
         table.getSelectionModel().clearSelection();
         updateSelectAllCheckbox();
+        updateManualMatchNotice();
+    }
+
+    public void append(Optional<InventoryScanResult> result) {
+        if (result == null || result.isEmpty()) {
+            return;
+        }
+        InventoryScanResult scan = result.orElseThrow();
+        loading = false;
+        loadedFolder = true;
+        rows.addAll(ScanRowFactory.from(scan));
+        rebuildGroupIndex(new InventoryScanResult(
+                rows.stream().map(ScanScreen::inventoryItemFor).toList(),
+                scan.groups(),
+                scan.summary()));
+        updateMetricsFromRows();
+        updateFilterPredicate();
+        updateSelectAllCheckbox();
+        updateManualMatchNotice();
+        table.refresh();
     }
 
     private void rebuildGroupIndex(InventoryScanResult scan) {
@@ -390,6 +466,7 @@ public final class ScanScreen {
 
     public void clear() {
         rows.clear();
+        selectionAnchorIndex = -1;
         loadedFolder = false;
         loading = false;
         updateWorkflowActiveStep();
@@ -409,10 +486,16 @@ public final class ScanScreen {
         detailPanel.clear();
         table.getSelectionModel().clearSelection();
         updateSelectAllCheckbox();
+        updateManualMatchNotice();
     }
 
     public boolean hasRows() {
         return !rows.isEmpty();
+    }
+
+    public boolean hasReadyActiveRows() {
+        return rows.stream().anyMatch(row -> !row.isIgnored()
+                && row.proposedFilename().filter(value -> !value.isBlank()).isPresent());
     }
 
     /**
@@ -421,8 +504,198 @@ public final class ScanScreen {
      * group, every row in that group has its mediaType overridden. The pattern
      * label (if any) is attached to rows as an advisory note.
      */
+    /**
+     * Applies the post-scan batch TVDB resolution: for every row whose group
+     * was successfully matched, paints the identity, the per-row metadata
+     * (S/E numbers, proposed filename, confidence), and the canonical "TVDB"
+     * status. Rows without a group match keep their previous status so the
+     * user can still kick off a manual search from the detail panel.
+     */
+    public void applyTvdbBatchResult(TvdbBatchMatchResult result) {
+        applyTvdbBatchResultInternal(result, 0);
+    }
+
+    private void applyTvdbBatchResultInternal(TvdbBatchMatchResult result, int attempt) {
+        if (result == null || result.isEmpty()) {
+            return;
+        }
+        // The post-scan pipeline may enqueue this call BEFORE the viewmodel
+        // apply runLater has populated rows (JavaFX can dispatch the outer
+        // runLater of the double-runLater scheduler before the executor
+        // thread finishes wiring the thenAccept continuation). Defer until
+        // rows are present, with a small bound to avoid spinning forever.
+        if (rows.isEmpty() && attempt < 20) {
+            javafx.application.Platform.runLater(
+                    () -> applyTvdbBatchResultInternal(result, attempt + 1));
+            return;
+        }
+        int totalRows = rows.size();
+        int rowsWithGroup = 0;
+        int rowsApplied = 0;
+        java.util.Set<String> seenSeeds = new java.util.HashSet<>();
+        for (ScanRow row : rows) {
+            InventoryGroup group = rowToGroup.get(row);
+            if (group == null) continue;
+            rowsWithGroup++;
+            seenSeeds.add(group.seedName());
+            TvdbBatchMatchResult.GroupMatch match = result.matchesBySeed().get(group.seedName());
+            if (match == null) continue;
+            applyBatchGroupMatchToRow(row, match);
+            rowsApplied++;
+        }
+        publishApplyTrace(totalRows, rowsWithGroup, result.matchesBySeed().size(), rowsApplied,
+                "seeds(rows)=" + seenSeeds + " seeds(matches)=" + result.matchesBySeed().keySet());
+        table.refresh();
+        updateManualMatchNotice();
+        if (selectedRow.get() != null) {
+            detailPanel.show(selectedRow.get(), rowToGroupMatch.get(selectedRow.get()));
+        }
+    }
+
+    private static void publishApplyTrace(int totalRows, int rowsWithGroup, int matches, int rowsApplied, String detail) {
+        try {
+            String body = "totalRows=" + totalRows
+                    + "  rowsWithGroup=" + rowsWithGroup
+                    + "  matches=" + matches
+                    + "  rowsApplied=" + rowsApplied
+                    + "\n" + detail;
+            com.episort.tvdb.debug.TvdbRequestBus.get().publish(new com.episort.tvdb.debug.TvdbRequestTrace(
+                    java.time.Instant.now(), "APPLY", "scan-table", 0, 0L, body, null, false));
+        } catch (RuntimeException ignored) {
+            // ignore
+        }
+    }
+
+    private void applyBatchGroupMatchToRow(ScanRow row, TvdbBatchMatchResult.GroupMatch match) {
+        if (row.tvdbSelectedByUser()) {
+            return;
+        }
+        String label = batchCandidateLabel(match);
+        row.setTvdbMatch(Optional.of(label));
+        row.setTvdbCandidate(Optional.of(match.candidate().orElseGet(() -> new TvdbCandidate(
+                match.identity(),
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty(),
+                com.episort.tvdb.OptionalDoubleScore.empty(),
+                0))));
+        row.setTvdbSelectedByUser(false);
+        row.setStatus(match.automatic() ? ScanRowStatus.TVDB : ScanRowStatus.REVIEW);
+        MediaMatchProposal proposal = match.proposalsByPath().get(row.sourcePath());
+        String extension = row.extension().isBlank() ? "" : "." + row.extension().toLowerCase(Locale.ROOT);
+        if (!match.automatic()) {
+            row.setConfidence(OptionalDouble.of(match.score()));
+            row.setNoteText(Optional.of(UiText.tvdbMatchSuggested(currentLanguage)));
+            row.setAlertText(match.alert().or(() -> Optional.of(UiText.tvdbSuggestionNeedsValidation(currentLanguage))));
+            return;
+        }
+        if (match.movie().isPresent()) {
+            TvdbMovieDetails movie = match.movie().orElseThrow();
+            String year = movie.releaseYear().map(value -> " (" + value + ")").orElse("");
+            row.setMediaType(ScanMediaType.MOVIE);
+            row.setProposedFilename(Optional.of(movie.identity().displayName() + year + extension));
+            row.setOrder(Optional.of("N/A"));
+            if (proposal != null && proposal.confidence().isPresent()) {
+                row.setConfidence(proposal.confidence());
+            }
+            row.setInputParse(Optional.of(tvdbMovieParse(
+                    movie.identity().displayName(),
+                    movie.releaseYear().map(Object::toString).orElse(""))));
+            row.setNoteText(Optional.of(UiText.tvdbAutomaticMatch(currentLanguage) + ": "
+                    + movie.identity().displayName() + "."));
+            if (proposal != null && proposal.type() == MediaMatchType.UNMATCHED) {
+                row.setAlertText(Optional.of(proposal.reason()));
+            } else {
+                row.setAlertText(Optional.empty());
+            }
+            return;
+        }
+        if (match.series().isPresent()
+                && proposal != null
+                && proposal.seasonNumber().isPresent()
+                && proposal.episodeNumber().isPresent()) {
+            int season = proposal.seasonNumber().orElseThrow();
+            int episode = proposal.episodeNumber().orElseThrow();
+            row.setMediaType(ScanMediaType.SERIES);
+            row.setOrder(Optional.of(String.format("S%02dE%02d", season, episode)));
+            String episodeTitle = proposal.title().orElse("Untitled episode");
+            String proposed = String.format("%s - S%02dE%02d - %s%s",
+                    match.identity().displayName(), season, episode, episodeTitle, extension);
+            row.setProposedFilename(Optional.of(proposed));
+            row.setConfidence(proposal.confidence());
+            row.setInputParse(Optional.of(tvdbEpisodeParse(
+                    match.identity().displayName(),
+                    String.format("%02d", season),
+                    String.format("%02d", episode),
+                    episodeTitle)));
+            row.setAlertText(Optional.empty());
+            row.setNoteText(Optional.of(UiText.tvdbAutomaticMatch(currentLanguage) + "."));
+            return;
+        }
+        if (proposal != null && proposal.type() == MediaMatchType.UNMATCHED) {
+            row.setAlertText(Optional.of(proposal.reason()));
+            row.setNoteText(Optional.of("TVDB identity " + match.identity().displayName()
+                    + " selected, but no episode match yet."));
+        } else {
+            row.setNoteText(Optional.of("TVDB identity " + match.identity().displayName() + " applied."));
+        }
+    }
+
+    private static ScanInputParse tvdbMovieParse(String title, String year) {
+        java.util.List<ScanInputToken> tokens = new java.util.ArrayList<>();
+        if (title != null && !title.isBlank()) {
+            tokens.add(new ScanInputToken(ScanInputRole.TITLE, title, title, 0, 0));
+        }
+        if (year != null && !year.isBlank()) {
+            tokens.add(new ScanInputToken(ScanInputRole.YEAR, year, year, 0, 0));
+        }
+        return new ScanInputParse("TVDB", tokens, Optional.empty(),
+                java.util.OptionalDouble.empty(), ScanInputParseSource.TVDB);
+    }
+
+    private static ScanInputParse tvdbEpisodeParse(String series, String season, String episode, String title) {
+        java.util.List<ScanInputToken> tokens = new java.util.ArrayList<>();
+        if (series != null && !series.isBlank()) {
+            tokens.add(new ScanInputToken(ScanInputRole.SERIES, series, series, 0, 0));
+        }
+        if (season != null && !season.isBlank()) {
+            tokens.add(new ScanInputToken(ScanInputRole.SEASON, season, season, 0, 0));
+        }
+        if (episode != null && !episode.isBlank()) {
+            tokens.add(new ScanInputToken(ScanInputRole.EPISODE, episode, episode, 0, 0));
+        }
+        if (title != null && !title.isBlank()) {
+            tokens.add(new ScanInputToken(ScanInputRole.TITLE, title, title, 0, 0));
+        }
+        String order = (season != null && !season.isBlank() && episode != null && !episode.isBlank())
+                ? "S" + season + "E" + episode
+                : null;
+        return new ScanInputParse("TVDB", tokens,
+                order == null ? Optional.empty() : Optional.of(order),
+                java.util.OptionalDouble.empty(), ScanInputParseSource.TVDB);
+    }
+
+    private static String batchCandidateLabel(TvdbBatchMatchResult.GroupMatch match) {
+        StringBuilder label = new StringBuilder(match.identity().displayName());
+        match.movie().flatMap(TvdbMovieDetails::releaseYear)
+                .ifPresent(year -> label.append(" (").append(year).append(")"));
+        label.append(" [TVDB ").append(match.identity().id()).append("]");
+        return label.toString();
+    }
+
     public void applyAiRefinement(AiPatternRefinementResult refinement) {
+        applyAiRefinementInternal(refinement, 0);
+    }
+
+    private void applyAiRefinementInternal(AiPatternRefinementResult refinement, int attempt) {
         if (refinement == null || !refinement.refined() || refinement.suggestions().isEmpty()) {
+            return;
+        }
+        if (rows.isEmpty() && attempt < 20) {
+            javafx.application.Platform.runLater(
+                    () -> applyAiRefinementInternal(refinement, attempt + 1));
             return;
         }
         Map<String, AiGroupSuggestion> bySeed = new HashMap<>();
@@ -464,6 +737,13 @@ public final class ScanScreen {
 
     private void setFilterButtonText(ScanRowFilter filter, String text) {
         ToggleButton button = filterButtons.get(filter);
+        if (button != null) {
+            button.setText(text);
+        }
+    }
+
+    private void setStatusFilterButtonText(ScanRowStatusFilter filter, String text) {
+        ToggleButton button = statusFilterButtons.get(filter);
         if (button != null) {
             button.setText(text);
         }
@@ -708,6 +988,9 @@ public final class ScanScreen {
             if (syncingSelection.get()) {
                 return;
             }
+            if (selectedRow.get() != null) {
+                detailPanel.setTvdbTargetCount(tvdbTargetRows(selectedRow.get()).size());
+            }
             updateAiChatTargetFromSelection();
         });
         table.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
@@ -716,6 +999,7 @@ public final class ScanScreen {
                 detailPanel.clear();
             } else {
                 detailPanel.show(newValue, rowToGroupMatch.get(newValue));
+                detailPanel.setTvdbTargetCount(tvdbTargetRows(newValue).size());
                 loadTvdbCandidates(newValue);
             }
             updateAiChatTargetFromSelection();
@@ -755,9 +1039,42 @@ public final class ScanScreen {
 
         table.setRowFactory(view -> {
             TableRow<ScanRow> row = new TableRow<>();
-            row.contextMenuProperty().bind(javafx.beans.binding.Bindings.createObjectBinding(
-                    () -> row.isEmpty() ? null : buildContextMenu(row.getItem()),
-                    row.itemProperty()));
+            row.setOnContextMenuRequested(event -> {
+                if (row.isEmpty()) {
+                    return;
+                }
+                ScanRow item = row.getItem();
+                if (!table.getSelectionModel().getSelectedItems().contains(item)) {
+                    selectOnlyForContextMenu(item);
+                }
+                selectionAnchorIndex = sorted.indexOf(item);
+                buildContextMenu(item).show(row, event.getScreenX(), event.getScreenY());
+                event.consume();
+            });
+            row.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+                if (row.isEmpty() || event.getButton() != MouseButton.PRIMARY) {
+                    return;
+                }
+                ScanRow item = row.getItem();
+                if (item == null || item.isIgnored()) {
+                    event.consume();
+                    return;
+                }
+                handleSelectionCellClick(item, event);
+                event.consume();
+            });
+            row.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+                if (row.isEmpty() || event.getButton() != MouseButton.SECONDARY) {
+                    return;
+                }
+                ScanRow item = row.getItem();
+                if (!table.getSelectionModel().getSelectedItems().contains(item)) {
+                    selectOnlyForContextMenu(item);
+                }
+                selectionAnchorIndex = sorted.indexOf(item);
+            });
+            row.itemProperty().addListener((observable, oldItem, newItem) -> updateRowStyle(row, newItem));
+            row.emptyProperty().addListener((observable, wasEmpty, isEmpty) -> updateRowStyle(row, row.getItem()));
             return row;
         });
     }
@@ -799,7 +1116,7 @@ public final class ScanScreen {
                     if (boundRow == null || event.getButton() != MouseButton.PRIMARY) {
                         return;
                     }
-                    setRowSelected(boundRow, !boundRow.isSelected());
+                    handleSelectionCellClick(boundRow, event);
                     event.consume();
                 });
             }
@@ -814,6 +1131,7 @@ public final class ScanScreen {
                     return;
                 }
                 checkBox.setSelected(row.isSelected());
+                checkBox.setDisable(row.isIgnored());
                 setGraphic(checkBox);
             }
         });
@@ -853,7 +1171,7 @@ public final class ScanScreen {
         proposedColumn.setPrefWidth(430);
         proposedColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().proposedFilename().orElse(EMPTY)));
         proposedColumn.setCellFactory(column -> {
-            TextFieldTableCell<ScanRow, String> cell = new TextFieldTableCell<>(new DefaultStringConverter());
+            CommitOnFocusLossStringCell<ScanRow> cell = new CommitOnFocusLossStringCell<>();
             cell.getStyleClass().add("proposed-name-cell");
             return cell;
         });
@@ -878,7 +1196,7 @@ public final class ScanScreen {
         column.setMinWidth(60);
         column.setPrefWidth(prefWidth);
         column.setCellValueFactory(data -> new SimpleStringProperty(roleValue(data.getValue(), role)));
-        column.setCellFactory(c -> new TextFieldTableCell<>(new DefaultStringConverter()) {
+        column.setCellFactory(c -> new CommitOnFocusLossStringCell<ScanRow>() {
             @Override
             public void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
@@ -1197,6 +1515,38 @@ public final class ScanScreen {
             updateFilterButtonStyles();
         });
         filterGroup.selectToggle(filterButtons.get(ScanRowFilter.ALL));
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        HBox statusFilters = new HBox(8);
+        statusFilters.getStyleClass().add("scan-status-filter-group");
+        addStatusFilterButton(statusFilters, ScanRowStatusFilter.ALL);
+        addStatusFilterButton(statusFilters, ScanRowStatusFilter.TO_PROCESS);
+        addStatusFilterButton(statusFilters, ScanRowStatusFilter.OK);
+        addStatusFilterButton(statusFilters, ScanRowStatusFilter.TVDB);
+        addStatusFilterButton(statusFilters, ScanRowStatusFilter.CONFLICTS);
+        addStatusFilterButton(statusFilters, ScanRowStatusFilter.IGNORED);
+        addStatusFilterButton(statusFilters, ScanRowStatusFilter.ALERTS);
+        statusFilterGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null) {
+                statusFilterGroup.selectToggle(statusFilterButtons.get(activeStatusFilter));
+                return;
+            }
+            activeStatusFilter = (ScanRowStatusFilter) newValue.getUserData();
+            updateFilterPredicate();
+            updateFilterButtonStyles();
+        });
+        statusFilterGroup.selectToggle(statusFilterButtons.get(ScanRowStatusFilter.ALL));
+        resolveManualMatchesButton.getStyleClass().add("ghost");
+        resolveManualMatchesButton.setVisible(false);
+        resolveManualMatchesButton.setManaged(false);
+        resolveManualMatchesButton.setOnAction(event -> firstManualMatchRow().ifPresent(row -> {
+            table.getSelectionModel().select(row);
+            table.scrollTo(row);
+            selectedRow.set(row);
+            detailPanel.show(row, rowToGroupMatch.get(row));
+            openTvdbManualMatchDialog(row);
+        }));
+        filterBar.getChildren().addAll(spacer, statusFilters, resolveManualMatchesButton);
     }
 
     private void addFilterButton(ScanRowFilter filter) {
@@ -1206,6 +1556,15 @@ public final class ScanScreen {
         button.getStyleClass().add("filter-chip");
         filterButtons.put(filter, button);
         filterBar.getChildren().add(button);
+    }
+
+    private void addStatusFilterButton(HBox host, ScanRowStatusFilter filter) {
+        ToggleButton button = new ToggleButton();
+        button.setUserData(filter);
+        button.setToggleGroup(statusFilterGroup);
+        button.getStyleClass().add("filter-chip");
+        statusFilterButtons.put(filter, button);
+        host.getChildren().add(button);
     }
 
     private static String styleClassFor(ScanRowStatus status) {
@@ -1273,7 +1632,9 @@ public final class ScanScreen {
     }
 
     private void updateFilterPredicate() {
-        filtered.setPredicate(row -> matchesSearch(row) && ScanRowTableSupport.matchesFilter(row, activeFilter));
+        filtered.setPredicate(row -> matchesSearch(row)
+                && ScanRowTableSupport.matchesFilter(row, activeFilter)
+                && ScanRowTableSupport.matchesStatusFilter(row, activeStatusFilter));
         updateSelectAllCheckbox();
     }
 
@@ -1290,6 +1651,13 @@ public final class ScanScreen {
             ToggleButton button = entry.getValue();
             button.getStyleClass().remove("active");
             if (entry.getKey() == activeFilter && !button.getStyleClass().contains("active")) {
+                button.getStyleClass().add("active");
+            }
+        }
+        for (Map.Entry<ScanRowStatusFilter, ToggleButton> entry : statusFilterButtons.entrySet()) {
+            ToggleButton button = entry.getValue();
+            button.getStyleClass().remove("active");
+            if (entry.getKey() == activeStatusFilter && !button.getStyleClass().contains("active")) {
                 button.getStyleClass().add("active");
             }
         }
@@ -1351,7 +1719,10 @@ public final class ScanScreen {
         if (selectedRow.get() != null) {
             detailPanel.show(selectedRow.get(), rowToGroupMatch.get(selectedRow.get()));
         } else if (anchor != null) {
-            detailPanel.show(anchor, rowToGroupMatch.get(anchor));
+                detailPanel.show(anchor, rowToGroupMatch.get(anchor));
+            }
+        if (selectedRow.get() != null) {
+            detailPanel.setTvdbTargetCount(tvdbTargetRows(selectedRow.get()).size());
         }
         updateAiChatTargetFromSelection(true);
     }
@@ -1388,7 +1759,66 @@ public final class ScanScreen {
                 + "\nsource=" + parse.source();
     }
 
+    private void handleSelectionCellClick(ScanRow row, MouseEvent event) {
+        if (row.isIgnored()) {
+            return;
+        }
+        int clickedIndex = sorted.indexOf(row);
+        if (clickedIndex < 0) {
+            return;
+        }
+        if (event.isShiftDown() && selectionAnchorIndex >= 0) {
+            selectVisibleRange(selectionAnchorIndex, clickedIndex);
+            return;
+        }
+        if (event.isControlDown() || event.isMetaDown()) {
+            setRowSelected(row, !row.isSelected());
+            selectionAnchorIndex = clickedIndex;
+            return;
+        }
+        selectOnlyForAction(row);
+        selectionAnchorIndex = clickedIndex;
+    }
+
+    private void selectVisibleRange(int anchorIndex, int clickedIndex) {
+        int start = Math.max(0, Math.min(anchorIndex, clickedIndex));
+        int end = Math.min(sorted.size() - 1, Math.max(anchorIndex, clickedIndex));
+        if (start > end) {
+            return;
+        }
+        syncingSelection.set(true);
+        try {
+            for (int index = start; index <= end; index++) {
+                ScanRow row = sorted.get(index);
+                if (row.isIgnored()) {
+                    row.setSelected(false);
+                    continue;
+                }
+                row.setSelected(true);
+                if (!table.getSelectionModel().getSelectedItems().contains(row)) {
+                    table.getSelectionModel().select(row);
+                }
+            }
+            ScanRow clicked = sorted.get(clickedIndex);
+            selectedRow.set(clicked);
+            detailPanel.show(clicked, rowToGroupMatch.get(clicked));
+            detailPanel.setTvdbTargetCount(tvdbTargetRows(clicked).size());
+        } finally {
+            syncingSelection.set(false);
+            updateSelectAllCheckbox();
+            updateAiChatTargetFromSelection();
+            table.refresh();
+        }
+    }
+
     private void setRowSelected(ScanRow row, boolean selected) {
+        if (row == null || row.isIgnored()) {
+            if (row != null) {
+                row.setSelected(false);
+            }
+            updateSelectAllCheckbox();
+            return;
+        }
         syncingSelection.set(true);
         try {
             row.setSelected(selected);
@@ -1419,22 +1849,65 @@ public final class ScanScreen {
         }
     }
 
+    private void selectOnlyForContextMenu(ScanRow row) {
+        if (row.isIgnored()) {
+            syncingSelection.set(true);
+            try {
+                table.getSelectionModel().clearSelection();
+                selectedRow.set(row);
+                detailPanel.show(row, rowToGroupMatch.get(row));
+                detailPanel.setTvdbTargetCount(0);
+            } finally {
+                syncingSelection.set(false);
+                updateSelectAllCheckbox();
+                updateAiChatTargetFromSelection();
+                table.refresh();
+            }
+            return;
+        }
+        selectOnlyForAction(row);
+    }
+
+    private void selectOnlyForAction(ScanRow row) {
+        syncingSelection.set(true);
+        try {
+            for (ScanRow visible : sorted) {
+                visible.setSelected(false);
+            }
+            table.getSelectionModel().clearSelection();
+            row.setSelected(true);
+            table.getSelectionModel().select(row);
+            selectedRow.set(row);
+            detailPanel.show(row, rowToGroupMatch.get(row));
+            detailPanel.setTvdbTargetCount(tvdbTargetRows(row).size());
+        } finally {
+            syncingSelection.set(false);
+            updateSelectAllCheckbox();
+            updateAiChatTargetFromSelection();
+            table.refresh();
+        }
+    }
+
     private void setAllVisibleSelected(boolean selected) {
         syncingSelection.set(true);
         try {
             table.getSelectionModel().clearSelection();
+            selectionAnchorIndex = -1;
             for (ScanRow row : filtered) {
-                row.setSelected(selected);
-                if (selected) {
+                boolean include = selected && !row.isIgnored();
+                row.setSelected(include);
+                if (include) {
                     table.getSelectionModel().select(row);
                 }
             }
             ScanRow current = table.getSelectionModel().getSelectedItem();
+            selectionAnchorIndex = current == null ? -1 : sorted.indexOf(current);
             selectedRow.set(current);
             if (current == null) {
                 detailPanel.clear();
             } else {
-                detailPanel.show(current);
+                detailPanel.show(current, rowToGroupMatch.get(current));
+                detailPanel.setTvdbTargetCount(tvdbTargetRows(current).size());
             }
         } finally {
             syncingSelection.set(false);
@@ -1553,7 +2026,7 @@ public final class ScanScreen {
     private java.util.List<ScanRow> selectedRowsForAiContext() {
         java.util.List<ScanRow> selectedRows = new java.util.ArrayList<>();
         for (ScanRow row : rows) {
-            if (row.isSelected()) {
+            if (row.isSelected() && !row.isIgnored()) {
                 selectedRows.add(row);
             }
         }
@@ -1635,15 +2108,19 @@ public final class ScanScreen {
     }
 
     private void applyTvdbCandidate(ScanRow row, String candidate) {
-        row.setTvdbMatch(java.util.Optional.of(candidate));
-        row.setStatus(ScanRowStatus.TVDB);
-        row.setNoteText(Optional.of("TVDB identity selected. Loading metadata..."));
         TvdbCandidate selectedCandidate = tvdbCandidatesByLabel.get(candidate);
         Optional<TvdbCredentials> credentials = tvdbCredentialsSupplier.get();
         if (selectedCandidate != null && credentials.isPresent()) {
-            loadSelectedTvdbMetadata(row, selectedCandidate.identity(), credentials.orElseThrow());
+            applyManualTvdbCandidate(row, selectedCandidate);
+            return;
         }
+        row.setTvdbMatch(java.util.Optional.of(candidate));
+        row.setStatus(ScanRowStatus.TVDB);
+        row.setNoteText(Optional.of("TVDB identity selected. Loading metadata..."));
+        row.setTvdbCandidate(Optional.ofNullable(selectedCandidate));
+        row.setTvdbSelectedByUser(selectedCandidate != null);
         table.refresh();
+        updateManualMatchNotice();
         if (selectedRow.get() == row) {
             detailPanel.show(row, rowToGroupMatch.get(row));
         }
@@ -1651,14 +2128,106 @@ public final class ScanScreen {
 
     private void resetTvdbMatch(ScanRow row) {
         row.setTvdbMatch(java.util.Optional.empty());
+        row.setTvdbCandidate(java.util.Optional.empty());
+        row.setTvdbSelectedByUser(false);
         row.setOrder(java.util.Optional.empty());
         row.setProposedFilename(java.util.Optional.empty());
         row.setDestination(java.util.Optional.empty());
         row.setNoteText(Optional.empty());
         table.refresh();
+        updateManualMatchNotice();
         if (selectedRow.get() == row) {
             detailPanel.show(row, rowToGroupMatch.get(row));
         }
+    }
+
+    private void openTvdbManualMatchDialog(ScanRow row) {
+        if (row == null || tvdbClient == null) {
+            return;
+        }
+        Optional<TvdbCredentials> credentials = tvdbCredentialsSupplier.get();
+        if (credentials.isEmpty()) {
+            row.setNoteText(Optional.of("TVDB credentials are not configured."));
+            table.refresh();
+            detailPanel.show(row, rowToGroupMatch.get(row));
+            return;
+        }
+        java.util.List<TvdbCandidate> existing = new java.util.ArrayList<>(tvdbCandidatesByLabel.values());
+        javafx.stage.Window owner = detailRoot.getScene() == null ? null : detailRoot.getScene().getWindow();
+        TvdbManualMatchDialog dialog = new TvdbManualMatchDialog(
+                owner,
+                currentLanguage,
+                tvdbClient,
+                credentials.orElseThrow(),
+                tvdbQuery(row),
+                existing);
+        dialog.showAndWait().ifPresent(candidate -> applyManualTvdbCandidate(row, candidate));
+    }
+
+    private void applyManualTvdbCandidate(ScanRow row, TvdbCandidate candidate) {
+        applyManualTvdbCandidate(row, candidate, TvdbEpisodeOrder.AIRED);
+    }
+
+    private void applyManualTvdbCandidate(ScanRow row, TvdbCandidate candidate, TvdbEpisodeOrder order) {
+        java.util.List<ScanRow> targets = tvdbTargetRows(row);
+        if (targets.isEmpty()) {
+            row.setNoteText(Optional.of(UiText.tvdbNoFileSelected(currentLanguage)));
+            table.refresh();
+            detailPanel.show(row, rowToGroupMatch.get(row));
+            return;
+        }
+        String label = candidateLabel(candidate);
+        tvdbCandidatesByLabel.put(label, candidate);
+        for (ScanRow target : targets) {
+            setManualTvdbCandidate(target, candidate, label);
+            target.setNoteText(Optional.of("TVDB identity selected by user. Loading metadata..."));
+        }
+        loadSelectedTvdbMetadata(targets, candidate.identity(), tvdbCredentialsSupplier.get().orElseThrow(), order);
+        table.refresh();
+        updateManualMatchNotice();
+        if (selectedRow.get() != null) {
+            detailPanel.show(selectedRow.get(), rowToGroupMatch.get(selectedRow.get()));
+            detailPanel.setTvdbTargetCount(tvdbTargetRows(selectedRow.get()).size());
+        }
+    }
+
+    private void applySelectedTvdbMatchToSelection(ScanRow anchor, TvdbEpisodeOrder order) {
+        if (anchor == null || anchor.tvdbCandidate().isEmpty()) {
+            if (anchor != null) {
+                anchor.setNoteText(Optional.of(UiText.tvdbNoResultSelected(currentLanguage)));
+                table.refresh();
+                detailPanel.show(anchor, rowToGroupMatch.get(anchor));
+            }
+            return;
+        }
+        Optional<TvdbCredentials> credentials = tvdbCredentialsSupplier.get();
+        if (credentials.isEmpty()) {
+            anchor.setNoteText(Optional.of("TVDB credentials are not configured."));
+            table.refresh();
+            detailPanel.show(anchor, rowToGroupMatch.get(anchor));
+            return;
+        }
+        applyManualTvdbCandidate(anchor, anchor.tvdbCandidate().orElseThrow(), order);
+    }
+
+    private void setManualTvdbCandidate(ScanRow row, TvdbCandidate candidate, String label) {
+        row.setTvdbMatch(Optional.of(label));
+        row.setTvdbCandidate(Optional.of(candidate));
+        row.setTvdbSelectedByUser(true);
+        row.setStatus(ScanRowStatus.TVDB);
+        row.setConfidence(OptionalDouble.of(1.0));
+        row.setAlertText(Optional.empty());
+    }
+
+    private java.util.List<ScanRow> tvdbTargetRows(ScanRow anchor) {
+        java.util.List<ScanRow> selected = selectedRowsForAiContext();
+        if (!selected.isEmpty()) {
+            return selected;
+        }
+        if (anchor != null && !anchor.isIgnored()) {
+            return java.util.List.of(anchor);
+        }
+        return java.util.List.of();
     }
 
     private void loadTvdbCandidates(ScanRow row) {
@@ -1712,7 +2281,12 @@ public final class ScanScreen {
     }
 
     private void applyTvdbLookupFailure(ScanRow row, Throwable throwable) {
-        if (selectedRow.get() != row) {
+        applyTvdbLookupFailure(java.util.List.of(row), throwable);
+    }
+
+    private void applyTvdbLookupFailure(java.util.List<ScanRow> targetRows, Throwable throwable) {
+        ScanRow active = selectedRow.get();
+        if (active != null && !targetRows.contains(active)) {
             return;
         }
         Throwable cause = throwable instanceof java.util.concurrent.CompletionException && throwable.getCause() != null
@@ -1721,10 +2295,15 @@ public final class ScanScreen {
         String message = cause instanceof TvdbException tvdbException
                 ? tvdbException.error().safeMessage()
                 : "TVDB lookup failed.";
-        row.setStatus(ScanRowStatus.ERROR);
-        row.setAlertText(Optional.of(message));
+        for (ScanRow row : targetRows) {
+            row.setStatus(ScanRowStatus.ERROR);
+            row.setAlertText(Optional.of(message));
+        }
         table.refresh();
-        detailPanel.show(row, rowToGroupMatch.get(row));
+        if (active != null) {
+            detailPanel.show(active, rowToGroupMatch.get(active));
+            detailPanel.setTvdbTargetCount(tvdbTargetRows(active).size());
+        }
     }
 
     private String tvdbQuery(ScanRow row) {
@@ -1751,26 +2330,65 @@ public final class ScanScreen {
     }
 
     private void loadSelectedTvdbMetadata(ScanRow row, TvdbIdentity identity, TvdbCredentials credentials) {
+        loadSelectedTvdbMetadata(java.util.List.of(row), identity, credentials, TvdbEpisodeOrder.AIRED);
+    }
+
+    private void loadSelectedTvdbMetadata(java.util.List<ScanRow> targetRows, TvdbIdentity identity, TvdbCredentials credentials) {
+        loadSelectedTvdbMetadata(targetRows, identity, credentials, TvdbEpisodeOrder.AIRED);
+    }
+
+    private void loadSelectedTvdbMetadata(
+            java.util.List<ScanRow> targetRows,
+            TvdbIdentity identity,
+            TvdbCredentials credentials,
+            TvdbEpisodeOrder order) {
+        java.util.List<ScanRow> targets = java.util.List.copyOf(targetRows);
         java.util.concurrent.CompletableFuture
                 .supplyAsync(() -> identity.mediaType() == com.episort.tvdb.TvdbMediaType.MOVIE
                         ? tvdbClient.movieDetails(identity, credentials)
                         : tvdbClient.seriesDetails(identity, credentials))
-                .thenAccept(details -> javafx.application.Platform.runLater(() -> applySelectedTvdbMetadata(row, details)))
+                .thenAccept(details -> javafx.application.Platform.runLater(() -> applySelectedTvdbMetadata(targets, details, order)))
                 .exceptionally(throwable -> {
-                    javafx.application.Platform.runLater(() -> applyTvdbLookupFailure(row, throwable));
+                    javafx.application.Platform.runLater(() -> applyTvdbLookupFailure(targets, throwable));
                     return null;
                 });
     }
 
     private void applySelectedTvdbMetadata(ScanRow row, Object details) {
+        applySelectedTvdbMetadata(java.util.List.of(row), details);
+    }
+
+    private void applySelectedTvdbMetadata(java.util.List<ScanRow> targetRows, Object details) {
+        applySelectedTvdbMetadata(targetRows, details, TvdbEpisodeOrder.AIRED);
+    }
+
+    private void applySelectedTvdbMetadata(java.util.List<ScanRow> targetRows, Object details, TvdbEpisodeOrder order) {
+        int updated = 0;
+        for (ScanRow row : targetRows) {
+            applySelectedTvdbMetadataToRow(row, details, order);
+            updated++;
+        }
+        String message = UiText.tvdbFilesUpdated(currentLanguage, updated);
+        for (ScanRow row : targetRows) {
+            row.setNoteText(Optional.of(message));
+        }
+        table.refresh();
+        updateManualMatchNotice();
+        if (selectedRow.get() != null) {
+            detailPanel.show(selectedRow.get(), rowToGroupMatch.get(selectedRow.get()));
+            detailPanel.setTvdbTargetCount(tvdbTargetRows(selectedRow.get()).size());
+        }
+    }
+
+    private void applySelectedTvdbMetadataToRow(ScanRow row, Object details) {
+        applySelectedTvdbMetadataToRow(row, details, TvdbEpisodeOrder.AIRED);
+    }
+
+    private void applySelectedTvdbMetadataToRow(ScanRow row, Object details, TvdbEpisodeOrder order) {
         if (details instanceof TvdbMovieDetails movie) {
             applyMovieMetadata(row, movie);
         } else if (details instanceof TvdbSeriesDetails series) {
-            applySeriesMetadata(row, series);
-        }
-        table.refresh();
-        if (selectedRow.get() == row) {
-            detailPanel.show(row, rowToGroupMatch.get(row));
+            applySeriesMetadata(row, series, order);
         }
     }
 
@@ -1791,15 +2409,29 @@ public final class ScanScreen {
     }
 
     private void applySeriesMetadata(ScanRow row, TvdbSeriesDetails series) {
+        applySeriesMetadata(row, series, TvdbEpisodeOrder.AIRED);
+    }
+
+    private void applySeriesMetadata(ScanRow row, TvdbSeriesDetails series, TvdbEpisodeOrder order) {
+        if (!series.supportedOrders().contains(order)) {
+            row.setAlertText(Optional.of("Requested TVDB order is not available for this series."));
+            row.setNoteText(Optional.of("TVDB metadata loaded, but the selected order is unavailable."));
+            return;
+        }
         java.util.List<MediaMatchProposal> proposals = matchService.proposeSeriesMatches(
                 java.util.List.of(inventoryItemFor(row)),
                 new TvdbSeriesMetadata(
                         series.identity().id(),
                         series.identity().displayName(),
-                        series.airedEpisodes().stream().map(ScanScreen::toMatchingEpisode).toList()));
+                        series.episodesFor(order).stream().map(ScanScreen::toMatchingEpisode).toList()));
         MediaMatchProposal proposal = proposals.isEmpty()
                 ? MediaMatchProposal.unmatched(row.sourcePath(), "No TVDB episode proposal.")
                 : proposals.getFirst();
+        if (proposal.type() == MediaMatchType.UNMATCHED) {
+            TvdbEpisodeOrderMapper.EpisodeOrderMappingResult mapped = remapAcrossTvdbOrders(row, series, order);
+            proposal = mapped.proposal().orElse(proposal);
+            mapped.error().ifPresent(error -> row.setAlertText(Optional.of(error)));
+        }
         if (proposal.type() == MediaMatchType.UNMATCHED) {
             row.setAlertText(Optional.of(proposal.reason()));
             row.setNoteText(Optional.of("TVDB series metadata loaded, but this file did not match an episode."));
@@ -2037,18 +2669,111 @@ public final class ScanScreen {
     }
 
     private void updateSelectAllCheckbox() {
-        boolean hasVisibleRows = !filtered.isEmpty();
-        boolean allVisibleSelected = hasVisibleRows && filtered.stream().allMatch(ScanRow::isSelected);
+        boolean hasVisibleRows = filtered.stream().anyMatch(row -> !row.isIgnored());
+        boolean allVisibleSelected = hasVisibleRows
+                && filtered.stream().filter(row -> !row.isIgnored()).allMatch(ScanRow::isSelected);
         selectAllCheckbox.setDisable(!hasVisibleRows);
         selectAllCheckbox.setSelected(allVisibleSelected);
     }
 
+    private static void updateRowStyle(TableRow<ScanRow> tableRow, ScanRow item) {
+        tableRow.getStyleClass().remove("ignored-row");
+        if (!tableRow.isEmpty() && item != null && item.isIgnored()) {
+            tableRow.getStyleClass().add("ignored-row");
+        }
+    }
+
+    private TvdbEpisodeOrderMapper.EpisodeOrderMappingResult remapAcrossTvdbOrders(
+            ScanRow row, TvdbSeriesDetails series, TvdbEpisodeOrder targetOrder) {
+        Optional<int[]> parsed = parsedSeasonEpisode(row);
+        if (parsed.isEmpty()) {
+            return new TvdbEpisodeOrderMapper.EpisodeOrderMappingResult(
+                    Optional.empty(), Optional.of("Episode not found in selected order"));
+        }
+        int season = parsed.orElseThrow()[0];
+        int episode = parsed.orElseThrow()[1];
+        return orderMapper.map(series, sourceOrder(row, targetOrder), targetOrder, row.sourcePath(),
+                season, episode, Optional.empty());
+    }
+
+    private static TvdbEpisodeOrder sourceOrder(ScanRow row, TvdbEpisodeOrder targetOrder) {
+        return row.inputParse()
+                .map(ScanInputParse::source)
+                .filter(ScanInputParseSource.TVDB::equals)
+                .isPresent()
+                ? targetOrder
+                : null;
+    }
+
+    private Optional<int[]> parsedSeasonEpisode(ScanRow row) {
+        Matcher matcher = SXXEXX_PATTERN.matcher(row.originalFilename());
+        if (matcher.find()) {
+            return Optional.of(new int[] {Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2))});
+        }
+        return row.inputParse()
+                .flatMap(parse -> parse.tokenValue(ScanInputRole.SEASON)
+                        .flatMap(season -> parse.tokenValue(ScanInputRole.EPISODE)
+                                .map(episode -> new int[] {safeInt(season), safeInt(episode)})));
+    }
+
+    private static int safeInt(String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
+
+    private void updateManualMatchNotice() {
+        long count = rows.stream().filter(ScanScreen::requiresManualTvdbMatch).count();
+        boolean visible = count > 0;
+        resolveManualMatchesButton.setVisible(visible);
+        resolveManualMatchesButton.setManaged(visible);
+        if (visible) {
+            resolveManualMatchesButton.setText(UiText.tvdbResolveNow(currentLanguage));
+            workflowHelp.setText(UiText.tvdbManualRequired(currentLanguage, (int) count));
+        } else {
+            workflowHelp.setText(UiText.scanSafetyBanner(currentLanguage));
+        }
+    }
+
+    private Optional<ScanRow> firstManualMatchRow() {
+        return rows.stream().filter(ScanScreen::requiresManualTvdbMatch).findFirst();
+    }
+
+    private static boolean requiresManualTvdbMatch(ScanRow row) {
+        return row.status() == ScanRowStatus.REVIEW
+                || row.status() == ScanRowStatus.META
+                || row.status() == ScanRowStatus.AI
+                || row.status() == ScanRowStatus.TYPE
+                || row.mediaType() == ScanMediaType.UNKNOWN
+                || row.tvdbMatch().isEmpty();
+    }
+
     private ContextMenu buildContextMenu(ScanRow row) {
         ContextMenu menu = new ContextMenu();
-        MenuItem ignore = new MenuItem(UiText.scanContextIgnore(currentLanguage));
+        MenuItem properties = new MenuItem(UiText.filePropertiesAction(currentLanguage));
+        properties.setOnAction(event -> new FilePropertiesDialog(
+                table.getScene() == null ? null : table.getScene().getWindow(),
+                currentLanguage,
+                row).show());
+
+        MenuItem ignore = new MenuItem(row.isIgnored()
+                ? UiText.scanContextStopIgnoring(currentLanguage)
+                : UiText.scanContextIgnore(currentLanguage));
         ignore.setOnAction(event -> {
-            row.setStatus(ScanRowStatus.IGNORED);
+            if (row.isIgnored()) {
+                row.setStatus(row.tvdbMatch().isPresent() ? ScanRowStatus.TVDB : ScanRowStatus.REVIEW);
+                if (row.mediaType() == ScanMediaType.IGNORED) {
+                    row.setMediaType(ScanMediaType.UNKNOWN);
+                }
+            } else {
+                row.setSelected(false);
+                row.setStatus(ScanRowStatus.IGNORED);
+            }
             table.refresh();
+            updateMetricsFromRows();
+            updateFilterPredicate();
             if (selectedRow.get() == row) {
                 detailPanel.show(row, rowToGroupMatch.get(row));
             }
@@ -2088,8 +2813,28 @@ public final class ScanScreen {
             }
         });
 
-        menu.getItems().setAll(ignore, reset, copyPath, openFolder);
+        menu.getItems().setAll(properties, ignore, reset, copyPath, openFolder);
         return menu;
+    }
+
+    private void updateMetricsFromRows() {
+        int total = rows.size();
+        long ignored = rows.stream().filter(ScanRow::isIgnored).count();
+        long series = rows.stream().filter(row -> !row.isIgnored() && row.mediaType() == ScanMediaType.SERIES).count();
+        long movies = rows.stream().filter(row -> !row.isIgnored() && row.mediaType() == ScanMediaType.MOVIE).count();
+        long unknown = rows.stream().filter(row -> !row.isIgnored() && ScanRowTableSupport.isUnknownOrNeedsUnderstanding(row)).count();
+        long conflicts = rows.stream().filter(row -> !row.isIgnored()
+                && (row.status() == ScanRowStatus.CONFLICT || row.status() == ScanRowStatus.DUPLICATE)).count();
+        long warnings = rows.stream().filter(row -> !row.isIgnored()
+                && (row.alertText().isPresent() || row.status() == ScanRowStatus.ERROR)).count();
+        cardTotal.setValue(String.valueOf(total));
+        cardSeries.setValue(String.valueOf(series));
+        cardMovies.setValue(String.valueOf(movies));
+        cardUnknown.setValue(String.valueOf(unknown));
+        cardIgnored.setValue(String.valueOf(ignored));
+        cardToProcess.setValue(String.valueOf(total - ignored));
+        cardConflicts.setValue(String.valueOf(conflicts));
+        cardWarnings.setValue(String.valueOf(warnings));
     }
 
     private static final class MetricCard {
@@ -2157,6 +2902,34 @@ public final class ScanScreen {
                 root.getStyleClass().add("complete");
             } else {
                 root.getStyleClass().add("pending");
+            }
+        }
+    }
+
+    /**
+     * JavaFX's stock TextFieldTableCell only commits an edit when the user
+     * presses Enter; clicking outside cancels it, which is surprising. This
+     * subclass installs a focus-loss listener on the editor the first time it
+     * appears and turns focus-out into a commit.
+     */
+    private static class CommitOnFocusLossStringCell<S> extends TextFieldTableCell<S, String> {
+        private boolean focusListenerInstalled;
+
+        CommitOnFocusLossStringCell() {
+            super(new DefaultStringConverter());
+        }
+
+        @Override
+        public void startEdit() {
+            super.startEdit();
+            if (!isEditing() || focusListenerInstalled) return;
+            if (getGraphic() instanceof TextField field) {
+                focusListenerInstalled = true;
+                field.focusedProperty().addListener((obs, was, isFocused) -> {
+                    if (!isFocused && isEditing()) {
+                        commitEdit(field.getText());
+                    }
+                });
             }
         }
     }

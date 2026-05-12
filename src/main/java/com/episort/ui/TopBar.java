@@ -7,6 +7,8 @@ import java.util.function.Consumer;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
@@ -23,7 +25,10 @@ public final class TopBar {
     private final Button clearSearchAction;
     private final HBox searchBox;
     private final Label statusPill;
-    private final Button changeFolderAction;
+    private final MenuButton loadAction;
+    private final MenuItem loadFolderItem;
+    private final MenuItem loadFilesItem;
+    private final MenuItem addFilesItem;
     private final Button resetFolderAction;
     private final Button rescanAction;
     private final Button primaryAction;
@@ -33,11 +38,15 @@ public final class TopBar {
             Runnable onPrimaryAction,
             Consumer<String> onSearchChange,
             Runnable onChangeFolder,
+            Runnable onLoadFiles,
+            Runnable onAddFiles,
             Runnable onResetFolder,
             Runnable onRescan) {
         Objects.requireNonNull(onPrimaryAction, "onPrimaryAction");
         Objects.requireNonNull(onSearchChange, "onSearchChange");
         Objects.requireNonNull(onChangeFolder, "onChangeFolder");
+        Objects.requireNonNull(onLoadFiles, "onLoadFiles");
+        Objects.requireNonNull(onAddFiles, "onAddFiles");
         Objects.requireNonNull(onResetFolder, "onResetFolder");
         Objects.requireNonNull(onRescan, "onRescan");
 
@@ -84,12 +93,21 @@ public final class TopBar {
         statusPill.setVisible(false);
         statusPill.setManaged(false);
 
-        changeFolderAction = secondaryButton(onChangeFolder);
+        loadFolderItem = new MenuItem();
+        loadFolderItem.setOnAction(event -> onChangeFolder.run());
+        loadFilesItem = new MenuItem();
+        loadFilesItem.setOnAction(event -> onLoadFiles.run());
+        addFilesItem = new MenuItem();
+        addFilesItem.setOnAction(event -> onAddFiles.run());
+        loadAction = new MenuButton();
+        loadAction.getStyleClass().add("primary");
+        loadAction.getItems().addAll(loadFolderItem, loadFilesItem, addFilesItem);
+
         resetFolderAction = secondaryButton(onResetFolder);
         rescanAction = secondaryButton(onRescan);
 
         primaryAction = new Button();
-        primaryAction.getStyleClass().add("primary");
+        primaryAction.getStyleClass().add("ghost");
         primaryAction.setOnAction(event -> onPrimaryAction.run());
 
         root = new HBox(12,
@@ -97,7 +115,7 @@ public final class TopBar {
                 searchBox,
                 spacer,
                 statusPill,
-                changeFolderAction,
+                loadAction,
                 resetFolderAction,
                 rescanAction,
                 primaryAction);
@@ -121,8 +139,8 @@ public final class TopBar {
         return primaryAction;
     }
 
-    public Button changeFolderAction() {
-        return changeFolderAction;
+    public MenuButton loadAction() {
+        return loadAction;
     }
 
     public Button resetFolderAction() {
@@ -148,9 +166,12 @@ public final class TopBar {
     public void applyLanguage(AppLanguage language) {
         currentLanguage = language;
         searchField.setPromptText(UiText.searchPlaceholder(language));
-        changeFolderAction.setText(UiText.topActionChangeFolder(language));
-        resetFolderAction.setText(UiText.topActionResetFolder(language));
-        rescanAction.setText(UiText.topActionRescan(language));
+        loadAction.setText(UiText.topActionLoad(language));
+        loadFolderItem.setText(UiText.topActionLoadFolder(language));
+        loadFilesItem.setText(UiText.topActionLoadFiles(language));
+        addFilesItem.setText(UiText.topActionAddFiles(language));
+        resetFolderAction.setText(UiText.topActionReset(language));
+        rescanAction.setText(UiText.topActionReanalyze(language));
     }
 
     public void setWorkspace(Optional<Path> workspace) {

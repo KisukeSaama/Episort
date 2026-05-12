@@ -9,5 +9,16 @@ public final class TvdbMovieResponseDto {
         public String translationsName;
         public String year;
         public String releaseDate;
+        public Translations translations;
+    }
+
+    public static final class Translations {
+        public java.util.List<NameTranslation> nameTranslations;
+    }
+
+    public static final class NameTranslation {
+        public String language;
+        public String name;
+        public Boolean isPrimary;
     }
 }

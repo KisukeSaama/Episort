@@ -84,6 +84,12 @@ public record AppShellViewModel(
         return newState.withTheme(previous.theme()).withLanguage(previous.language());
     }
 
+    public AppShellViewModel withInventoryScanResult(Optional<InventoryScanResult> scan) {
+        Objects.requireNonNull(scan, "scan");
+        return new AppShellViewModel(
+                title, primaryStatus, description, errorCode, errorDetails, scan, theme, language);
+    }
+
     public static AppShellViewModel initial() {
         return of(
                 "Episort",

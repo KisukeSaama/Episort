@@ -96,6 +96,19 @@ final class ScanRowTableSupport {
         };
     }
 
+    static boolean matchesStatusFilter(ScanRow row, ScanRowStatusFilter filter) {
+        return switch (filter) {
+            case ALL -> true;
+            case TO_PROCESS -> !row.isIgnored() && row.status() != ScanRowStatus.OK && row.status() != ScanRowStatus.TVDB;
+            case OK -> !row.isIgnored() && row.status() == ScanRowStatus.OK;
+            case TVDB -> !row.isIgnored() && row.status() == ScanRowStatus.TVDB;
+            case CONFLICTS -> !row.isIgnored()
+                    && (row.status() == ScanRowStatus.CONFLICT || row.status() == ScanRowStatus.DUPLICATE);
+            case IGNORED -> row.isIgnored();
+            case ALERTS -> !row.isIgnored() && (row.alertText().isPresent() || row.status() == ScanRowStatus.ERROR);
+        };
+    }
+
     static boolean isUnknownOrNeedsUnderstanding(ScanRow row) {
         if (row.mediaType() == ScanMediaType.UNKNOWN) {
             return true;

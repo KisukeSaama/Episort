@@ -7,7 +7,8 @@
 /* ---- 1. Root shell ------------------------------------------------------- */
 
 .app-shell {
-    -fx-font-family: "Inter", "Segoe UI", "Helvetica Neue", sans-serif;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
+    -fx-font-size: 13px;
 }
 
 .app-shell.theme-dark {
@@ -39,7 +40,7 @@
 /* ---- 1b. Main view (logo + brand) -------------------------------------- */
 
 .brand-title {
-    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 40px;
     -fx-font-weight: 800;
     -fx-text-fill: #f5f7fb;
@@ -58,8 +59,8 @@
 /* ---- 2. Top bar ---------------------------------------------------------- */
 
 .top-bar {
-    -fx-padding: 14 24 14 24;
-    -fx-spacing: 14;
+    -fx-padding: 12 22 12 22;
+    -fx-spacing: 12;
     -fx-background-color: rgba(11,13,18,0.85);
     -fx-border-color: transparent transparent rgba(249,115,22,0.10) transparent;
     -fx-border-width: 0 0 1 0;
@@ -68,7 +69,7 @@
 
 .top-search {
     -fx-spacing: 8;
-    -fx-padding: 6 12 6 12;
+    -fx-padding: 6 11 6 11;
     -fx-background-color: rgba(20,23,30,0.85);
     -fx-background-radius: 8;
     -fx-border-radius: 8;
@@ -91,6 +92,7 @@
     -fx-prompt-text-fill: #5a6271;
     -fx-text-fill: #f5f7fb;
     -fx-font-size: 13px;
+    -fx-font-weight: 400;
 }
 
 .search-prefix {
@@ -131,7 +133,7 @@
 /* ---- 3. Sidebar ---------------------------------------------------------- */
 
 .sidebar {
-    -fx-padding: 22 14 18 14;
+    -fx-padding: 20 14 18 14;
     -fx-spacing: 4;
     -fx-background-color: rgba(11,13,18,0.85);
     -fx-border-color: transparent rgba(249,115,22,0.10) transparent transparent;
@@ -141,11 +143,11 @@
 .sidebar-brand {
     -fx-spacing: 12;
     -fx-alignment: center-left;
-    -fx-padding: 0 6 16 6;
+    -fx-padding: 0 6 15 6;
 }
 
 .sidebar-brand-name {
-    -fx-font-size: 25px;
+    -fx-font-size: 23px;
     -fx-font-weight: 800;
     -fx-text-fill: #f5f7fb;
 }
@@ -154,16 +156,16 @@
     -fx-font-size: 10.5px;
     -fx-font-weight: 700;
     -fx-text-fill: #5a6271;
-    -fx-padding: 14 8 6 8;
+    -fx-padding: 12 8 6 8;
 }
 
 .nav-item {
-    -fx-font-family: "Inter", "Segoe UI", sans-serif;
-    -fx-font-size: 13.5px;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
     -fx-font-weight: 600;
-    -fx-min-height: 38;
-    -fx-pref-height: 38;
-    -fx-padding: 0 14 0 14;
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+    -fx-padding: 0 13 0 13;
     -fx-alignment: center-left;
     -fx-text-fill: #b8c0cc;
     -fx-background-color: transparent;
@@ -175,8 +177,17 @@
 }
 
 .nav-item-icon {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
     -fx-font-size: 18px;
     -fx-font-weight: 800;
+    -fx-text-fill: #8a93a3;
+}
+
+.nav-item-label {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #b8c0cc;
 }
 
 .nav-item:hover {
@@ -192,6 +203,16 @@
 
 .nav-item.active:hover {
     -fx-background-color: rgba(249,115,22,0.18);
+}
+
+.nav-item:hover .nav-item-icon,
+.nav-item:hover .nav-item-label {
+    -fx-text-fill: #f5f7fb;
+}
+
+.nav-item.active .nav-item-icon,
+.nav-item.active .nav-item-label {
+    -fx-text-fill: #fb923c;
 }
 
 /* ---- 4. Content & dashboard --------------------------------------------- */
@@ -252,6 +273,18 @@
 
 .app-description {
     -fx-font-size: 13px;
+    -fx-text-fill: #b8c0cc;
+}
+
+.ui-label {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 12.5px;
+    -fx-text-fill: #8a93a3;
+}
+
+.technical-text {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 12px;
     -fx-text-fill: #b8c0cc;
 }
 
@@ -409,6 +442,7 @@
 .activity-table .table-cell {
     -fx-text-fill: #b8c0cc;
     -fx-font-size: 12.5px;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-padding: 8 12 8 12;
     -fx-border-color: transparent;
 }
@@ -565,14 +599,14 @@
 }
 
 .custom-dialog-title {
-    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 16px;
     -fx-font-weight: 800;
     -fx-text-fill: #f5f7fb;
 }
 
 .custom-dialog-message {
-    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 13px;
     -fx-text-fill: #b8c0cc;
 }
@@ -629,14 +663,14 @@
 }
 
 .modal-title {
-    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 17px;
     -fx-font-weight: 800;
     -fx-text-fill: #f5f7fb;
 }
 
 .modal-subtitle {
-    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 12.5px;
     -fx-text-fill: #8a93a3;
 }
@@ -663,7 +697,7 @@
 }
 
 .modal-info-value {
-    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 13px;
     -fx-text-fill: #f5f7fb;
 }
@@ -714,11 +748,15 @@
 
 /* ---- 10. Buttons ----------------------------------------------------- */
 
-.button {
-    -fx-font-family: "Inter", "Segoe UI", sans-serif;
-    -fx-font-size: 13px;
+.button,
+.menu-button {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 12.5px;
     -fx-font-weight: 700;
-    -fx-padding: 8 14 8 14;
+    -fx-padding: 7 13 7 13;
+    -fx-min-height: 34;
+    -fx-alignment: center;
+    -fx-text-overrun: ellipsis;
     -fx-background-radius: 8;
     -fx-border-radius: 8;
     -fx-background-color: rgba(249,115,22,0.10);
@@ -728,21 +766,40 @@
     -fx-cursor: hand;
 }
 
-.button:hover {
+.button:hover,
+.menu-button:hover {
     -fx-background-color: rgba(249,115,22,0.18);
     -fx-text-fill: #fb923c;
     -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.55), 16, 0, 0, 0);
 }
 
-.button.primary {
+.button:pressed,
+.menu-button:pressed {
+    -fx-translate-y: 1;
+    -fx-background-color: rgba(249,115,22,0.14);
+    -fx-border-color: rgba(249,115,22,0.70);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.24), 8, 0, 0, 0);
+}
+
+.button.primary,
+.menu-button.primary {
     -fx-background-color: #f97316;
     -fx-border-color: transparent;
     -fx-text-fill: #111827;
+    -fx-padding: 7 15 7 15;
 }
 
-.button.primary:hover {
+.button.primary:hover,
+.menu-button.primary:hover {
     -fx-background-color: #fb923c;
     -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.65), 18, 0, 0, 0);
+}
+
+.button.primary:pressed,
+.menu-button.primary:pressed {
+    -fx-translate-y: 1;
+    -fx-background-color: #ea580c;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.32), 8, 0, 0, 0);
 }
 
 .button.ghost {
@@ -756,7 +813,15 @@
     -fx-text-fill: #f5f7fb;
 }
 
-.button:disabled {
+.button.ghost:pressed {
+    -fx-translate-y: 1;
+    -fx-background-color: rgba(249,115,22,0.10);
+    -fx-border-color: rgba(249,115,22,0.45);
+    -fx-effect: null;
+}
+
+.button:disabled,
+.menu-button:disabled {
     -fx-opacity: 0.45;
     -fx-effect: null;
     -fx-cursor: default;
@@ -767,7 +832,7 @@
 .text-field,
 .password-field,
 .combo-box {
-    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 13px;
     -fx-background-color: rgba(20,23,30,0.85);
     -fx-background-radius: 8;
@@ -856,7 +921,7 @@
 .banner-text {
     -fx-text-fill: #b8c0cc;
     -fx-font-size: 12.5px;
-    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
 }
 
 /* ---- 13b. Workflow progress ------------------------------------------ */
@@ -1076,6 +1141,18 @@
 .preview-table .table-row-cell:filled:selected,
 .preview-table .table-row-cell:filled:selected:hover {
     -fx-background-color: rgba(249,115,22,0.16);
+}
+
+.preview-table .table-row-cell.ignored-row,
+.preview-table .table-row-cell.ignored-row:odd,
+.preview-table .table-row-cell.ignored-row:filled:hover {
+    -fx-background-color: rgba(255,255,255,0.012);
+    -fx-opacity: 0.62;
+}
+
+.preview-table .table-row-cell.ignored-row:selected,
+.preview-table .table-row-cell.ignored-row:filled:selected {
+    -fx-background-color: rgba(255,255,255,0.025);
 }
 
 .preview-table .table-cell {
@@ -1300,6 +1377,37 @@
     -fx-padding: 0;
 }
 
+.prereq-overlay {
+    -fx-background-color: rgba(7,8,11,0.55);
+}
+
+.prereq-card {
+    -fx-padding: 28;
+    -fx-background-color: rgba(15,18,24,0.92);
+    -fx-background-radius: 14;
+    -fx-border-color: rgba(249,115,22,0.35);
+    -fx-border-radius: 14;
+    -fx-border-width: 1;
+}
+
+.prereq-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 20px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #f1f5f9;
+}
+
+.prereq-subtitle,
+.prereq-bullet {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #cbd5e1;
+}
+
+.prereq-bullet {
+    -fx-text-fill: #f1f5f9;
+}
+
 .detail-panel-section {
     -fx-spacing: 6;
     -fx-padding: 0 0 6 0;
@@ -1308,16 +1416,18 @@
 .detail-panel-label {
     -fx-font-size: 11px;
     -fx-text-fill: #5a6271;
-    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-weight: 700;
 }
 
 .detail-panel-value {
     -fx-font-size: 12.5px;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-text-fill: #f5f7fb;
 }
 
 .detail-panel-value-mono {
-    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
     -fx-font-size: 12px;
     -fx-text-fill: #b8c0cc;
 }
@@ -1368,7 +1478,7 @@
 }
 
 .filter-chip {
-    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 12px;
     -fx-font-weight: 600;
     -fx-padding: 5 12 5 12;
@@ -1657,7 +1767,7 @@
 }
 
 .top-search-icon {
-    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
     -fx-font-size: 13px;
     -fx-font-weight: 700;
     -fx-text-fill: #5a6271;
@@ -1702,6 +1812,16 @@
     -fx-border-width: 0 1 0 0;
 }
 
+.preview-table .table-row-cell:selected,
+.preview-table .table-row-cell:filled:selected {
+    -fx-background-color: rgba(249,115,22,0.18);
+}
+
+.preview-table .table-row-cell:selected .table-cell,
+.preview-table .table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: rgba(245,247,251,1.0);
+}
+
 .before-after-arrow-cell {
     -fx-font-family: "JetBrains Mono", "Consolas", monospace;
     -fx-font-size: 15px;
@@ -1716,6 +1836,334 @@
 
 .preview-table .table-cell.proposed-name-cell.cell-muted {
     -fx-text-fill: #5a6271;
+}
+
+/* ---- TVDB manual match search ------------------------------------------ */
+
+.tvdb-selected-card,
+.tvdb-result-card {
+    -fx-padding: 11 12 11 12;
+    -fx-spacing: 10;
+    -fx-background-color: rgba(20,23,30,0.88);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(255,255,255,0.08);
+    -fx-border-width: 1;
+}
+
+.tvdb-search-results .tvdb-result-card {
+    -fx-min-width: 0;
+    -fx-pref-width: 0;
+    -fx-max-width: infinity;
+}
+
+.tvdb-result-action {
+    -fx-alignment: center-right;
+}
+
+.tvdb-poster-frame {
+    -fx-min-width: 78;
+    -fx-pref-width: 78;
+    -fx-max-width: 78;
+    -fx-min-height: 112;
+    -fx-pref-height: 112;
+    -fx-max-height: 112;
+    -fx-background-color: rgba(7,8,11,0.72);
+    -fx-background-radius: 7;
+    -fx-border-radius: 7;
+    -fx-border-color: rgba(249,115,22,0.18);
+    -fx-border-width: 1;
+}
+
+.tvdb-selected-card .tvdb-poster-frame {
+    -fx-min-width: 154;
+    -fx-pref-width: 154;
+    -fx-max-width: 154;
+    -fx-min-height: 224;
+    -fx-pref-height: 224;
+    -fx-max-height: 224;
+}
+
+.tvdb-detail-poster-host {
+    -fx-alignment: center;
+}
+
+.tvdb-poster-placeholder {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 11px;
+    -fx-text-fill: rgba(245,247,251,0.42);
+}
+
+.tvdb-match-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(245,247,251,1.0);
+}
+
+.tvdb-match-meta {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 10.5px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(245,247,251,0.62);
+}
+
+.tvdb-match-overview {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 12.5px;
+    -fx-text-fill: rgba(245,247,251,0.72);
+    -fx-max-width: infinity;
+}
+
+.tvdb-dialog {
+    -fx-background-color: linear-gradient(to bottom, rgba(10,12,17,1.0), rgba(7,8,11,1.0));
+    -fx-border-color: rgba(249,115,22,0.28);
+    -fx-border-width: 1;
+}
+
+/* ---- File properties dialog -------------------------------------------- */
+
+.file-properties-dialog {
+    -fx-background-color: linear-gradient(to bottom, rgba(10,12,17,1.0), rgba(7,8,11,1.0));
+    -fx-border-color: rgba(249,115,22,0.28);
+    -fx-border-width: 1;
+}
+
+.file-properties-header {
+    -fx-padding: 0 0 8 0;
+    -fx-border-color: transparent transparent rgba(249,115,22,0.16) transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.file-properties-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 16px;
+    -fx-font-weight: 800;
+    -fx-text-fill: rgba(245,247,251,1.0);
+}
+
+.file-properties-close-icon {
+    -fx-min-width: 32;
+    -fx-pref-width: 32;
+    -fx-max-width: 32;
+    -fx-min-height: 32;
+    -fx-pref-height: 32;
+    -fx-max-height: 32;
+}
+
+.file-properties-scroll,
+.file-properties-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.file-properties-content {
+    -fx-padding: 2 2 2 0;
+}
+
+.file-properties-section {
+    -fx-padding: 12 14 12 14;
+    -fx-background-color: rgba(20,23,30,0.55);
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-width: 1;
+}
+
+.file-properties-section-title {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(249,115,22,1.0);
+}
+
+.file-properties-label {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 11px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(90,98,113,1.0);
+}
+
+.file-properties-value {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 12.5px;
+    -fx-text-fill: rgba(245,247,251,1.0);
+}
+
+.file-properties-empty {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 12.5px;
+    -fx-text-fill: rgba(138,147,163,1.0);
+}
+
+.file-properties-path {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 11.5px;
+    -fx-text-fill: rgba(251,146,60,1.0);
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-background-radius: 8;
+    -fx-border-color: rgba(249,115,22,0.18);
+    -fx-border-radius: 8;
+}
+
+.file-properties-path .content {
+    -fx-background-color: transparent;
+}
+
+.file-properties-footer {
+    -fx-padding: 2 0 0 0;
+}
+
+.file-properties-feedback {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 11.5px;
+    -fx-text-fill: rgba(251,146,60,1.0);
+}
+
+.tvdb-dialog-header {
+    -fx-padding: 0 0 8 0;
+    -fx-border-color: transparent transparent rgba(249,115,22,0.16) transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.tvdb-dialog-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 16px;
+    -fx-font-weight: 800;
+    -fx-text-fill: rgba(245,247,251,1.0);
+}
+
+.tvdb-dialog-close {
+    -fx-min-width: 32;
+    -fx-pref-width: 32;
+    -fx-max-width: 32;
+    -fx-min-height: 32;
+    -fx-pref-height: 32;
+    -fx-max-height: 32;
+}
+
+.tvdb-dialog-message {
+    -fx-text-fill: rgba(245,247,251,0.72);
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 12.5px;
+}
+
+.tvdb-search-results {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: transparent;
+    -fx-fixed-cell-size: 152;
+    -fx-padding: 8 8 8 8;
+}
+
+.tvdb-search-results .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 7 2 7 2;
+    -fx-cell-size: 152;
+}
+
+.tvdb-search-results .list-cell .button {
+    -fx-min-width: 112;
+    -fx-pref-width: 132;
+    -fx-max-width: 132;
+}
+
+.tvdb-search-results .virtual-flow,
+.tvdb-search-results .virtual-flow > .corner,
+.tvdb-search-results .corner,
+.tvdb-search-results .scroll-bar,
+.tvdb-search-results .scroll-bar:vertical,
+.tvdb-search-results .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+
+.tvdb-search-results .scroll-bar .track,
+.tvdb-search-results .scroll-bar .track-background,
+.tvdb-search-results .scroll-bar .increment-button,
+.tvdb-search-results .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+}
+
+.tvdb-search-results .scroll-bar .thumb {
+    -fx-background-color: rgba(249,115,22,0.42);
+    -fx-background-radius: 999;
+}
+
+.tvdb-search-results .scroll-bar .thumb:hover {
+    -fx-background-color: rgba(249,115,22,0.68);
+}
+
+.tvdb-search-results .scroll-bar .increment-arrow,
+.tvdb-search-results .scroll-bar .decrement-arrow {
+    -fx-background-color: rgba(245,247,251,0.35);
+}
+
+.tvdb-search-results .list-cell:selected .tvdb-result-card,
+.tvdb-search-results .list-cell:hover .tvdb-result-card {
+    -fx-border-color: rgba(249,115,22,0.42);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.18), 10, 0, 0, 0);
+}
+
+.tvdb-search-box {
+    -fx-spacing: 8;
+    -fx-padding: 6 10 6 10;
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-width: 1;
+    -fx-alignment: center-left;
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+}
+
+.tvdb-search-box:focused-within {
+    -fx-border-color: rgba(249,115,22,0.42);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.18), 10, 0, 0, 0);
+}
+
+.tvdb-search-icon {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(90,98,113,1.0);
+}
+
+.tvdb-search-text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 2 4 2 4;
+    -fx-prompt-text-fill: rgba(90,98,113,1.0);
+    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-font-size: 13px;
+    -fx-font-weight: 400;
+}
+
+.tvdb-search-clear {
+    -fx-min-width: 24;
+    -fx-pref-width: 24;
+    -fx-min-height: 24;
+    -fx-pref-height: 24;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: rgba(138,147,163,1.0);
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-effect: null;
+}
+
+.tvdb-search-clear:hover {
+    -fx-background-color: rgba(249,115,22,0.12);
+    -fx-background-radius: 6;
+    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-effect: null;
+}
+
+.tvdb-detail-controls .button {
+    -fx-text-overrun: clip;
+}
+
+.tvdb-detail-secondary-controls {
+    -fx-spacing: 8;
 }
 
 /* ---- AI Chat Panel --------------------------------------------------- */
@@ -2110,4 +2558,106 @@
 .button.destructive:disabled {
     -fx-opacity: 0.45;
     -fx-effect: null;
+}
+
+/* Debug window (Ctrl+Shift+D) ------------------------------------------ */
+
+.debug-window {
+    -fx-background-color: #0b0f17;
+}
+
+.debug-window .tab-pane,
+.debug-window .tab-header-area,
+.debug-window .tab-header-background {
+    -fx-background-color: #0b0f17;
+}
+
+.debug-window .tab {
+    -fx-background-color: #1a2030;
+    -fx-padding: 6 14 6 14;
+}
+
+.debug-window .tab:selected {
+    -fx-background-color: #f97316;
+}
+
+.debug-window .tab .tab-label {
+    -fx-text-fill: #cbd5e1;
+    -fx-font-weight: 600;
+}
+
+.debug-window .tab:selected .tab-label {
+    -fx-text-fill: #0b0f17;
+}
+
+.debug-window .split-pane,
+.debug-window .split-pane > .split-pane-divider {
+    -fx-background-color: #0b0f17;
+}
+
+.debug-window .table-view {
+    -fx-background-color: #111826;
+    -fx-table-cell-border-color: #1f2937;
+}
+
+.debug-window .table-view .column-header-background,
+.debug-window .table-view .column-header,
+.debug-window .table-view .filler {
+    -fx-background-color: #1a2030;
+}
+
+.debug-window .table-view .column-header .label {
+    -fx-text-fill: #e5e7eb;
+    -fx-font-weight: 700;
+}
+
+.debug-window .table-view .table-cell {
+    -fx-text-fill: #e5e7eb;
+    -fx-border-color: transparent;
+}
+
+.debug-window .table-row-cell {
+    -fx-background-color: #111826;
+}
+
+.debug-window .table-row-cell:odd {
+    -fx-background-color: #141c2c;
+}
+
+.debug-window .table-row-cell:selected {
+    -fx-background-color: #f97316;
+}
+
+.debug-window .table-row-cell:selected .table-cell {
+    -fx-text-fill: #0b0f17;
+}
+
+.debug-window .text-area,
+.debug-window .text-area .content {
+    -fx-background-color: #111826;
+    -fx-text-fill: #e5e7eb;
+    -fx-control-inner-background: #111826;
+}
+
+.debug-window .label {
+    -fx-text-fill: #e5e7eb;
+}
+
+.debug-window .button,
+.debug-window .toggle-button {
+    -fx-background-color: #1f2937;
+    -fx-text-fill: #e5e7eb;
+    -fx-border-color: #374151;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.debug-window .button:hover,
+.debug-window .toggle-button:hover {
+    -fx-background-color: #374151;
+}
+
+.debug-window .toggle-button:selected {
+    -fx-background-color: #f97316;
+    -fx-text-fill: #0b0f17;
 }

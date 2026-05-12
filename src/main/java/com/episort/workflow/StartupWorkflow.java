@@ -69,6 +69,16 @@ public final class StartupWorkflow {
                 inputFolder);
     }
 
+    public InputSourceSelectionResult selectInputSources(java.util.List<java.nio.file.Path> inputSources) {
+        if (workspaceConfigurationService == null || inputFolderSelectionService == null) {
+            return InputSourceSelectionResult.failure(missingWorkspace());
+        }
+
+        return inputFolderSelectionService.selectInputSources(
+                workspaceConfigurationService.loadConfiguredWorkspace().settings(),
+                inputSources);
+    }
+
     public static ApplicationError missingWorkspace() {
         return ApplicationError.recoverable(
                 "WORKSPACE_REQUIRED",
