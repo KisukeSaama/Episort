@@ -144,6 +144,9 @@ public final class UiText {
 
     public static String scanHeading(AppLanguage language) { return t(language, "scan.heading"); }
     public static String scanSafetyBanner(AppLanguage language) { return t(language, "scan.safety.banner"); }
+    public static String scanPatternValidated(AppLanguage language) { return t(language, "scan.pattern.validated"); }
+    public static String scanPatternBlocked(AppLanguage language) { return t(language, "scan.pattern.blocked"); }
+    public static String scanExactPlanNextStep(AppLanguage language) { return t(language, "scan.exactPlan.nextStep"); }
     public static String loadingStartup(AppLanguage language) { return t(language, "loading.startup"); }
     public static String loadingScan(AppLanguage language) { return t(language, "loading.scan"); }
 
@@ -227,6 +230,9 @@ public final class UiText {
 
     public static String scanContextIgnore(AppLanguage language) { return t(language, "scan.context.ignore"); }
     public static String scanContextStopIgnoring(AppLanguage language) { return t(language, "scan.context.stopIgnoring"); }
+    public static String scanContextAskAi(AppLanguage language) { return t(language, "scan.context.askAi"); }
+    public static String scanAiAdvisoryPrefix(AppLanguage language) { return t(language, "scan.ai.advisory.prefix"); }
+    public static String scanAiUnavailableNote(AppLanguage language) { return t(language, "scan.ai.unavailable.note"); }
     public static String scanContextResetMatch(AppLanguage language) { return t(language, "scan.context.resetMatch"); }
     public static String scanContextCopyPath(AppLanguage language) { return t(language, "scan.context.copyPath"); }
     public static String scanContextOpenFolder(AppLanguage language) { return t(language, "scan.context.openFolder"); }

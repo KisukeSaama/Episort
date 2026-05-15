@@ -423,6 +423,9 @@ public final class AppShell {
             case SCAN -> {
                 if (!scanScreen.hasLoadedFolder()) {
                     openLoadFolderDialog();
+                } else {
+                    scanScreen.validatePattern();
+                    refreshPrimaryAction();
                 }
             }
             case HISTORY -> historyScreen.refresh();
@@ -708,7 +711,7 @@ public final class AppShell {
             case SCAN -> {
                 if (scanScreen.hasLoadedFolder()) {
                     topBar.setPrimaryActionText(UiText.primaryActionValidate(language));
-                    topBar.setPrimaryActionDisabled(loading || !scanScreen.hasReadyActiveRows());
+                    topBar.setPrimaryActionDisabled(loading || !scanScreen.canValidatePattern());
                 } else {
                     topBar.setPrimaryActionText(UiText.primaryActionValidate(language));
                     topBar.setPrimaryActionDisabled(true);

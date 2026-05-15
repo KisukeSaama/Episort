@@ -34,7 +34,7 @@
 # primary matching/explanation brain.
 
 generated: 2026-05-08
-last_updated: 2026-05-09
+last_updated: 2026-05-15
 project: episort
 project_key: NOKEY
 tracking_system: file-system
@@ -70,12 +70,12 @@ development_status:
   4-5-episode-and-movie-match-proposals: done
   4-6-tvdb-authentication-and-token-lifecycle: done
   epic-4-retrospective: optional
-  epic-5: backlog
-  5-1-review-screen-for-groups-and-match-states: ready-for-dev
-  5-2-confidence-ambiguity-conflict-and-duplicate-visibility: ready-for-dev
-  5-3-manual-match-and-status-correction: ready-for-dev
-  5-4-pattern-validation-gate: ready-for-dev
-  5-5-exact-plan-validation-state-preparation: ready-for-dev
+  epic-5: in-progress
+  5-1-review-screen-for-groups-and-match-states: review
+  5-2-confidence-ambiguity-conflict-and-duplicate-visibility: review
+  5-3-manual-match-and-status-correction: review
+  5-4-pattern-validation-gate: review
+  5-5-exact-plan-validation-state-preparation: review
   epic-5-retrospective: optional
   epic-6: backlog
   6-1-series-and-season-destination-naming: ready-for-dev

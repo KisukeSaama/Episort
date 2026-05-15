@@ -5,6 +5,9 @@ import com.episort.ai.AiChatToolCall;
 import com.episort.ai.AiFilePatternParse;
 import com.episort.ai.AiGroupSuggestion;
 import com.episort.ai.AiPatternAssistant;
+import com.episort.ai.AiContextualHelpService;
+import com.episort.ai.AiContextualRequest;
+import com.episort.ai.AiContextualSelection;
 import com.episort.ai.AiPatternRefinementResult;
 import com.episort.ai.AiPatternSuggestion;
 import com.episort.ai.AiPatternSuggestionRequest;
@@ -33,6 +36,10 @@ import com.episort.tvdb.TvdbMovieDetails;
 import com.episort.tvdb.TvdbSearchResult;
 import com.episort.tvdb.TvdbSeriesDetails;
 import com.episort.workflow.TvdbBatchMatchResult;
+import com.episort.workflow.ReviewItem;
+import com.episort.workflow.ReviewMatchState;
+import com.episort.workflow.ReviewSession;
+import com.episort.workflow.ReviewValidationSnapshot;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -152,6 +159,7 @@ public final class ScanScreen {
     private final Map<String, TvdbCandidate> tvdbCandidatesByLabel = new HashMap<>();
     private final EpisodeMovieMatchService matchService = new EpisodeMovieMatchService();
     private final TvdbEpisodeOrderMapper orderMapper = new TvdbEpisodeOrderMapper();
+    private final ReviewSession reviewSession = new ReviewSession();
     private final CheckBox selectAllCheckbox = new CheckBox();
     private final SimpleObjectProperty<ScanRow> selectedRow = new SimpleObjectProperty<>(null);
     private final SimpleBooleanProperty syncingSelection = new SimpleBooleanProperty(false);
@@ -169,6 +177,7 @@ public final class ScanScreen {
     private boolean stackedLayout = false;
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
     private AiPatternAssistant aiPatternAssistant;
+    private AiContextualHelpService aiContextualHelpService;
     private TvdbClient tvdbClient;
     private Supplier<Optional<TvdbCredentials>> tvdbCredentialsSupplier = Optional::empty;
 
@@ -307,6 +316,10 @@ public final class ScanScreen {
         this.aiPatternAssistant = assistant;
     }
 
+    public void setAiContextualHelpService(AiContextualHelpService service) {
+        this.aiContextualHelpService = service;
+    }
+
     public void setTvdbLookup(TvdbClient tvdbClient, Supplier<Optional<TvdbCredentials>> credentialsSupplier) {
         this.tvdbClient = tvdbClient;
         this.tvdbCredentialsSupplier = credentialsSupplier == null ? Optional::empty : credentialsSupplier;
@@ -411,6 +424,7 @@ public final class ScanScreen {
         updateWorkflowActiveStep();
         rows.setAll(ScanRowFactory.from(scan));
         rebuildGroupIndex(scan);
+        rebuildReviewSessionFromRows();
         updateMetricsFromRows();
         selectedRow.set(null);
         detailPanel.clear();
@@ -439,6 +453,7 @@ public final class ScanScreen {
                 rows.stream().map(ScanScreen::inventoryItemFor).toList(),
                 scan.groups(),
                 scan.summary()));
+        rebuildReviewSessionFromRows();
         updateMetricsFromRows();
         updateFilterPredicate();
         updateSelectAllCheckbox();
@@ -558,6 +573,7 @@ public final class ScanScreen {
         }
         publishApplyTrace(totalRows, rowsWithGroup, result.matchesBySeed().size(), rowsApplied,
                 "seeds(rows)=" + seenSeeds + " seeds(matches)=" + result.matchesBySeed().keySet());
+        rebuildReviewSessionFromRows();
         updateMetricsFromRows();
         updateFilterPredicate();
         table.refresh();
@@ -2825,6 +2841,7 @@ public final class ScanScreen {
                 ? groupRows.getOrDefault(target, java.util.List.of(target))
                 : selectedRows;
         ScanRowToolbox.apply(call, target, targetRows);
+        rebuildReviewSessionFromRows();
         table.refresh();
         if (selectedRow.get() == target) {
             detailPanel.show(target, rowToGroupMatch.get(target));
@@ -2929,6 +2946,7 @@ public final class ScanScreen {
             } else {
                 row.markIgnored();
             }
+            rebuildReviewSessionFromRows();
             publishIgnoreTrace(row, wasIgnored, previousStatus, previousAlerts);
             table.refresh();
             updateMetricsFromRows();
@@ -2936,6 +2954,49 @@ public final class ScanScreen {
             if (selectedRow.get() == row) {
                 detailPanel.show(row, rowToGroupMatch.get(row));
             }
+        });
+
+        MenuItem askAi = new MenuItem(UiText.scanContextAskAi(currentLanguage));
+        askAi.setDisable(!aiAssistanceEnabled || aiContextualHelpService == null);
+        askAi.setOnAction(event -> {
+            if (aiContextualHelpService == null) {
+                return;
+            }
+            AiContextualSelection selection = row.status() == ScanRowStatus.CONFLICT
+                    || row.status() == ScanRowStatus.DUPLICATE
+                    ? new AiContextualSelection.Conflict(
+                            row.originalFilename(),
+                            row.alertText().orElse(row.statusReasons().stream().findFirst().orElse("")))
+                    : row.tvdbMatch().isPresent()
+                            ? new AiContextualSelection.Match(
+                                    row.originalFilename(),
+                                    row.tvdbMatch().orElseThrow(),
+                                    row.confidence().orElse(0.0))
+                            : new AiContextualSelection.File(row.originalFilename());
+            java.util.concurrent.CompletableFuture
+                    .supplyAsync(() -> aiContextualHelpService.help(new AiContextualRequest(selection)))
+                    .thenAccept(result -> javafx.application.Platform.runLater(() -> {
+                        if (result.provided()) {
+                            String note = result.explanation().orElseThrow().explanation();
+                            row.setNoteText(Optional.of(UiText.scanAiAdvisoryPrefix(currentLanguage) + " " + note));
+                        } else {
+                            row.setNoteText(Optional.of(UiText.scanAiUnavailableNote(currentLanguage)));
+                        }
+                        table.refresh();
+                        if (selectedRow.get() == row) {
+                            detailPanel.show(row, rowToGroupMatch.get(row));
+                        }
+                    }))
+                    .exceptionally(error -> {
+                        javafx.application.Platform.runLater(() -> {
+                            row.setNoteText(Optional.of(UiText.scanAiUnavailableNote(currentLanguage)));
+                            table.refresh();
+                            if (selectedRow.get() == row) {
+                                detailPanel.show(row, rowToGroupMatch.get(row));
+                            }
+                        });
+                        return null;
+                    });
         });
 
         MenuItem reset = new MenuItem(UiText.scanContextResetMatch(currentLanguage));
@@ -2975,7 +3036,7 @@ public final class ScanScreen {
             }
         });
 
-        menu.getItems().setAll(properties, ignore, reset, copyPath, openFolder);
+        menu.getItems().setAll(properties, askAi, ignore, reset, copyPath, openFolder);
         return menu;
     }
 
@@ -2999,6 +3060,59 @@ public final class ScanScreen {
         cardToProcess.setValue(String.valueOf(toProcess));
         cardConflicts.setValue(String.valueOf(conflicts));
         cardWarnings.setValue(String.valueOf(warnings));
+    }
+
+    public boolean canValidatePattern() {
+        rebuildReviewSessionFromRows();
+        return hasReadyActiveRows() && !reviewSession.hasBlockingConflicts();
+    }
+
+    public boolean validatePattern() {
+        rebuildReviewSessionFromRows();
+        boolean validated = reviewSession.validatePattern();
+        workflowHelp.setText(validated
+                ? UiText.scanPatternValidated(currentLanguage) + " " + UiText.scanExactPlanNextStep(currentLanguage)
+                : UiText.scanPatternBlocked(currentLanguage));
+        if (validated) {
+            workflowPhase = WorkflowPhase.PLAN_REVIEW;
+            updateWorkflowActiveStep();
+        }
+        return validated;
+    }
+
+    public ReviewValidationSnapshot reviewValidationSnapshot() {
+        rebuildReviewSessionFromRows();
+        return reviewSession.snapshot();
+    }
+
+    private void rebuildReviewSessionFromRows() {
+        reviewSession.replaceItems(rows.stream().map(ScanScreen::toReviewItem).toList());
+    }
+
+    private static ReviewItem toReviewItem(ScanRow row) {
+        ReviewMatchState state = switch (row.status()) {
+            case OK, TVDB -> ReviewMatchState.READY;
+            case REVIEW, AI, TYPE, PATTERN, META -> ReviewMatchState.NEEDS_REVIEW;
+            case CONFLICT -> ReviewMatchState.CONFLICT;
+            case DUPLICATE -> ReviewMatchState.DUPLICATE;
+            case IGNORED -> ReviewMatchState.IGNORED;
+            case EXT -> ReviewMatchState.UNSUPPORTED;
+            case PATH, ERROR -> ReviewMatchState.AMBIGUOUS;
+        };
+        if (row.mediaType() == ScanMediaType.UNKNOWN && state == ReviewMatchState.NEEDS_REVIEW) {
+            state = ReviewMatchState.UNKNOWN;
+        }
+        boolean unsupported = row.status() == ScanRowStatus.EXT;
+        boolean blocking = !row.isIgnored()
+                && (row.status() == ScanRowStatus.CONFLICT || row.status() == ScanRowStatus.DUPLICATE);
+        return new ReviewItem(
+                row.sourcePath(),
+                row.tvdbMatch().or(row::proposedFilename),
+                state,
+                row.confidence(),
+                row.isIgnored(),
+                unsupported,
+                blocking);
     }
 
     private static final class MetricCard {

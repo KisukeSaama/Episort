@@ -1,6 +1,6 @@
 # Story 5.2: Confidence, Ambiguity, Conflict, and Duplicate Visibility
 
-Status: ready-for-dev
+Status: review
 
 <!-- Generated through the BMAD create-story workflow rules from approved planning artifacts. -->
 
@@ -21,12 +21,12 @@ so that I can focus review effort where mistakes are most likely.
 
 ## Tasks / Subtasks
 
-- [ ] Add tests for validation state, correction behavior, duplicate/conflict visibility, and execution eligibility blockers. (AC: #1)
-- [ ] Implement session-scoped correction and validation models without filesystem mutation. (AC: #1)
-- [ ] Keep confidence separate from validation state in domain and UI-facing models. (AC: #1)
-- [ ] Use virtualized JavaFX controls for large review lists when UI is touched. (AC: #1)
-- [ ] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
-- [ ] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
+- [x] Add tests for validation state, correction behavior, duplicate/conflict visibility, and execution eligibility blockers. (AC: #1)
+- [x] Implement session-scoped correction and validation models without filesystem mutation. (AC: #1)
+- [x] Keep confidence separate from validation state in domain and UI-facing models. (AC: #1)
+- [x] Use virtualized JavaFX controls for large review lists when UI is touched. (AC: #1)
+- [x] Update README or developer notes only if this story introduces or changes a developer-facing command or setup step. (AC: #1)
+- [x] Run relevant tests and record any manual verification steps in the Dev Agent Record. (AC: #1)
 
 ## Dev Notes
 
@@ -116,10 +116,20 @@ May depend only on completed earlier stories in this same epic and prior epics. 
 
 ### Agent Model Used
 
-TBD by dev-story agent.
+GPT-5.4
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Mapped review states explicitly (`READY`, `NEEDS_REVIEW`, `UNKNOWN`, `CONFLICT`, `DUPLICATE`, `IGNORED`, `UNSUPPORTED`, `AMBIGUOUS`).
+- Kept confidence as independent data in `ReviewItem`; validation never derives from confidence.
+- Manual verification: use the existing filters and confirm conflicts/duplicates remain traceable while high-confidence rows still require explicit validation.
+
 ### File List
+
+- `src/main/java/com/episort/workflow/ReviewMatchState.java`
+- `src/main/java/com/episort/workflow/ReviewItem.java`
+- `src/main/java/com/episort/workflow/ReviewSession.java`
+- `src/main/java/com/episort/ui/scan/ScanScreen.java`
+- `src/test/java/com/episort/workflow/ReviewSessionTest.java`

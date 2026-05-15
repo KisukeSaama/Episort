@@ -6,6 +6,8 @@ import com.episort.ai.AiPatternRefinementResult;
 import com.episort.ai.AiPatternRefinementService;
 import com.episort.ai.AiPrerequisiteService;
 import com.episort.ai.BundledLocalAiPatternAssistant;
+import com.episort.ai.BundledLocalAiContextualAssistant;
+import com.episort.ai.AiContextualHelpService;
 import com.episort.ai.BundledLocalAiRuntimeProbe;
 import com.episort.ai.embedded.EmbeddedLlamaRuntime;
 import com.episort.ai.embedded.LlamaServerClient;
@@ -77,6 +79,9 @@ public class EpisortApplication extends Application {
             new BundledLocalAiRuntimeProbe(embeddedRuntime, modelDownloader)));
     private final BundledLocalAiPatternAssistant aiPatternAssistant = new BundledLocalAiPatternAssistant(
             () -> embeddedRuntime.baseUri().map(LlamaServerClient::new));
+    private final AiContextualHelpService aiContextualHelpService = new AiContextualHelpService(
+            aiWorkflowGate,
+            new BundledLocalAiContextualAssistant(aiPatternAssistant));
     private final AiPatternRefinementService aiPatternRefinementService = new AiPatternRefinementService(
             aiWorkflowGate, aiPatternAssistant);
     private final AiChatService aiChatService = new AiChatService(
@@ -160,6 +165,7 @@ public class EpisortApplication extends Application {
         if (aiEnabledAtStartup) {
             appShell.scanScreen().setAiChatBackend(aiChatService);
             appShell.scanScreen().setAiPatternAssistant(aiPatternAssistant);
+            appShell.scanScreen().setAiContextualHelpService(aiContextualHelpService);
             if (embeddedRuntime.runtimeBinariesAvailable() && aiModelLibrary.selectedId().isPresent()) {
                 startEmbeddedRuntimeAsync(appShell);
             } else {
