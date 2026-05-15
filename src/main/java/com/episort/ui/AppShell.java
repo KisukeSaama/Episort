@@ -194,6 +194,7 @@ public final class AppShell {
                 this::onSearchChange,
                 this::openLoadFolderDialog,
                 this::openLoadFilesDialog,
+                this::openAddFolderDialog,
                 this::openAddFilesDialog,
                 this::resetScanPreview,
                 this::reanalyzeLastFolder);
@@ -523,6 +524,10 @@ public final class AppShell {
         openFilesDialog(false);
     }
 
+    private void openAddFolderDialog() {
+        openFolderDialog(true);
+    }
+
     private void openAddFilesDialog() {
         openFilesDialog(true);
     }
@@ -558,6 +563,7 @@ public final class AppShell {
                 .thenAccept(viewModel -> Platform.runLater(() -> {
                     if (append) {
                         scanScreen.append(viewModel.inventoryScanResult());
+                        topBar.setAppendActionsEnabled(scanScreen.hasLoadedFolder());
                     } else {
                         apply(viewModel);
                     }
@@ -579,6 +585,45 @@ public final class AppShell {
                             currentViewModel.language())));
                     return null;
                 });
+    }
+
+    private void openFolderDialog(boolean append) {
+        if (selectInputFolder == null) {
+            return;
+        }
+        Optional<Path> workspace = currentWorkspace.get();
+        if (workspace.isEmpty()) {
+            return;
+        }
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle(currentViewModel.language() == AppLanguage.ENGLISH
+                ? "Choose folder to add"
+                : "Choisir le dossier à ajouter");
+        File initial = workspace.get().toFile();
+        if (initial.isDirectory()) {
+            chooser.setInitialDirectory(initial);
+        }
+        Window owner = root.getScene() == null ? null : root.getScene().getWindow();
+        File selected = chooser.showDialog(owner);
+        if (selected == null) {
+            return;
+        }
+        scanScreen.setLoading(true);
+        setLoading(true, UiText.loadingScan(currentViewModel.language()));
+        selectInputFolder.apply(selected.toPath())
+                .thenAccept(viewModel -> Platform.runLater(() -> {
+                    if (append) {
+                        scanScreen.append(viewModel.inventoryScanResult());
+                        topBar.setAppendActionsEnabled(scanScreen.hasLoadedFolder());
+                    } else {
+                        apply(viewModel);
+                    }
+                    setLoading(false, "");
+                }))
+                .whenComplete((ignored, exception) -> Platform.runLater(() -> {
+                    scanScreen.setLoading(false);
+                    setLoading(false, "");
+                }));
     }
 
     private void apply(AppShellViewModel viewModel) {
@@ -648,6 +693,7 @@ public final class AppShell {
         scanScreen.setWorkspaceRoot(currentWorkspace.get());
         Optional<InventoryScanResult> result = currentViewModel.inventoryScanResult();
         scanScreen.apply(result);
+        topBar.setAppendActionsEnabled(scanScreen.hasLoadedFolder());
         if (currentView == AppView.HISTORY) {
             historyScreen.refresh();
         }
@@ -671,6 +717,7 @@ public final class AppShell {
                 topBar.primaryAction().setManaged(true);
                 setTopSecondaryActionsVisible(true);
                 topBar.loadAction().setDisable(loading || !(workspaceReady && selectInputFolder != null));
+                topBar.setAppendActionsEnabled(scanScreen.hasLoadedFolder());
                 topBar.resetFolderAction().setDisable(loading || !scanScreen.hasLoadedFolder());
                 topBar.rescanAction().setDisable(loading || selectInputFolder == null || lastInputFolder.isEmpty());
             }

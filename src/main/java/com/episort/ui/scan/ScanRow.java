@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import com.episort.tvdb.TvdbCandidate;
+import com.episort.tvdb.TvdbEpisodeOrder;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 
@@ -26,6 +27,7 @@ public final class ScanRow {
     private Optional<String> pattern;
     private Optional<String> tvdbMatch;
     private Optional<TvdbCandidate> tvdbCandidate;
+    private Optional<TvdbEpisodeOrder> appliedTvdbOrder;
     private boolean tvdbSelectedByUser;
     private Optional<String> order;
     private Optional<Path> destination;
@@ -34,6 +36,8 @@ public final class ScanRow {
     private Optional<String> noteText;
     private Optional<String> conflictText;
     private java.util.List<String> statusReasons;
+    private Optional<ScanMediaType> mediaTypeBeforeIgnore;
+    private Optional<ScanRowStatus> statusBeforeIgnore;
 
     public ScanRow(
             Path sourcePath,
@@ -52,6 +56,7 @@ public final class ScanRow {
         this.pattern = Optional.empty();
         this.tvdbMatch = Optional.empty();
         this.tvdbCandidate = Optional.empty();
+        this.appliedTvdbOrder = Optional.empty();
         this.tvdbSelectedByUser = false;
         this.order = Optional.empty();
         this.destination = Optional.empty();
@@ -60,6 +65,8 @@ public final class ScanRow {
         this.noteText = Optional.empty();
         this.conflictText = Optional.empty();
         this.statusReasons = java.util.List.of();
+        this.mediaTypeBeforeIgnore = Optional.empty();
+        this.statusBeforeIgnore = Optional.empty();
     }
 
     public BooleanProperty selectedProperty() {
@@ -76,6 +83,30 @@ public final class ScanRow {
 
     public boolean isIgnored() {
         return status == ScanRowStatus.IGNORED || mediaType == ScanMediaType.IGNORED;
+    }
+
+    public void markIgnored() {
+        if (isIgnored()) {
+            return;
+        }
+        mediaTypeBeforeIgnore = Optional.of(mediaType);
+        statusBeforeIgnore = Optional.of(status);
+        setSelected(false);
+        status = ScanRowStatus.IGNORED;
+    }
+
+    public void stopIgnoring() {
+        if (!isIgnored()) {
+            return;
+        }
+        mediaType = mediaTypeBeforeIgnore.orElse(mediaType == ScanMediaType.IGNORED
+                ? ScanMediaType.UNKNOWN
+                : mediaType);
+        status = statusBeforeIgnore.orElse(tvdbMatch.isPresent()
+                ? ScanRowStatus.TVDB
+                : ScanRowStatus.REVIEW);
+        mediaTypeBeforeIgnore = Optional.empty();
+        statusBeforeIgnore = Optional.empty();
     }
 
     public Path sourcePath() {
@@ -153,6 +184,14 @@ public final class ScanRow {
 
     public void setTvdbCandidate(Optional<TvdbCandidate> tvdbCandidate) {
         this.tvdbCandidate = Objects.requireNonNull(tvdbCandidate, "tvdbCandidate");
+    }
+
+    public Optional<TvdbEpisodeOrder> appliedTvdbOrder() {
+        return appliedTvdbOrder;
+    }
+
+    public void setAppliedTvdbOrder(Optional<TvdbEpisodeOrder> appliedTvdbOrder) {
+        this.appliedTvdbOrder = Objects.requireNonNull(appliedTvdbOrder, "appliedTvdbOrder");
     }
 
     public boolean tvdbSelectedByUser() {

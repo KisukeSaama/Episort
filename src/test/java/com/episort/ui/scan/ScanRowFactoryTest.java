@@ -274,6 +274,39 @@ class ScanRowFactoryTest {
     }
 
     @Test
+    void userTitleEditAfterTvdbParseRecomputesFromStructuredMetadata() {
+        ScanRow row = new ScanRow(
+                Path.of("C:/Media/sgi-hkyu01.1080p.multi.mkv"),
+                "sgi-hkyu01.1080p.multi.mkv",
+                "MKV",
+                ScanMediaType.SERIES,
+                ScanRowStatus.TVDB);
+        row.setInputParse(java.util.Optional.of(new ScanInputParse(
+                "TVDB",
+                java.util.List.of(
+                        new ScanInputToken(ScanInputRole.SERIES, "Haikyu!!", "Haikyu!!", 0, 0),
+                        new ScanInputToken(ScanInputRole.SEASON, "01", "01", 0, 0),
+                        new ScanInputToken(ScanInputRole.EPISODE, "01", "01", 0, 0),
+                        new ScanInputToken(ScanInputRole.TITLE, "The End & the Beginning", "The End & the Beginning", 0, 0)),
+                java.util.Optional.of("S01E01"),
+                java.util.OptionalDouble.empty(),
+                ScanInputParseSource.TVDB)));
+        row.setPattern(java.util.Optional.of("{series} - S{season}E{episode} - {title}"));
+
+        ScanRowToolbox.apply(new com.episort.ai.AiChatToolCall(
+                "setTitle",
+                com.google.gson.JsonParser.parseString("{\"title\":\"A New Beginning\"}").getAsJsonObject(),
+                "{\"title\":\"A New Beginning\"}"),
+                row,
+                java.util.List.of(row));
+
+        assertEquals("A New Beginning",
+                row.inputParse().orElseThrow().tokenValue(ScanInputRole.TITLE).orElseThrow());
+        assertEquals(ScanInputParseSource.AI, row.inputParse().orElseThrow().source());
+        assertEquals("Haikyu!! - S01E01 - A New Beginning.mkv", row.proposedFilename().orElseThrow());
+    }
+
+    @Test
     void markdownRendererCreatesBlocksForSupportedSubsetAndIgnoresBlankInput() {
         assertTrue(AiChatMarkdownRenderer.blocks("   ").isEmpty());
 

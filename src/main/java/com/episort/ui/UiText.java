@@ -134,6 +134,7 @@ public final class UiText {
     public static String topActionLoad(AppLanguage language) { return t(language, "top.action.load"); }
     public static String topActionLoadFolder(AppLanguage language) { return t(language, "top.action.loadFolder"); }
     public static String topActionLoadFiles(AppLanguage language) { return t(language, "top.action.loadFiles"); }
+    public static String topActionAddFolder(AppLanguage language) { return t(language, "top.action.addFolder"); }
     public static String topActionAddFiles(AppLanguage language) { return t(language, "top.action.addFiles"); }
     public static String topActionReset(AppLanguage language) { return t(language, "top.action.reset"); }
     public static String topActionReanalyze(AppLanguage language) { return t(language, "top.action.reanalyze"); }

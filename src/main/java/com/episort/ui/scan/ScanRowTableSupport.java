@@ -105,8 +105,12 @@ final class ScanRowTableSupport {
             case CONFLICTS -> !row.isIgnored()
                     && (row.status() == ScanRowStatus.CONFLICT || row.status() == ScanRowStatus.DUPLICATE);
             case IGNORED -> row.isIgnored();
-            case ALERTS -> !row.isIgnored() && (row.alertText().isPresent() || row.status() == ScanRowStatus.ERROR);
+            case ALERTS -> hasAlert(row);
         };
+    }
+
+    static boolean hasAlert(ScanRow row) {
+        return !row.isIgnored() && (row.alertText().isPresent() || row.status() == ScanRowStatus.ERROR);
     }
 
     static boolean isUnknownOrNeedsUnderstanding(ScanRow row) {

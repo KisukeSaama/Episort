@@ -16,6 +16,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 
 public final class TopBar {
+    public static final double SHELL_HEIGHT = 59;
     private final HBox root;
     private final Label workspaceChipPrefix;
     private final Label workspaceChipValue;
@@ -28,6 +29,7 @@ public final class TopBar {
     private final MenuButton loadAction;
     private final MenuItem loadFolderItem;
     private final MenuItem loadFilesItem;
+    private final MenuItem addFolderItem;
     private final MenuItem addFilesItem;
     private final Button resetFolderAction;
     private final Button rescanAction;
@@ -39,6 +41,7 @@ public final class TopBar {
             Consumer<String> onSearchChange,
             Runnable onChangeFolder,
             Runnable onLoadFiles,
+            Runnable onAddFolder,
             Runnable onAddFiles,
             Runnable onResetFolder,
             Runnable onRescan) {
@@ -46,6 +49,7 @@ public final class TopBar {
         Objects.requireNonNull(onSearchChange, "onSearchChange");
         Objects.requireNonNull(onChangeFolder, "onChangeFolder");
         Objects.requireNonNull(onLoadFiles, "onLoadFiles");
+        Objects.requireNonNull(onAddFolder, "onAddFolder");
         Objects.requireNonNull(onAddFiles, "onAddFiles");
         Objects.requireNonNull(onResetFolder, "onResetFolder");
         Objects.requireNonNull(onRescan, "onRescan");
@@ -98,11 +102,14 @@ public final class TopBar {
         loadFolderItem.setOnAction(event -> onChangeFolder.run());
         loadFilesItem = new MenuItem();
         loadFilesItem.setOnAction(event -> onLoadFiles.run());
+        addFolderItem = new MenuItem();
+        addFolderItem.setOnAction(event -> onAddFolder.run());
         addFilesItem = new MenuItem();
         addFilesItem.setOnAction(event -> onAddFiles.run());
         loadAction = new MenuButton();
-        loadAction.getStyleClass().add("load-primary");
-        loadAction.getItems().addAll(loadFolderItem, loadFilesItem, addFilesItem);
+        loadAction.getStyleClass().addAll("header-action", "load-primary");
+        loadAction.getItems().addAll(loadFolderItem, loadFilesItem, new javafx.scene.control.SeparatorMenuItem(),
+                addFolderItem, addFilesItem);
 
         resetFolderAction = secondaryButton(onResetFolder);
         rescanAction = secondaryButton(onRescan);
@@ -122,10 +129,13 @@ public final class TopBar {
                 primaryAction);
         root.getStyleClass().add("top-bar");
         root.setAlignment(Pos.CENTER_LEFT);
+        root.setMinHeight(SHELL_HEIGHT);
+        root.setPrefHeight(SHELL_HEIGHT);
 
         applyLanguage(AppLanguage.FRENCH);
         setWorkspace(Optional.empty());
         setStatusPill(Optional.empty(), AppLanguage.FRENCH);
+        setAppendActionsEnabled(false);
     }
 
     public Region root() {
@@ -152,6 +162,11 @@ public final class TopBar {
         return rescanAction;
     }
 
+    public void setAppendActionsEnabled(boolean enabled) {
+        addFolderItem.setDisable(!enabled);
+        addFilesItem.setDisable(!enabled);
+    }
+
     public void setSearchVisible(boolean visible) {
         searchBox.setVisible(visible);
         searchBox.setManaged(visible);
@@ -170,6 +185,7 @@ public final class TopBar {
         loadAction.setText(UiText.topActionLoad(language));
         loadFolderItem.setText(UiText.topActionLoadFolder(language));
         loadFilesItem.setText(UiText.topActionLoadFiles(language));
+        addFolderItem.setText(UiText.topActionAddFolder(language));
         addFilesItem.setText(UiText.topActionAddFiles(language));
         resetFolderAction.setText(UiText.topActionReset(language));
         rescanAction.setText(UiText.topActionReanalyze(language));
@@ -218,7 +234,7 @@ public final class TopBar {
 
     private static Button secondaryButton(Runnable action) {
         Button button = new Button();
-        button.getStyleClass().add("ghost");
+        button.getStyleClass().addAll("header-action", "ghost");
         button.setOnAction(event -> action.run());
         return button;
     }

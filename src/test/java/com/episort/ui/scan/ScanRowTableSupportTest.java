@@ -135,6 +135,76 @@ class ScanRowTableSupportTest {
         assertFalse(ignored.isSelected());
     }
 
+    @Test
+    void alertDefinitionIsSharedByCounterAndAlertFilter() {
+        ScanRow warning = row("Warning.mkv", ScanMediaType.SERIES, ScanRowStatus.OK);
+        warning.setAlertText(java.util.Optional.of("Needs attention"));
+        ScanRow error = row("Error.mkv", ScanMediaType.SERIES, ScanRowStatus.ERROR);
+        ScanRow clean = row("Clean.mkv", ScanMediaType.SERIES, ScanRowStatus.OK);
+        ScanRow ignoredWarning = row("Ignored.mkv", ScanMediaType.IGNORED, ScanRowStatus.IGNORED);
+        ignoredWarning.setAlertText(java.util.Optional.of("Old warning"));
+
+        assertTrue(ScanRowTableSupport.hasAlert(warning));
+        assertTrue(ScanRowTableSupport.matchesStatusFilter(warning, ScanRowStatusFilter.ALERTS));
+        assertTrue(ScanRowTableSupport.hasAlert(error));
+        assertTrue(ScanRowTableSupport.matchesStatusFilter(error, ScanRowStatusFilter.ALERTS));
+        assertFalse(ScanRowTableSupport.hasAlert(clean));
+        assertFalse(ScanRowTableSupport.matchesStatusFilter(clean, ScanRowStatusFilter.ALERTS));
+        assertFalse(ScanRowTableSupport.hasAlert(ignoredWarning));
+        assertFalse(ScanRowTableSupport.matchesStatusFilter(ignoredWarning, ScanRowStatusFilter.ALERTS));
+    }
+
+    @Test
+    void informativeNotesAreNotAlertsAndIgnoringRowsKeepsThemOutOfAlertBucket() {
+        ScanRow informative = row("Informative.mkv", ScanMediaType.SERIES, ScanRowStatus.TVDB);
+        informative.setNoteText(java.util.Optional.of("TVDB candidates loaded; select one to keep it for this session."));
+
+        ScanRow ignored = row("Ignored.mkv", ScanMediaType.SERIES, ScanRowStatus.REVIEW);
+        ignored.setAlertText(java.util.Optional.of("Needs attention"));
+        ignored.setStatus(ScanRowStatus.IGNORED);
+
+        assertFalse(ScanRowTableSupport.hasAlert(informative));
+        assertFalse(ScanRowTableSupport.matchesStatusFilter(informative, ScanRowStatusFilter.ALERTS));
+        assertFalse(ScanRowTableSupport.hasAlert(ignored));
+        assertFalse(ScanRowTableSupport.matchesStatusFilter(ignored, ScanRowStatusFilter.ALERTS));
+    }
+
+    @Test
+    void ignoreRoundTripRestoresActualPreviousStateWithoutDuplicatingAlerts() {
+        ScanRow row = row("Suggested.mkv", ScanMediaType.SERIES, ScanRowStatus.REVIEW);
+        row.setAlertText(java.util.Optional.of("TVDB suggestion needs validation"));
+
+        row.markIgnored();
+        row.markIgnored();
+
+        assertTrue(row.isIgnored());
+        assertFalse(ScanRowTableSupport.hasAlert(row));
+
+        row.stopIgnoring();
+        row.stopIgnoring();
+
+        assertEquals(ScanMediaType.SERIES, row.mediaType());
+        assertEquals(ScanRowStatus.REVIEW, row.status());
+        assertTrue(ScanRowTableSupport.hasAlert(row));
+        assertEquals("TVDB suggestion needs validation", row.alertText().orElseThrow());
+    }
+
+    @Test
+    void toProcessCounterPredicateExcludesIgnoredOkAndTvdbRows() {
+        assertTrue(ScanRowTableSupport.matchesStatusFilter(
+                row("Review.mkv", ScanMediaType.SERIES, ScanRowStatus.REVIEW),
+                ScanRowStatusFilter.TO_PROCESS));
+        assertFalse(ScanRowTableSupport.matchesStatusFilter(
+                row("Ignored.mkv", ScanMediaType.SERIES, ScanRowStatus.IGNORED),
+                ScanRowStatusFilter.TO_PROCESS));
+        assertFalse(ScanRowTableSupport.matchesStatusFilter(
+                row("Ready.mkv", ScanMediaType.SERIES, ScanRowStatus.OK),
+                ScanRowStatusFilter.TO_PROCESS));
+        assertFalse(ScanRowTableSupport.matchesStatusFilter(
+                row("Tvdb.mkv", ScanMediaType.SERIES, ScanRowStatus.TVDB),
+                ScanRowStatusFilter.TO_PROCESS));
+    }
+
     private static ScanRow row(String filename, ScanMediaType type, ScanRowStatus status) {
         return new ScanRow(Path.of(filename), filename, "mkv", type, status);
     }

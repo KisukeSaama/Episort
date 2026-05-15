@@ -61,6 +61,8 @@
 .top-bar {
     -fx-padding: 12 22 12 22;
     -fx-spacing: 12;
+    -fx-min-height: 59;
+    -fx-pref-height: 59;
     -fx-background-color: rgba(11,13,18,0.85);
     -fx-border-color: transparent transparent rgba(249,115,22,0.10) transparent;
     -fx-border-width: 0 0 1 0;
@@ -856,10 +858,16 @@
     -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.72), 20, 0, 0, 0);
 }
 
+.header-action {
+    -fx-min-height: 32;
+    -fx-pref-height: 32;
+}
+
 .menu-button.load-primary {
     -fx-background-color: rgba(20,23,30,0.90);
     -fx-border-color: rgba(249,115,22,0.62);
     -fx-text-fill: #f5f7fb;
+    -fx-min-width: 104;
     -fx-padding: 7 14 7 14;
 }
 
@@ -879,6 +887,7 @@
 
 .menu-button.load-primary .label {
     -fx-text-fill: #f5f7fb;
+    -fx-padding: 0 6 0 0;
 }
 
 .menu-button.load-primary .arrow {
@@ -970,6 +979,18 @@
 .top-search .text-field:focused,
 .episort-search-field:focused {
     -fx-border-color: transparent;
+    -fx-effect: null;
+}
+
+/* Search wrappers own the visible border; their inner text field must stay
+   visually flat both before and after the generic input rules below apply. */
+.top-search .text-field,
+.episort-search-box .text-field,
+.episort-search-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-insets: 0;
+    -fx-border-insets: 0;
     -fx-effect: null;
 }
 

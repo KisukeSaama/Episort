@@ -15,6 +15,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
@@ -61,6 +62,8 @@ public final class RowDetailPanel {
     private final Button tvdbSearch = new Button();
     private final Button tvdbApply = new Button();
     private final Button tvdbReset = new Button();
+    private final ProgressIndicator tvdbBusy = new ProgressIndicator();
+    private final Label tvdbBusyLabel = new Label();
 
     private final Label proposedValue;
     private final Label destinationValue;
@@ -205,6 +208,11 @@ public final class RowDetailPanel {
         tvdbReset.getStyleClass().add("ghost");
         tvdbApply.setOnAction(e -> {
             String selected = tvdbCandidate.getValue();
+            boolean selectedExistingMatch = isApplyingExistingMatch(currentRow, selected);
+            if (selectedExistingMatch) {
+                onApplySelectedMatch.accept(currentRow, selectedOrder());
+                return;
+            }
             if (selected != null && !selected.isBlank() && currentRow != null) {
                 onApplyCandidate.accept(currentRow, selected);
                 return;
@@ -225,7 +233,15 @@ public final class RowDetailPanel {
         tvdbSecondaryControls.getStyleClass().add("tvdb-detail-secondary-controls");
         HBox.setHgrow(tvdbSearch, Priority.ALWAYS);
         HBox.setHgrow(tvdbReset, Priority.ALWAYS);
-        VBox tvdbControls = new VBox(8, tvdbSecondaryControls, tvdbOrder, tvdbApply);
+        tvdbBusy.setMaxSize(18, 18);
+        tvdbBusy.setVisible(false);
+        tvdbBusy.setManaged(false);
+        tvdbBusyLabel.getStyleClass().add("tvdb-match-meta");
+        tvdbBusyLabel.setVisible(false);
+        tvdbBusyLabel.setManaged(false);
+        HBox tvdbBusyRow = new HBox(8, tvdbBusy, tvdbBusyLabel);
+        tvdbBusyRow.setAlignment(Pos.CENTER_LEFT);
+        VBox tvdbControls = new VBox(8, tvdbSecondaryControls, tvdbOrder, tvdbApply, tvdbBusyRow);
         tvdbControls.getStyleClass().add("tvdb-detail-controls");
 
         VBox sourceSection = new VBox(6,
@@ -329,6 +345,18 @@ public final class RowDetailPanel {
         }
     }
 
+    public void setTvdbBusy(boolean busy, String message) {
+        tvdbSearch.setDisable(busy);
+        tvdbOrder.setDisable(busy);
+        tvdbApply.setDisable(busy || currentRow == null || currentRow.tvdbCandidate().isEmpty());
+        tvdbReset.setDisable(busy || currentRow == null || currentRow.tvdbMatch().isEmpty());
+        tvdbBusy.setVisible(busy);
+        tvdbBusy.setManaged(busy);
+        tvdbBusyLabel.setText(message == null ? "" : message);
+        tvdbBusyLabel.setVisible(busy);
+        tvdbBusyLabel.setManaged(busy);
+    }
+
     public void applyLanguage(AppLanguage language) {
         currentLanguage = language;
         emptyTitle.setText(UiText.detailEmptyTitle(language));
@@ -417,6 +445,7 @@ public final class RowDetailPanel {
             tvdbCandidate.getItems().add(currentMatch);
         }
         tvdbCandidate.setValue(currentMatch);
+        tvdbOrder.setValue(orderLabel(row.appliedTvdbOrder().orElse(TvdbEpisodeOrder.AIRED)));
         tvdbReset.setDisable(row.tvdbMatch().isEmpty());
         updateTvdbCard(row);
 
@@ -499,6 +528,21 @@ public final class RowDetailPanel {
             return TvdbEpisodeOrder.ABSOLUTE;
         }
         return TvdbEpisodeOrder.AIRED;
+    }
+
+    static boolean isApplyingExistingMatch(ScanRow row, String selectedLabel) {
+        return row != null
+                && selectedLabel != null
+                && row.tvdbMatch().filter(selectedLabel::equals).isPresent()
+                && row.tvdbCandidate().isPresent();
+    }
+
+    private String orderLabel(TvdbEpisodeOrder order) {
+        return switch (order) {
+            case DVD -> UiText.scanBatchTvdbOrderDvd(currentLanguage);
+            case ABSOLUTE -> UiText.scanBatchTvdbOrderAbsolute(currentLanguage);
+            case AIRED -> UiText.scanBatchTvdbOrderAired(currentLanguage);
+        };
     }
 
     private void updateTvdbTargetHint() {
