@@ -202,43 +202,38 @@ public class EmbeddedLlamaRuntime implements AutoCloseable {
         args.add("127.0.0.1");
         args.add("--port");
         args.add(String.valueOf(port));
-        // GPU offload: all layers to VRAM. Qwen3 4B Q4_K_M (~2.5 GB) fits
-        // comfortably on modest discrete GPUs.
+        // Literal mirror of the LM Studio "Qwen3 4B 2507" profile validated by
+        // the user. Values match the screenshot 1:1; do not "improve" them
+        // without re-validating against that profile.
+        // GPU Offload = 36.
         args.add("-ngl");
-        args.add("999");
-        // 32K context: Qwen3 4B Instruct 2507 supports 32,768 tokens and this keeps large
-        // selected batches in-context without relying on reasoning mode.
+        args.add("36");
+        // Context Length = 4096.
         args.add("--ctx-size");
-        args.add("32768");
-        // Larger logical and physical batch sizes to saturate the GPU during
-        // prompt processing (system prompt + filenames are batched).
+        args.add("4096");
+        // Evaluation Batch Size = 512.
         args.add("--batch-size");
         args.add("512");
         args.add("--ubatch-size");
         args.add("512");
-        // CPU threads for the bits that aren't on the GPU. RTX 4070 Super
-        // builds typically pair with 8+ physical cores; cap at 8 to leave
-        // room for the JavaFX UI thread.
+        // CPU Thread Pool Size = 6.
         args.add("--threads");
-        args.add(String.valueOf(Math.min(8, Math.max(2, Runtime.getRuntime().availableProcessors() / 2))));
-        // Single slot. Tried --parallel 4 to fan out the per-file pass, but on
-        // a 4B Q4 model on one GPU, four concurrent decode streams are
-        // bandwidth-bound and per-call latency 3-4x'd; aggregate throughput
-        // also dropped because each slot keeps its own KV cache so the
-        // system-prompt prefix is prefilled once per slot, not once total.
-        // Concurrency on one GPU only pays off with long shared context or
-        // long decode, neither of which we have. Batching wins here instead.
+        args.add("6");
+        // Single slot so --ctx-size 4096 = 4096 tokens per prediction (matches
+        // LM Studio's "Context Length 4096"). LM Studio's Max Concurrent
+        // Predictions = 4 isn't mirrored: with llama-server's per-slot context
+        // division it would give 1024/slot, and Episort issues batches
+        // sequentially anyway so the extra slots would sit idle.
         args.add("--parallel");
         args.add("1");
-        // Flash attention + KV quantization. Halves KV memory at 32K and
-        // gives a ~2x prefill speedup on Ampere/Ada GPUs. If a future bundled
-        // binary regresses on these flags, fall back to removing them.
+        // Flash Attention = on.
         args.add("-fa");
         args.add("on");
-        args.add("-ctk");
-        args.add("q8_0");
-        args.add("-ctv");
-        args.add("q8_0");
+        // Keep Model in Memory = on.
+        args.add("--mlock");
+        // Try mmap() = on, Offload KV Cache to GPU Memory = on, RoPE
+        // Frequency Base/Scale = Auto, K/V Cache Quantization = (unchecked,
+        // f16). These all map to llama-server defaults, no explicit flag.
         // Use the GGUF's embedded Jinja chat template so /v1/chat/completions
         // formats turns exactly the way Qwen3 expects (incl. tool-calls and
         // the optional /no_think switch) instead of relying on hand-rolled

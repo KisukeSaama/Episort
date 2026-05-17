@@ -14,8 +14,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -31,6 +33,7 @@ final class FakeLlamaServer implements AutoCloseable {
     private final Path extractionDir;
     private final Path modelPath;
     private final Deque<String> queuedContent = new ArrayDeque<>();
+    private final List<String> capturedRequestBodies = new ArrayList<>();
     private volatile String nextContent =
             "{\"patterns\":[\"SxxExx\"],\"explanation\":\"detected pattern hint\"}";
 
@@ -49,6 +52,11 @@ final class FakeLlamaServer implements AutoCloseable {
         this.server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/health", exchange -> respond(exchange, 200, "{\"status\":\"ok\"}"));
         server.createContext("/v1/chat/completions", exchange -> {
+            byte[] reqBytes = exchange.getRequestBody().readAllBytes();
+            String reqBody = new String(reqBytes, StandardCharsets.UTF_8);
+            synchronized (capturedRequestBodies) {
+                capturedRequestBodies.add(reqBody);
+            }
             String content = pollContent();
             String body = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":"
                     + jsonString(content) + "},\"finish_reason\":\"stop\"}]}";
@@ -76,6 +84,28 @@ final class FakeLlamaServer implements AutoCloseable {
 
     URI baseUri() {
         return URI.create("http://127.0.0.1:" + server.getAddress().getPort());
+    }
+
+    /**
+     * Counts captured chat-completion requests whose serialized body contains
+     * the given marker substring. Use to distinguish per-file ("You parse ONE
+     * media filename") from batched ("You parse a NUMBERED BATCH") routes
+     * without having to plumb a side channel.
+     */
+    int countRequestsContaining(String marker) {
+        synchronized (capturedRequestBodies) {
+            int n = 0;
+            for (String body : capturedRequestBodies) {
+                if (body.contains(marker)) n++;
+            }
+            return n;
+        }
+    }
+
+    int totalRequests() {
+        synchronized (capturedRequestBodies) {
+            return capturedRequestBodies.size();
+        }
     }
 
     LlamaServerClient client() {

@@ -1109,7 +1109,8 @@ public final class ScanScreen {
             row.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
                 if (row.isEmpty()
                         || event.getButton() != MouseButton.PRIMARY
-                        || isSelectionCellEvent(event)) {
+                        || isSelectionCellEvent(event)
+                        || isEditableCellEvent(event)) {
                     return;
                 }
                 switchToSingleSelection(row.getItem());
@@ -2004,6 +2005,20 @@ public final class ScanScreen {
         for (Node current = node; current != null; current = current.getParent()) {
             if (current.getStyleClass().contains("selection-cell")) {
                 return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isEditableCellEvent(MouseEvent event) {
+        Object target = event.getTarget();
+        if (!(target instanceof Node node)) {
+            return false;
+        }
+        for (Node current = node; current != null; current = current.getParent()) {
+            if (current instanceof TableCell<?, ?> cell) {
+                TableColumn<?, ?> column = cell.getTableColumn();
+                return column != null && column.isEditable();
             }
         }
         return false;
