@@ -7,4 +7,3 @@ out/
 *.log
 *.tmp
 
-src/main/java/com/episort/config/BuildTvdbCredentials.java

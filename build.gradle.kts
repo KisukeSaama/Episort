@@ -28,21 +28,6 @@ tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
 }
 
-tasks.register("prepareLocalTvdbCredentials") {
-    val generated = layout.projectDirectory.file("src/main/java/com/episort/config/BuildTvdbCredentials.java")
-    val example = layout.projectDirectory.file("src/main/java/com/episort/config/BuildTvdbCredentials.java.example")
-    outputs.file(generated)
-    doLast {
-        if (!generated.asFile.exists()) {
-            generated.asFile.writeText(example.asFile.readText())
-        }
-    }
-}
-
-tasks.named("compileJava") {
-    dependsOn("prepareLocalTvdbCredentials")
-}
-
 dependencies {
     implementation("net.java.dev.jna:jna:5.18.1")
     implementation("com.google.code.gson:gson:2.11.0")
