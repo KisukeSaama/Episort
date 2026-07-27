@@ -1,9 +1,0 @@
-.gradle/
-.tools/
-build/
-bin/
-out/
-
-*.log
-*.tmp
-
