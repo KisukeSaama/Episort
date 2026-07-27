@@ -1,0 +1,8 @@
+.gradle/
+build/
+out/
+
+# Local TVDB credentials
+tvdb.properties
+*.local.properties
+.env
