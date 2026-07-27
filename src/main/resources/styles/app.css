@@ -18,6 +18,10 @@
         linear-gradient(to bottom, #07080b, #0a0c11);
 }
 
+.app-shell.window-restored {
+    -fx-background-radius: 10;
+}
+
 /* Dark is the only theme. There is no .theme-light rule set: a half-styled
    light skin renders dark glass panels on a white page, which is worse than
    not offering one. */
@@ -48,6 +52,10 @@
     -fx-border-color: transparent transparent rgba(249,115,22,0.10) transparent;
     -fx-border-width: 0 0 1 0;
     -fx-alignment: center-left;
+}
+
+.window-restored .top-bar {
+    -fx-background-radius: 10 10 0 0;
 }
 
 .top-bar-content {
@@ -237,6 +245,18 @@
     -fx-border-width: 0 1 0 0;
 }
 
+.window-restored .sidebar {
+    -fx-background-radius: 0 0 0 10;
+}
+
+.window-snap-preview {
+    -fx-background-color: rgba(249,115,22,0.10);
+    -fx-border-color: rgba(249,115,22,0.70);
+    -fx-border-width: 1;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+}
+
 .sidebar-brand {
     -fx-spacing: 12;
     -fx-alignment: center-left;
@@ -310,6 +330,155 @@
 .nav-item.active .nav-item-icon,
 .nav-item.active .nav-item-label {
     -fx-text-fill: #fb923c;
+}
+
+/* ---- Sidebar workspace explorer ----------------------------------------- */
+
+.workspace-explorer {
+    -fx-min-height: 0;
+}
+
+.workspace-explorer-header {
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+    -fx-padding: 0 8 0 8;
+    -fx-alignment: center-left;
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-border-color: transparent;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+
+.workspace-explorer-header:hover {
+    -fx-background-color: rgba(255,255,255,0.04);
+}
+
+.workspace-explorer-header:focused {
+    -fx-border-color: rgba(249,115,22,0.68);
+}
+
+.workspace-explorer-header .sidebar-section-label {
+    -fx-padding: 0;
+}
+
+.workspace-explorer-chevron {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #8a93a3;
+}
+
+.workspace-explorer-body {
+    -fx-min-height: 120;
+    -fx-alignment: top-left;
+    -fx-background-color: transparent;
+}
+
+.workspace-explorer-empty {
+    -fx-padding: 10;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #8a93a3;
+}
+
+.workspace-tree,
+.workspace-tree > .virtual-flow,
+.workspace-tree .corner {
+    -fx-background-color: transparent;
+}
+
+.workspace-tree {
+    -fx-padding: 0;
+    -fx-border-color: transparent;
+}
+
+.workspace-tree .tree-cell {
+    -fx-min-height: 28;
+    -fx-pref-height: 28;
+    -fx-padding: 0 4 0 2;
+    -fx-background-color: transparent;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: #b8c0cc;
+}
+
+.workspace-tree .tree-cell:filled:hover {
+    -fx-background-color: rgba(255,255,255,0.04);
+    -fx-background-radius: 6;
+    -fx-text-fill: #f5f7fb;
+}
+
+.workspace-tree .tree-cell:filled:selected {
+    -fx-background-color: rgba(249,115,22,0.14);
+    -fx-background-radius: 6;
+    -fx-text-fill: #fb923c;
+}
+
+.workspace-tree .tree-cell.workspace-node-directory {
+    -fx-font-weight: 400;
+    -fx-text-fill: #b8c0cc;
+}
+
+.workspace-tree .tree-cell.workspace-node-root {
+    -fx-font-weight: 700;
+    -fx-text-fill: #fb923c;
+}
+
+.workspace-tree .tree-cell.workspace-node-media {
+    -fx-text-fill: #b8c0cc;
+}
+
+.workspace-tree .tree-cell.workspace-node-file,
+.workspace-tree .tree-cell.workspace-node-link,
+.workspace-tree .tree-cell.workspace-node-transient {
+    -fx-text-fill: #767e8d;
+}
+
+.workspace-tree .tree-cell.workspace-node-error {
+    -fx-text-fill: #f87171;
+}
+
+.workspace-tree .tree-cell > .tree-disclosure-node > .arrow {
+    -fx-background-color: #8a93a3;
+}
+
+.workspace-tree .scroll-bar:horizontal {
+    -fx-opacity: 0;
+    -fx-pref-height: 0;
+    -fx-max-height: 0;
+}
+
+.workspace-tree .scroll-bar:vertical {
+    -fx-pref-width: 8;
+    -fx-max-width: 8;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+}
+
+.workspace-tree .scroll-bar:vertical .track,
+.workspace-tree .scroll-bar:vertical .track-background,
+.workspace-tree .scroll-bar:vertical .increment-button,
+.workspace-tree .scroll-bar:vertical .decrement-button {
+    -fx-background-color: transparent;
+    -fx-pref-height: 0;
+    -fx-max-height: 0;
+}
+
+.workspace-tree .scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(138,147,163,0.52);
+    -fx-background-radius: 999;
+}
+
+.workspace-tree .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: rgba(249,115,22,0.52);
+}
+
+.workspace-tree .scroll-bar:vertical .increment-arrow,
+.workspace-tree .scroll-bar:vertical .decrement-arrow {
+    -fx-shape: "";
+    -fx-padding: 0;
 }
 
 /* ---- 4. Content & dashboard --------------------------------------------- */

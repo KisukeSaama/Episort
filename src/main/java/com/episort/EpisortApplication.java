@@ -26,6 +26,7 @@ import com.episort.ui.AppShell;
 import com.episort.ui.AppShellViewModel;
 import com.episort.ui.UiText;
 import com.episort.ui.WorkflowPhase;
+import com.episort.ui.platform.WindowManager;
 import com.episort.ui.platform.WindowsTitleBar;
 import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ErrorSeverity;
@@ -51,7 +52,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.scene.paint.Color;
 import javafx.scene.Scene;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
@@ -89,14 +92,15 @@ public class EpisortApplication extends Application {
                 new TvdbCredentialConfigurationService(
                         tvdbCredentialStore,
                         new HttpTvdbConnectionTester()));
-        EmbeddedTvdbCredentialsProvider.load()
-                .ifPresent(startupWorkflow::configureAndTestTvdb);
+        TvdbCredentialConfigurationResult tvdbConfiguration = EmbeddedTvdbCredentialsProvider.load()
+                .map(startupWorkflow::configureAndTestTvdb)
+                .orElseGet(startupWorkflow::loadTvdbConfiguration);
         AppLanguage resolvedLanguage = settingsStore.loadLanguage()
                 .map(EpisortApplication::parseLanguage)
                 .orElseGet(AppLanguage::detectFromOs);
         AppShellViewModel viewModel = AppShellViewModel.fromStartupPrerequisites(
                         startupWorkflow.loadWorkspaceConfiguration(),
-                        startupWorkflow.loadTvdbConfiguration())
+                        tvdbConfiguration)
                 .withLanguage(resolvedLanguage);
         RunEventStore runEventStore = FileRunEventStore.userProfileStore();
         AppShell appShell = new AppShell(
@@ -104,7 +108,7 @@ public class EpisortApplication extends Application {
                 workspace -> AppShellViewModel.fromWorkspaceConfiguration(
                         startupWorkflow.configureWorkspace(workspace)),
                 inputFolder -> scanInputFolder(startupWorkflow, inputFolder, runEventStore),
-                (apiKey, subscriberPin) -> configureTvdb(subscriberPin),
+                tvdbConfiguration,
                 () -> startupWorkflow.loadWorkspaceConfiguration().settings().workspaceDirectory(),
                 () -> startupWorkflow.loadWorkspaceConfiguration().success(),
                 () -> {},
@@ -117,15 +121,16 @@ public class EpisortApplication extends Application {
         stage.setTitle("Episort");
         // No native chrome: the top bar draws the window buttons itself, which
         // is what keeps them from costing a second row of height.
-        stage.initStyle(StageStyle.UNDECORATED);
+        stage.initStyle(StageStyle.TRANSPARENT);
         stage.getIcons().add(AppShell.logoImage());
         appShell.setLoading(true, UiText.loadingStartup(viewModel.language()));
-        stage.setScene(new Scene(appShell.root(), 1180, 760));
+        Scene scene = new Scene(appShell.root(), 1180, 760, Color.TRANSPARENT);
+        stage.setScene(scene);
         stage.setMinWidth(1180);
         stage.setMinHeight(760);
-        stage.setMaximized(true);
-        appShell.installWindowDecorations(stage);
         stage.show();
+        WindowManager windowManager = appShell.installWindowDecorations(stage);
+        installWindowShape(stage, scene, appShell, windowManager);
         Platform.runLater(() -> {
             appShell.setLoading(false, "");
             // Story 7.4: an execution that never closed means the app stopped mid-run.
@@ -136,6 +141,29 @@ public class EpisortApplication extends Application {
         appShell.setLanguageChangeListener(language -> settingsStore.saveLanguage(language.name()));
         WindowsTitleBar.applyDarkMode(stage);
         appShell.scanScreen().setTvdbLookup(tvdbClient, tvdbCredentialsSupplier);
+    }
+
+    private static void installWindowShape(
+            Stage stage, Scene scene, AppShell appShell, WindowManager windowManager) {
+        Rectangle clip = new Rectangle();
+        clip.widthProperty().bind(scene.widthProperty());
+        clip.heightProperty().bind(scene.heightProperty());
+        appShell.root().setClip(clip);
+
+        Runnable refresh = () -> {
+            boolean restored = windowManager.state() == com.episort.ui.platform.WindowState.NORMAL
+                    && !stage.isFullScreen();
+            double arc = restored ? 20 : 0;
+            clip.setArcWidth(arc);
+            clip.setArcHeight(arc);
+            appShell.root().getStyleClass().remove("window-restored");
+            if (restored) {
+                appShell.root().getStyleClass().add("window-restored");
+            }
+        };
+        windowManager.addStateListener(state -> refresh.run());
+        stage.fullScreenProperty().addListener((observable, wasFullScreen, isFullScreen) -> refresh.run());
+        refresh.run();
     }
 
     private static AppLanguage parseLanguage(String stored) {
@@ -399,30 +427,4 @@ public class EpisortApplication extends Application {
         }
     }
 
-    private AppShellViewModel configureTvdb(Optional<String> subscriberPin) {
-        AppShellViewModel result;
-        try {
-            TvdbCredentials embeddedCredentials = EmbeddedTvdbCredentialsProvider.load()
-                    .map(credentials -> new TvdbCredentials(credentials.apiKey(), subscriberPin))
-                    .orElseThrow(() -> new IllegalStateException("Embedded TVDB API key is not configured."));
-            var testResult = new HttpTvdbConnectionTester().test(embeddedCredentials);
-            result = AppShellViewModel.fromTvdbConfiguration(testResult.success()
-                    ? TvdbCredentialConfigurationResult.passed()
-                    : TvdbCredentialConfigurationResult.failure(testResult.error().orElseThrow()));
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            result = AppShellViewModel.fromError(ApplicationError.recoverable(
-                    "TVDB_CONFIGURATION_REQUIRED",
-                    ErrorSeverity.BLOCKING,
-                    "TVDB access is not available in this build.",
-                    "Embedded TVDB API key is missing or invalid."));
-        }
-        AppShell shell = appShellRef;
-        if (shell != null) {
-            var existingScan = shell.currentViewModel().inventoryScanResult();
-            if (existingScan.isPresent()) {
-                result = result.withInventoryScanResult(existingScan);
-            }
-        }
-        return result;
-    }
 }

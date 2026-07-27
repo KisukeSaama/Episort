@@ -124,6 +124,13 @@ public final class UiText {
     public static String scanFailedFolder(AppLanguage language) { return t(language, "scan.failed.folder"); }
     public static String scanFailedFiles(AppLanguage language) { return t(language, "scan.failed.files"); }
     public static String sidebarSectionNavigation(AppLanguage language) { return t(language, "sidebar.section.navigation"); }
+    public static String sidebarSectionWorkspace(AppLanguage language) { return t(language, "sidebar.section.workspace"); }
+    public static String workspaceExplorerEmpty(AppLanguage language) { return t(language, "workspace.explorer.empty"); }
+    public static String workspaceExplorerLoading(AppLanguage language) { return t(language, "workspace.explorer.loading"); }
+    public static String workspaceExplorerUnavailable(AppLanguage language) { return t(language, "workspace.explorer.unavailable"); }
+    public static String workspaceExplorerAccessible(AppLanguage language) { return t(language, "workspace.explorer.accessible"); }
+    public static String workspaceExplorerCollapse(AppLanguage language) { return t(language, "workspace.explorer.collapse"); }
+    public static String workspaceExplorerExpand(AppLanguage language) { return t(language, "workspace.explorer.expand"); }
     public static String a11yClearSearch(AppLanguage language) { return t(language, "a11y.clearSearch"); }
     public static String a11yCloseWindow(AppLanguage language) { return t(language, "a11y.closeWindow"); }
     public static String workspaceValueEmpty(AppLanguage language) { return t(language, "workspace.value.empty"); }
@@ -400,10 +407,8 @@ public final class UiText {
     public static String preferencesSectionDescription(AppLanguage language) { return t(language, "preferences.section.description"); }
     public static String tvdbSettingsSectionTitle(AppLanguage language) { return t(language, "tvdb.settings.section.title"); }
     public static String tvdbSettingsSectionDescription(AppLanguage language) { return t(language, "tvdb.settings.section.description"); }
-    public static String tvdbSettingsTestAndSave(AppLanguage language) { return t(language, "tvdb.settings.testAndSave"); }
-    public static String tvdbSettingsNotChecked(AppLanguage language) { return t(language, "tvdb.settings.notChecked"); }
-    public static String tvdbSettingsChecking(AppLanguage language) { return t(language, "tvdb.settings.checking"); }
-    public static String tvdbSettingsOnline(AppLanguage language) { return t(language, "tvdb.settings.online"); }
+    public static String tvdbSettingsActive(AppLanguage language) { return t(language, "tvdb.settings.active"); }
+    public static String tvdbSettingsInactive(AppLanguage language) { return t(language, "tvdb.settings.inactive"); }
     public static String tvdbSettingsUnavailable(AppLanguage language) { return t(language, "tvdb.settings.unavailable"); }
     public static String tvdbSettingsResetCache(AppLanguage language) { return t(language, "tvdb.settings.resetCache"); }
     public static String tvdbSettingsCacheCleared(AppLanguage language, int count) { return t(language, "tvdb.settings.cacheCleared").replace("{0}", Integer.toString(count)); }

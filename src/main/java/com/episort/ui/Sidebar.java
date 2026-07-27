@@ -1,8 +1,10 @@
 package com.episort.ui;
 
+import java.nio.file.Path;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -10,7 +12,6 @@ import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
@@ -20,6 +21,7 @@ public final class Sidebar {
     private final VBox root;
     private final Label brandName;
     private final Label sectionLabel;
+    private final WorkspaceExplorer workspaceExplorer;
     private final Map<AppView, NavItem> navItems = new EnumMap<>(AppView.class);
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
 
@@ -41,12 +43,10 @@ public final class Sidebar {
         sectionLabel = new Label();
         sectionLabel.getStyleClass().add("sidebar-section-label");
 
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
-
         navItems.put(AppView.SCAN, new NavItem(AppView.SCAN, "⌕", onSelect));
         navItems.put(AppView.HISTORY, new NavItem(AppView.HISTORY, "↺", onSelect));
         navItems.put(AppView.SETTINGS, new NavItem(AppView.SETTINGS, "⚙", onSelect));
+        workspaceExplorer = new WorkspaceExplorer();
 
         root = new VBox(2,
                 brandRow,
@@ -54,7 +54,7 @@ public final class Sidebar {
                 navItems.get(AppView.SCAN).button(),
                 navItems.get(AppView.HISTORY).button(),
                 navItems.get(AppView.SETTINGS).button(),
-                spacer);
+                workspaceExplorer.root());
         root.getStyleClass().add(STYLE_CLASS);
         root.setMinWidth(220);
         root.setPrefWidth(230);
@@ -74,6 +74,15 @@ public final class Sidebar {
         navItems.get(AppView.SCAN).setLabel(UiText.navScan(language));
         navItems.get(AppView.HISTORY).setLabel(UiText.navHistory(language));
         navItems.get(AppView.SETTINGS).setLabel(UiText.navSettings(language));
+        workspaceExplorer.applyLanguage(language);
+    }
+
+    public void setWorkspace(Optional<Path> workspace) {
+        workspaceExplorer.setWorkspace(workspace);
+    }
+
+    public void refreshWorkspace() {
+        workspaceExplorer.refresh();
     }
 
     public void setActive(AppView view) {

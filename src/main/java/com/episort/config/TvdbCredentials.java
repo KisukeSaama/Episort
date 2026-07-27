@@ -11,4 +11,11 @@ public record TvdbCredentials(String apiKey, Optional<String> subscriberPin) {
             throw new IllegalArgumentException("TVDB API key is required.");
         }
     }
+
+    @Override
+    public String toString() {
+        return "TvdbCredentials[apiKey=[REDACTED], subscriberPin="
+                + (subscriberPin.isPresent() ? "Optional[[REDACTED]]" : "Optional.empty")
+                + "]";
+    }
 }

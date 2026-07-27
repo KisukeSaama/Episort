@@ -206,11 +206,16 @@ Each component is documented as **Anatomy → Class → Rules**.
 
 ### 4.1 Sidebar
 
-- **Anatomy:** brand row → section labels (`.sidebar-section-label`) → nav
-  items (`.nav-item`) → flexible spacer (no footer with invented metadata).
+- **Anatomy:** brand row → navigation label → nav items (`.nav-item`) →
+  workspace label → read-only workspace tree filling the remaining height.
 - **Classes:** `.sidebar`, `.sidebar-brand`, `.sidebar-brand-name`,
   `.sidebar-section-label`, `.nav-item`, `.nav-item.active`,
-  `.nav-item-icon`, `.nav-item-label`.
+  `.nav-item-icon`, `.nav-item-label`, `.workspace-explorer`,
+  `.workspace-explorer-header`, `.workspace-explorer-chevron`,
+  `.workspace-explorer-body`, `.workspace-explorer-empty`, `.workspace-tree`,
+  `.workspace-node-directory`, `.workspace-node-media`,
+  `.workspace-node-file`, `.workspace-node-link`,
+  `.workspace-node-transient`, `.workspace-node-error`.
 - **Rules:**
   - Sidebar lists exactly **three** surfaces: **Scan**, **History**,
     **Settings**. Do not add other entries without removing one — keep the
@@ -226,6 +231,23 @@ Each component is documented as **Anatomy → Class → Rules**.
     exists in the application.
   - The nav button's own text is empty (icon and label live in its graphic),
     so every nav item sets `setAccessibleText` with its label.
+  - The workspace tree is a filesystem readout, not a fourth navigation
+    surface or a file manager. It supports expand, collapse and selection but
+    never rename, move, delete or drag-and-drop.
+  - The `// WORKSPACE` header is one full-width keyboard-focusable control
+    that collapses the section without discarding its loaded tree state.
+  - The configured workspace is the only root: there is no parent row and no
+    way to browse above it. Symbolic links are visible but never expandable.
+  - Directory children load lazily off the JavaFX thread so opening a NAS
+    workspace cannot freeze the shell. Directories sort before files;
+    supported `.avi`, `.mp4` and `.mkv` files retain normal emphasis while
+    other entries recede. Full paths remain available through tooltips.
+  - At the fixed 230 px sidebar width, cells are constrained to the viewport
+    and use a terminal ellipsis. Horizontal scrolling is disabled; the
+    vertical scrollbar uses the compact neutral sidebar treatment.
+  - The explorer is refreshed after an executed plan changes the filesystem.
+    Before configuration it renders the localized empty state, never a
+    fabricated folder tree.
   - The shell moves initial focus to the load action once the scene attaches.
     Left alone, JavaFX focuses the first traversable node — the search field —
     and the window opens with the search box lit while the step the user needs
@@ -239,7 +261,7 @@ Each component is documented as **Anatomy → Class → Rules**.
 - **Classes:** `.top-bar`, `.workspace-chip`, `.workspace-chip-prefix`,
   `.workspace-chip-label`, `.episort-search-box`, `.episort-search-field`,
   `.episort-search-icon`, `.episort-search-clear`, `.top-search`,
-  `.status-pill`.
+  `.status-pill`, `.window-controls`, `.window-button`, `.window-snap-preview`.
 - **Rules:**
   - The status pill is **derived from `AppShellViewModel.errorCode()`**:
     - empty → the pill is hidden. A permanent green `OK` is decoration; the
@@ -273,6 +295,11 @@ Each component is documented as **Anatomy → Class → Rules**.
     only `Charger` is active; `Réinitialiser` and `Réanalyser` stay disabled.
     Once a folder is loaded, those secondary actions become available.
 
+  - The empty portions of the bar are the window drag surface. Controls,
+    menus, and fields retain their normal pointer behavior. Window placement
+    previews use the restrained `.window-snap-preview` outline and disappear
+    when the pointer leaves a snap edge or the drag finishes.
+
 ### 4.3 Card (metric)
 
 - **Anatomy:** title (mono, faint) → value.
@@ -295,12 +322,18 @@ section of Settings.
 
 ### 4.6 Settings section
 
-- **Anatomy:** title (mono accent) → description (muted) → action row.
+- **Anatomy:** title (mono accent) → description (muted) → status/action row.
 - **Classes:** `.settings-section`, `.settings-section-title`,
   `.settings-section-description`, `.workspace-value`.
 - **Rules:**
   - Reuse `SettingsPane` rather than re-implementing the layout per story.
   - The workspace path always uses `.workspace-value` (mono, accent-hover color).
+  - The TVDB row displays the real connection result established automatically
+    during application startup: `.dot-good` + `Actif` on success,
+    `.dot-error` + `Inactif` otherwise. It never exposes the API key, PIN, or
+    raw connection error and offers no manual test button.
+  - Cache feedback is separate from the connection status; clearing an empty
+    or populated cache must never change the TVDB availability signal.
   - Settings is a sidebar surface, not a dialog: it replaces the content
     area like Scan and History do.
   - The language combo sits alone on its row, so it carries `setAccessibleText`

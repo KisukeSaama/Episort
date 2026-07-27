@@ -3,12 +3,12 @@ package com.episort.ui.settings;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.AppShellViewModel;
 import com.episort.ui.UiText;
+import com.episort.workflow.TvdbCredentialConfigurationResult;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -37,12 +37,13 @@ public final class SettingsPane {
     private final Label tvdbTitle;
     private final Label tvdbDescription;
     private final Label tvdbStatus;
+    private final Label tvdbCacheFeedback;
     private final Region tvdbStatusDot;
     private final Button chooseWorkspace;
-    private final Button tvdbTestAndSave;
     private final Button tvdbResetCache;
     private final ComboBox<AppLanguage> languageCombo;
     private final Supplier<Optional<Path>> currentWorkspace;
+    private final TvdbCredentialConfigurationResult tvdbConfiguration;
     @SuppressWarnings("unused")
     private final Runnable onClose;
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
@@ -52,11 +53,12 @@ public final class SettingsPane {
             Function<Path, AppShellViewModel> configureWorkspace,
             Supplier<Optional<Path>> currentWorkspace,
             Consumer<AppLanguage> onLanguageChange,
-            BiFunction<String, Optional<String>, AppShellViewModel> configureTvdb,
+            TvdbCredentialConfigurationResult tvdbConfiguration,
             Supplier<Integer> resetTvdbCache,
             Runnable onClose,
             Consumer<AppShellViewModel> onConfigured) {
         this.currentWorkspace = currentWorkspace;
+        this.tvdbConfiguration = tvdbConfiguration;
         this.onClose = onClose;
 
         pageEyebrow = new Label();
@@ -156,49 +158,34 @@ public final class SettingsPane {
         tvdbDescription.getStyleClass().add("settings-section-description");
         tvdbDescription.setWrapText(true);
 
-        tvdbTestAndSave = new Button();
-        tvdbTestAndSave.getStyleClass().add("primary");
         tvdbStatusDot = new Region();
         tvdbStatusDot.getStyleClass().addAll("dot", "dot-idle");
         tvdbStatus = new Label();
         tvdbStatus.getStyleClass().add("settings-section-description");
         tvdbStatus.setWrapText(true);
-        tvdbTestAndSave.setOnAction(event -> {
-            if (configureTvdb == null) {
-                tvdbStatus.setText(UiText.tvdbSettingsUnavailable(currentLanguage));
-                setTvdbStatusDot(false);
-                return;
-            }
-            tvdbStatus.setText(UiText.tvdbSettingsChecking(currentLanguage));
-            tvdbStatusDot.getStyleClass().setAll("dot", "dot-warn");
-            AppShellViewModel result = configureTvdb.apply("", Optional.empty());
-            onConfigured.accept(result);
-            boolean ok = result.errorCode().isEmpty();
-            setTvdbStatusDot(ok);
-            tvdbStatus.setText(ok ? UiText.tvdbSettingsOnline(currentLanguage) : result.description());
-        });
+        tvdbCacheFeedback = new Label();
+        tvdbCacheFeedback.getStyleClass().add("settings-section-description");
+        tvdbCacheFeedback.setWrapText(true);
 
         tvdbResetCache = new Button();
         tvdbResetCache.getStyleClass().add("ghost");
         tvdbResetCache.setOnAction(event -> {
             if (resetTvdbCache == null) {
-                tvdbStatus.setText(UiText.tvdbSettingsUnavailable(currentLanguage));
-                setTvdbStatusDot(false);
+                tvdbCacheFeedback.setText(UiText.tvdbSettingsUnavailable(currentLanguage));
                 return;
             }
             int cleared = resetTvdbCache.get();
-            tvdbStatus.setText(cleared > 0
+            tvdbCacheFeedback.setText(cleared > 0
                     ? UiText.tvdbSettingsCacheCleared(currentLanguage, cleared)
                     : UiText.tvdbSettingsCacheAlreadyEmpty(currentLanguage));
-            tvdbStatusDot.getStyleClass().setAll("dot", "dot-good");
         });
 
-        HBox tvdbInputs = new HBox(12, tvdbStatusDot, tvdbStatus, tvdbResetCache, tvdbTestAndSave);
+        HBox tvdbInputs = new HBox(12, tvdbStatusDot, tvdbStatus, tvdbResetCache, tvdbCacheFeedback);
         HBox.setHgrow(tvdbStatus, Priority.ALWAYS);
         tvdbInputs.setAlignment(Pos.CENTER_LEFT);
         tvdbInputs.getStyleClass().add("settings-row");
 
-        VBox tvdbSection = new VBox(10, tvdbTitle, divider(), tvdbInputs);
+        VBox tvdbSection = new VBox(10, tvdbTitle, tvdbDescription, divider(), tvdbInputs);
         tvdbSection.getStyleClass().add("settings-section");
 
         applyLanguage(AppLanguage.FRENCH);
@@ -243,11 +230,8 @@ public final class SettingsPane {
         languageCombo.setAccessibleText(UiText.languageLabel(language));
         tvdbTitle.setText(UiText.tvdbSettingsSectionTitle(language));
         tvdbDescription.setText(UiText.tvdbSettingsSectionDescription(language));
-        tvdbTestAndSave.setText(UiText.tvdbSettingsTestAndSave(language));
         tvdbResetCache.setText(UiText.tvdbSettingsResetCache(language));
-        if (tvdbStatus.getText() == null || tvdbStatus.getText().isBlank()) {
-            tvdbStatus.setText(UiText.tvdbSettingsNotChecked(language));
-        }
+        applyTvdbStatus(language);
 
         languageCombo.setValue(language);
         refreshWorkspaceValue(currentWorkspace.get());
@@ -261,8 +245,10 @@ public final class SettingsPane {
         workspaceValue.setText(UiText.workspaceValue(currentLanguage, workspace));
     }
 
-    private void setTvdbStatusDot(boolean ok) {
-        tvdbStatusDot.getStyleClass().setAll("dot", ok ? "dot-good" : "dot-error");
+    private void applyTvdbStatus(AppLanguage language) {
+        TvdbStatusPresentation presentation = TvdbStatusPresentation.from(tvdbConfiguration, language);
+        tvdbStatus.setText(presentation.text());
+        tvdbStatusDot.getStyleClass().setAll("dot", presentation.dotStyleClass());
     }
 
     private static Region divider() {

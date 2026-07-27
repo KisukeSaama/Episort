@@ -12,11 +12,13 @@ import com.episort.scanner.InventoryScanResult;
 import com.episort.ui.execution.PlanReviewPane;
 import com.episort.ui.history.HistoryScreen;
 import com.episort.ui.platform.StageDecorations;
+import com.episort.ui.platform.WindowManager;
 import com.episort.ui.scan.ScanScreen;
 import com.episort.ui.settings.SettingsPane;
 import com.episort.workflow.ExecutionRecap;
 import com.episort.workflow.ExecutionService;
 import com.episort.workflow.PlanApprovalService;
+import com.episort.workflow.TvdbCredentialConfigurationResult;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -26,7 +28,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -99,7 +100,7 @@ public final class AppShell {
             AppShellViewModel viewModel,
             Function<Path, AppShellViewModel> configureWorkspace,
             Function<Path, CompletableFuture<AppShellViewModel>> selectInputFolder,
-            BiFunction<String, Optional<String>, AppShellViewModel> configureTvdb,
+            TvdbCredentialConfigurationResult tvdbConfiguration,
             Supplier<Optional<Path>> currentWorkspace,
             BooleanSupplier canContinue,
             Runnable onContinue,
@@ -122,7 +123,7 @@ public final class AppShell {
                     configureWorkspace,
                     this.currentWorkspace,
                     this::applyLanguage,
-                    configureTvdb,
+                    tvdbConfiguration,
                     resetTvdbCache,
                     this::onSettingsClose,
                     this::apply);
@@ -436,6 +437,7 @@ public final class AppShell {
             // Clearing it is the only honest option: a stale preview reads as
             // current state.
             resetScanPreview();
+            sidebar.refreshWorkspace();
         }
         if (currentView == AppView.HISTORY) {
             historyScreen.refresh();
@@ -776,6 +778,7 @@ public final class AppShell {
 
         topBar.setStatusPill(currentViewModel.errorCode(), currentViewModel.language());
         topBar.setWorkspace(currentWorkspace.get());
+        sidebar.setWorkspace(currentWorkspace.get());
 
         scanScreen.setWorkspaceRoot(currentWorkspace.get());
         Optional<InventoryScanResult> result = currentViewModel.inventoryScanResult();
@@ -850,6 +853,7 @@ public final class AppShell {
         topBar.applyLanguage(language);
         topBar.setStatusPill(currentViewModel.errorCode(), language);
         topBar.setWorkspace(currentWorkspace.get());
+        sidebar.setWorkspace(currentWorkspace.get());
         scanScreen.applyLanguage(language);
         historyScreen.applyLanguage(language);
         if (settingsPane != null) {
@@ -877,10 +881,11 @@ public final class AppShell {
      * undecorated stage no longer gets from Windows: drag, double-click
      * maximize, and edge resizing. Call it once the scene is set.
      */
-    public void installWindowDecorations(Stage stage) {
+    public WindowManager installWindowDecorations(Stage stage) {
         Objects.requireNonNull(stage, "stage");
-        topBar.windowControls().attach(stage);
-        StageDecorations.install(stage, topBar.root());
+        WindowManager windowManager = StageDecorations.install(stage, topBar.root());
+        topBar.windowControls().attach(stage, windowManager);
+        return windowManager;
     }
 
     private void requestQuit() {

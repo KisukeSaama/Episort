@@ -1,7 +1,8 @@
 package com.episort.ui;
 
+import com.episort.ui.platform.WindowManager;
+import com.episort.ui.platform.WindowState;
 import java.util.Objects;
-import javafx.beans.value.ChangeListener;
 import javafx.scene.control.Button;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
@@ -28,7 +29,7 @@ public final class WindowControls {
     private final Button maximizeButton;
     private final Button closeButton;
     private Stage stage;
-    private ChangeListener<Boolean> maximizedListener;
+    private WindowManager windowManager;
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
 
     public WindowControls() {
@@ -37,7 +38,7 @@ public final class WindowControls {
         closeButton = controlButton("✕", "window-close");
         closeButton.getStyleClass().add("danger");
 
-        minimizeButton.setOnAction(event -> withStage(target -> target.setIconified(true)));
+        minimizeButton.setOnAction(event -> withWindowManager(WindowManager::minimize));
         maximizeButton.setOnAction(event -> toggleMaximized());
         closeButton.setOnAction(event -> withStage(Stage::close));
 
@@ -54,22 +55,19 @@ public final class WindowControls {
      * Binds the controls to their stage and keeps the maximize glyph in sync,
      * including when Windows itself changes the state (Win+Up, snapping).
      */
-    public void attach(Stage stage) {
+    public void attach(Stage stage, WindowManager windowManager) {
         Objects.requireNonNull(stage, "stage");
+        Objects.requireNonNull(windowManager, "windowManager");
         if (this.stage == stage) {
             return;
         }
-        if (this.stage != null && maximizedListener != null) {
-            this.stage.maximizedProperty().removeListener(maximizedListener);
-        }
         this.stage = stage;
-        maximizedListener = (observable, wasMaximized, isMaximized) -> refreshMaximizeGlyph(isMaximized);
-        stage.maximizedProperty().addListener(maximizedListener);
-        refreshMaximizeGlyph(stage.isMaximized());
+        this.windowManager = windowManager;
+        windowManager.addStateListener(this::refreshMaximizeGlyph);
     }
 
     public void toggleMaximized() {
-        withStage(target -> target.setMaximized(!target.isMaximized()));
+        withWindowManager(WindowManager::toggleMaximize);
     }
 
     public void applyLanguage(AppLanguage language) {
@@ -80,16 +78,16 @@ public final class WindowControls {
         refreshMaximizeTooltip(language);
     }
 
-    private void refreshMaximizeGlyph(boolean maximized) {
+    private void refreshMaximizeGlyph(WindowState state) {
         // Windows uses two distinct glyphs here; reusing one would leave the
         // button claiming "maximize" on an already maximized window.
-        maximizeButton.setText(maximized ? RESTORE_GLYPH : MAXIMIZE_GLYPH);
+        maximizeButton.setText(state == WindowState.NORMAL ? MAXIMIZE_GLYPH : RESTORE_GLYPH);
         refreshMaximizeTooltip(currentLanguage);
     }
 
     private void refreshMaximizeTooltip(AppLanguage language) {
         currentLanguage = language;
-        boolean maximized = stage != null && stage.isMaximized();
+        boolean maximized = windowManager != null && windowManager.state() != WindowState.NORMAL;
         String text = maximized ? UiText.windowRestore(language) : UiText.windowMaximize(language);
         maximizeButton.setAccessibleText(text);
         maximizeButton.setTooltip(new Tooltip(text));
@@ -102,6 +100,12 @@ public final class WindowControls {
         }
     }
 
+    private void withWindowManager(java.util.function.Consumer<WindowManager> action) {
+        if (windowManager != null) {
+            action.accept(windowManager);
+        }
+    }
+
     private Stage resolveStage() {
         if (stage != null) {
             return stage;
@@ -111,7 +115,6 @@ public final class WindowControls {
         }
         Window window = root.getScene().getWindow();
         if (window instanceof Stage resolved) {
-            attach(resolved);
             return resolved;
         }
         return null;
