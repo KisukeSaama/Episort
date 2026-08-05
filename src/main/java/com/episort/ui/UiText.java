@@ -125,6 +125,28 @@ public final class UiText {
     public static String scanFailedFiles(AppLanguage language) { return t(language, "scan.failed.files"); }
     public static String sidebarSectionNavigation(AppLanguage language) { return t(language, "sidebar.section.navigation"); }
     public static String sidebarSectionWorkspace(AppLanguage language) { return t(language, "sidebar.section.workspace"); }
+    public static String storageHeading(AppLanguage language) { return t(language, "sidebar.storage.heading"); }
+
+    public static String storageUsedPercentage(AppLanguage language, long percentage) {
+        return t(language, "sidebar.storage.used").replace("{0}", Long.toString(percentage));
+    }
+
+    public static String storageCapacity(AppLanguage language, String used, String total) {
+        return t(language, "sidebar.storage.capacity").replace("{0}", used).replace("{1}", total);
+    }
+
+    public static String storageAvailable(AppLanguage language, String available) {
+        return t(language, "sidebar.storage.available").replace("{0}", available);
+    }
+
+    public static String storageAccessible(
+            AppLanguage language, String percentage, String capacity, String available) {
+        return t(language, "sidebar.storage.accessible")
+                .replace("{0}", percentage)
+                .replace("{1}", capacity)
+                .replace("{2}", available);
+    }
+
     public static String workspaceExplorerEmpty(AppLanguage language) { return t(language, "workspace.explorer.empty"); }
     public static String workspaceExplorerLoading(AppLanguage language) { return t(language, "workspace.explorer.loading"); }
     public static String workspaceExplorerUnavailable(AppLanguage language) { return t(language, "workspace.explorer.unavailable"); }

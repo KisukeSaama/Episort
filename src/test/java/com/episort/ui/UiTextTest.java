@@ -91,6 +91,33 @@ class UiTextTest {
                 UiText.planValidate(AppLanguage.FRENCH));
     }
 
+    @Test
+    void sectionLabelsDoNotUseDecorativeSlashPrefixes() {
+        for (AppLanguage language : AppLanguage.values()) {
+            List<String> labels = List.of(
+                    UiText.scanHeading(language),
+                    UiText.historyHeading(language),
+                    UiText.historyDetailSectionSummary(language),
+                    UiText.historyDetailSectionMetrics(language),
+                    UiText.settingsHeading(language),
+                    UiText.sidebarSectionNavigation(language),
+                    UiText.sidebarSectionWorkspace(language),
+                    UiText.detailSectionSource(language),
+                    UiText.detailSectionDetection(language),
+                    UiText.detailSectionTvdb(language),
+                    UiText.detailSectionDestination(language),
+                    UiText.detailSectionNotes(language),
+                    UiText.aboutSectionPipeline(language),
+                    UiText.aboutSectionEnvironment(language),
+                    UiText.aboutSectionData(language),
+                    UiText.aboutSectionCredits(language));
+
+            for (String label : labels) {
+                assertFalse(label.startsWith("//"), label + " uses a decorative slash prefix");
+            }
+        }
+    }
+
     /**
      * A {@code UiText} accessor whose key does not exist only fails at runtime,
      * inside the dialog that needed it. Calling every no-argument accessor in

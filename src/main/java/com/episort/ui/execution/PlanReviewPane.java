@@ -177,7 +177,7 @@ public final class PlanReviewPane {
 
         banner.getStyleClass().add("banner-text");
         banner.setWrapText(true);
-        Label bannerIcon = new Label("//");
+        Label bannerIcon = new Label("•");
         bannerIcon.getStyleClass().add("banner-icon");
         bannerBox = new HBox(8, bannerIcon, banner);
         bannerBox.getStyleClass().add("banner");

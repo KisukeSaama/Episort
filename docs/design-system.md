@@ -18,8 +18,9 @@ introduce parallel styles.
    colors (green / red) only appear on real status signals, never as decoration.
 3. **Tiling layout, no chrome.** Fixed sidebar + top bar + content area. No
    window-frame skeuomorphism, no gradients-as-decoration, no shadows on text.
-4. **Mono for system, sans for prose.** Section headings, card titles, codes,
-   paths and metric values use JetBrains Mono. Body copy and titles use Inter.
+4. **Sans for interface, mono for machine values.** Sections, card titles,
+   column headers, statuses, buttons and prose use Inter. JetBrains Mono is
+   reserved for paths, identifiers, codes, measurements and numeric readouts.
 5. **No invented data.** Every label and value must come from a real
    view-model signal or display `—`. Placeholder text is allowed only when the
    feature is genuinely empty (e.g. table placeholder).
@@ -66,7 +67,7 @@ introduce parallel styles.
 | Token             | Family                                                            | Used by                                              |
 | ----------------- | ----------------------------------------------------------------- | ---------------------------------------------------- |
 | `font.sans`       | `"Inter", "Segoe UI", system-ui, "Helvetica Neue", sans-serif`   | Default `*` font, body, titles, controls             |
-| `font.mono`       | `"JetBrains Mono", "Cascadia Mono", "Consolas", monospace`        | `.mono`, all system labels, paths, codes, headings   |
+| `font.mono`       | `"JetBrains Mono", "Cascadia Mono", "Consolas", monospace`        | `.mono`, paths, identifiers, codes, measurements     |
 
 Contrast: `text.faint` is the lightest a label may go. Every colour in the
 table above clears WCAG AA (4.5:1) against the real translucent panel, not
@@ -80,15 +81,15 @@ weight and colour, never by half a pixel.
 
 | Step | Ratio | Role                                                              |
 | ---- | ----- | ----------------------------------------------------------------- |
-| 10   | —     | **Caption.** Mono, 700, `text.faint`. System labels: section       |
-|      |       | headings, card titles, column headers, field labels, status pills, |
-|      |       | badges, meta lines.                                                |
-| 13   | 1.30  | **Body.** Everything meant to be read: prose, table cells, paths,  |
-|      |       | inputs, buttons, list items, hints.                                |
-| 17   | 1.31  | **Heading.** 700. Dialog and settings-section titles, metric card  |
+| 10   | —     | **Caption.** Inter, 600, `text.faint`. Compact labels: sidebar     |
+|      |       | headings, column headers, field labels, status pills,              |
+|      |       | row statuses, badges, accelerator hints, meta lines.               |
+| 13   | 1.30  | **Body.** Everything meant to be read: prose, section and card     |
+|      |       | titles, table cells, paths, inputs, buttons, list items, hints.     |
+| 17   | 1.31  | **Heading.** 600–700. Dialog and settings-section titles, metric   |
 |      |       | values outside the grid, empty-state titles, icon glyphs.          |
-| 22   | 1.29  | **Title.** 800. Page headings, metric-grid values, overlay titles, |
-|      |       | the sidebar brand.                                                 |
+| 22   | 1.29  | **Title.** 700. Page headings, metric-grid values, overlay titles. |
+|      |       | The sidebar brand alone uses 800.                                  |
 | 28   | 1.27  | **Display glyph.** Detail-panel empty-state mark.                  |
 | 36   | 1.29  | **Display glyph.** Table empty-state mark.                         |
 
@@ -102,10 +103,9 @@ hierarchy but noise.
 | Weight | Meaning                                                              |
 | ------ | -------------------------------------------------------------------- |
 | 400    | Body prose and input text.                                            |
-| 600    | Interactive labels that are not buttons: nav items, filter chips.     |
-| 700    | Captions, buttons, headings, any emphasised body line.                |
-| 800    | The 22 step, plus `.button.validate-action` — the one primary action  |
-|        | per screen outweighs the other buttons at the same size.              |
+| 600    | Captions, navigation, filters, buttons and section headings.           |
+| 700    | Primary actions, page headings and emphasised values.                  |
+| 800    | Brand wordmark only.                                                   |
 
 At the body step, the ladder is colour: `text.primary` for the value being
 read, `text.secondary` for supporting prose, `text.muted` for hints. The
@@ -169,7 +169,7 @@ written down here.
 ├──────────┬──────────────────────────────────────────────────────────────┤
 │ SIDEBAR  │ CONTENT (ScrollPane)                                         │
 │ 230px    │   .screen-root (22 × 26 padding, 14 vertical gap)            │
-│ fixed    │     • heading // SCAN | // HISTORIQUE | …                    │
+│ fixed    │     • heading SCAN | HISTORIQUE | …                           │
 │          │     • workflow progress / banner (screen state)               │
 │ brand    │     • metric-grid (FlowPane, 16 gap, wraps)                  │
 │ NAVI     │     • body:                                                  │
@@ -207,15 +207,13 @@ Each component is documented as **Anatomy → Class → Rules**.
 ### 4.1 Sidebar
 
 - **Anatomy:** brand row → navigation label → nav items (`.nav-item`) →
-  workspace label → read-only workspace tree filling the remaining height.
+  flexible spacer → logical-volume storage readout pinned to the bottom.
 - **Classes:** `.sidebar`, `.sidebar-brand`, `.sidebar-brand-name`,
+  `.sidebar-section-heading`, `.sidebar-section-marker`,
   `.sidebar-section-label`, `.nav-item`, `.nav-item.active`,
-  `.nav-item-icon`, `.nav-item-label`, `.workspace-explorer`,
-  `.workspace-explorer-header`, `.workspace-explorer-chevron`,
-  `.workspace-explorer-body`, `.workspace-explorer-empty`, `.workspace-tree`,
-  `.workspace-node-directory`, `.workspace-node-media`,
-  `.workspace-node-file`, `.workspace-node-link`,
-  `.workspace-node-transient`, `.workspace-node-error`.
+  `.nav-item-icon`, `.nav-item-label`, `.storage-usage`, `.storage-heading`,
+  `.storage-percentage`, `.storage-capacity`, `.storage-available`,
+  `.storage-progress`.
 - **Rules:**
   - Sidebar lists exactly **three** surfaces: **Scan**, **History**,
     **Settings**. Do not add other entries without removing one — keep the
@@ -231,23 +229,23 @@ Each component is documented as **Anatomy → Class → Rules**.
     exists in the application.
   - The nav button's own text is empty (icon and label live in its graphic),
     so every nav item sets `setAccessibleText` with its label.
-  - The workspace tree is a filesystem readout, not a fourth navigation
-    surface or a file manager. It supports expand, collapse and selection but
-    never rename, move, delete or drag-and-drop.
-  - The `// WORKSPACE` header is one full-width keyboard-focusable control
-    that collapses the section without discarding its loaded tree state.
-  - The configured workspace is the only root: there is no parent row and no
-    way to browse above it. Symbolic links are visible but never expandable.
-  - Directory children load lazily off the JavaFX thread so opening a NAS
-    workspace cannot freeze the shell. Directories sort before files;
-    supported `.avi`, `.mp4` and `.mkv` files retain normal emphasis while
-    other entries recede. Full paths remain available through tooltips.
-  - At the fixed 230 px sidebar width, cells are constrained to the viewport
-    and use a terminal ellipsis. Horizontal scrolling is disabled; the
-    vertical scrollbar uses the compact neutral sidebar treatment.
-  - The explorer is refreshed after an executed plan changes the filesystem.
-    Before configuration it renders the localized empty state, never a
-    fabricated folder tree.
+  - The navigation heading occupies the same 36 px row as a nav item. Its
+    orange marker is optical punctuation only: 1 × 14 px, aligned to the text,
+    never a full-height border.
+  - The sidebar does not expose the workspace tree. The configured path remains
+    visible in the top bar and editable in Settings.
+  - The bottom readout reports the logical filesystem volume containing the
+    workspace: percentage used, used / total capacity, then usable space. A
+    RAID exposed by the operating system as one volume therefore reports the
+    complete logical RAID capacity, not the workspace directory contents.
+  - Volume reads run off the JavaFX thread so a NAS cannot freeze the shell.
+    Before configuration or when the volume is unavailable, every value is
+    `—` and the progress bar is hidden.
+  - Storage sizes use binary measurements with localized labels (`To`, `Go`,
+    `Mo`, `Ko` in French; `TB`, `GB`, `MB`, `KB` in English).
+  - Typography follows the shell roles: the `STOCKAGE` caption is Inter 10 / 600,
+    the used / total measurement is mono 13, and the readable percentage and
+    availability phrases use Inter 13. Monospace never costumes prose.
   - The shell moves initial focus to the load action once the scene attaches.
     Left alone, JavaFX focuses the first traversable node — the search field —
     and the window opens with the search box lit while the step the user needs
@@ -302,7 +300,7 @@ Each component is documented as **Anatomy → Class → Rules**.
 
 ### 4.3 Card (metric)
 
-- **Anatomy:** title (mono, faint) → value.
+- **Anatomy:** title (Inter, muted) → numeric value (mono).
 - **Classes:** `.card`, `.card-title`, `.card-value-mono`. Sizing for the
   metric row comes from `.metric-grid .card`.
 - **Rules:**
@@ -322,7 +320,7 @@ section of Settings.
 
 ### 4.6 Settings section
 
-- **Anatomy:** title (mono accent) → description (muted) → status/action row.
+- **Anatomy:** title (Inter accent) → description (muted) → status/action row.
 - **Classes:** `.settings-section`, `.settings-section-title`,
   `.settings-section-description`, `.workspace-value`.
 - **Rules:**
@@ -360,7 +358,7 @@ section of Settings.
     `.button.validate-action` additionally swaps to a neutral grey fill because
     a dimmed solid orange still reads as available.
   - Button typography is centralized in `.button`: Inter/system sans at the
-    13 body step, 700 weight, 34 px minimum height, and ellipsis overrun for
+    13 body step, 600 weight, 34 px minimum height, and ellipsis overrun for
     long FR/EN labels. Icon-only buttons override to the 17 step, since a
     single glyph at body size disappears in a 32 px target. Screen-specific buttons should add only semantic variants
     (`.primary`, `.ghost`) rather than inline font rules.
@@ -404,15 +402,20 @@ section of Settings.
 - Translucent surface, subtle orange border at rest, full orange + glow on focus.
 - Combo popup uses `.combo-box-popup` styling; no overrides needed per call site.
 
-### 4.9 Section heading (`// LABEL`)
+### 4.9 Section heading (`LABEL`)
 
 - **Class:** `.section-heading`, optionally with `.section-heading-accent`.
-- **Rules:** mono, uppercase, prefixed by `//`. Used to introduce major
-  dashboard regions (e.g. `// SCAN`, `// HISTORIQUE`, `// SOURCE`).
+- **Rules:** Inter 13 / 600, uppercase, preceded by a 1 px orange keyline supplied by
+  CSS rather than decorative text. The base treatment is muted; the optional
+  accent treatment raises the label to primary text and uses the full accent
+  on the keyline. Used to introduce major dashboard regions (e.g. `SCAN`,
+  `HISTORIQUE`, `SOURCE`). Translation values contain the label only. All
+  instances stay on the 13 px body step.
 
 ### 4.10 Banner (in-screen safety / info)
 
-- **Anatomy:** `HBox` with a mono accent prefix (`//`) → wrapping prose label.
+- **Anatomy:** `HBox` with a compact semantic marker (`•` for information) →
+  wrapping prose label.
 - **Classes:** `.banner` plus exactly one of `.banner-info` (default for
   the Scan safety notice and History audit notice), `.banner-warn`, or
   `.banner-error`. Inner labels: `.banner-icon`, `.banner-text`.
@@ -458,7 +461,7 @@ section of Settings.
   `.quiet-muted` / `.ready` / `.preview` / `.warning` / `.ignored` /
   `.replace` / `.conflict` / `.danger` on the status cell.
 - **Rules:**
-  - **A status is a word, not a badge.** `.row-status` is mono text:
+  - **A status is a word, not a badge.** `.row-status` is Inter 10 / 600 text:
     transparent background, no border, no radius, no exception. The level is
     carried by the ink alone.
   - **Why:** a pill only works while it is the exception in its column, and a
@@ -500,7 +503,7 @@ section of Settings.
 
 ### 4.12 Detail panel
 
-- **Anatomy:** `VBox` of mono section headings (`§4.9`) and labelled
+- **Anatomy:** `VBox` of Inter section headings (`§4.9`) and labelled
   fields. Empty state when no row is selected uses a single muted line.
 - **Classes:** `.detail-panel`, `.detail-panel-section`,
   `.detail-panel-label`, `.detail-panel-value`, `.detail-panel-value-mono`,
@@ -683,13 +686,13 @@ section of Settings.
   - **header** — back + title.
   - **body** — two columns, 30 gutter, capped at 640 + 360. Left, the
     narrative: identity row (logo 56, product name, tagline, version) → one
-    paragraph → `// CHAÎNE DE TRAITEMENT` and its five numbered steps, at 26
+    paragraph → `CHAÎNE DE TRAITEMENT` and its five numbered steps, at 26
     between the three and 8 between the steps. Right, one `.detail-panel`
-    holding every value read off the machine: `// ENVIRONNEMENT` as a
+    holding every value read off the machine: `ENVIRONNEMENT` as a
     name/value table (name in a 74 gutter, baseline-aligned) → divider →
-    `// FICHIERS ÉCRITS` as three stacked label-over-path fields.
+    `FICHIERS ÉCRITS` as three stacked label-over-path fields.
   - **footer** — pinned to the bottom of the content area by a growing spacer,
-    opened by a `.settings-section-divider` rule: `// SOURCES ET CRÉDITS` over
+    opened by a `.settings-section-divider` rule: `SOURCES ET CRÉDITS` over
     the TVDB attribution and the font credit, side by side on the same 640 /
     360 grid as the body.
 - **Classes:** `.about-pane` on the `.screen-root` (spacing 26),
@@ -700,7 +703,8 @@ section of Settings.
   `.about-note`. Header reuses `.tvdb-dialog-header` / `.tvdb-dialog-title` /
   `.header-action`; the rules reuse `.settings-section-divider`.
 - **Rules:**
-  - **Section headings follow §4.9.** `// LABEL`, uppercase, mono. About was
+  - **Section headings follow §4.9.** `LABEL`, uppercase, Inter, with the
+    shared orange keyline. About was
     the one screen whose headings were sentence case, which made them read as
     captions on the fields below rather than as region markers.
   - **Prose left, machine values right.** A paragraph is read and a cache path

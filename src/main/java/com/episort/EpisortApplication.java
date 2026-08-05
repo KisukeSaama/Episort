@@ -3,6 +3,7 @@ package com.episort;
 import com.episort.config.EmbeddedTvdbCredentialsProvider;
 import com.episort.config.FileSettingsStore;
 import com.episort.config.FileTvdbCredentialStore;
+import com.episort.config.SafeTvdbCredentialsProvider;
 import com.episort.config.TvdbCredentials;
 import com.episort.persistence.FileExecutionJournal;
 import com.episort.persistence.FileRunEventStore;
@@ -86,7 +87,9 @@ public class EpisortApplication extends Application {
     public void start(Stage stage) {
         FileSettingsStore settingsStore = settingsStoreEarly;
         FileTvdbCredentialStore tvdbCredentialStore = FileTvdbCredentialStore.userProfileStore();
-        tvdbCredentialsSupplier = () -> EmbeddedTvdbCredentialsProvider.load().or(tvdbCredentialStore::load);
+        SafeTvdbCredentialsProvider credentialsProvider = new SafeTvdbCredentialsProvider(
+                EmbeddedTvdbCredentialsProvider::load, tvdbCredentialStore::load);
+        tvdbCredentialsSupplier = credentialsProvider::load;
         StartupWorkflow startupWorkflow = new StartupWorkflow(
                 new WorkspaceConfigurationService(settingsStore),
                 new TvdbCredentialConfigurationService(

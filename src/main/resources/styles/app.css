@@ -27,12 +27,8 @@
    not offering one. */
 
 .mono,
-.section-heading,
-.card-title,
 .card-value-mono,
-.sidebar-section-label,
 .status-pill,
-.settings-section-title,
 .workspace-value,
 .workspace-chip-prefix {
     -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
@@ -218,7 +214,7 @@
    exception on its row. It states the code in mono, like every other system
    value in the app; the capsule around it added nothing the colour did not. */
 .status-pill {
-    -fx-font-size: 11px;
+    -fx-font-size: 10px;
     -fx-font-weight: 700;
     -fx-padding: 4 0 4 0;
     -fx-background-color: transparent;
@@ -271,9 +267,26 @@
 
 .sidebar-section-label {
     -fx-font-size: 10px;
-    -fx-font-weight: 700;
-    -fx-text-fill: #767e8d;
-    -fx-padding: 12 8 6 8;
+    -fx-font-weight: 600;
+    -fx-text-fill: #8a93a3;
+    -fx-padding: 0;
+}
+
+.sidebar-section-heading {
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+    -fx-padding: 0 8 0 8;
+    -fx-alignment: center-left;
+}
+
+.sidebar-section-marker {
+    -fx-min-width: 1;
+    -fx-pref-width: 1;
+    -fx-max-width: 1;
+    -fx-min-height: 14;
+    -fx-pref-height: 14;
+    -fx-max-height: 14;
+    -fx-background-color: rgba(249,115,22,0.72);
 }
 
 .nav-item {
@@ -360,6 +373,63 @@
 }
 
 .workspace-explorer-header .sidebar-section-label {
+    -fx-padding: 0;
+}
+
+/* ---- Sidebar storage readout ------------------------------------------- */
+
+.storage-usage {
+    -fx-padding: 14 6 0 6;
+    -fx-spacing: 6;
+    -fx-border-color: rgba(255,255,255,0.08) transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+.storage-heading {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #8a93a3;
+}
+
+.storage-percentage {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #f5f7fb;
+}
+
+.storage-capacity {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: #b8c0cc;
+}
+
+.storage-available {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 400;
+    -fx-text-fill: #8a93a3;
+}
+
+.storage-progress {
+    -fx-pref-height: 4;
+    -fx-min-height: 4;
+    -fx-max-height: 4;
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+}
+
+.storage-progress > .track {
+    -fx-background-color: rgba(255,255,255,0.08);
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
+}
+
+.storage-progress > .bar {
+    -fx-background-color: #f97316;
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
     -fx-padding: 0;
 }
 
@@ -503,14 +573,18 @@
 }
 
 .section-heading {
-    -fx-font-size: 10px;
-    -fx-font-weight: 700;
-    -fx-text-fill: #767e8d;
-    -fx-padding: 2 0 0 0;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #a8b0bd;
+    -fx-padding: 2 0 2 8;
+    -fx-border-color: transparent transparent transparent rgba(249,115,22,0.38);
+    -fx-border-width: 0 0 0 1;
 }
 
 .section-heading-accent {
-    -fx-text-fill: #f97316;
+    -fx-text-fill: #f5f7fb;
+    -fx-border-color: transparent transparent transparent #f97316;
 }
 
 /* ---- 5. Typography (page) ---------------------------------------------- */
@@ -533,14 +607,15 @@
 }
 
 .card-title {
-    -fx-font-size: 10px;
-    -fx-font-weight: 700;
-    -fx-text-fill: #767e8d;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 400;
+    -fx-text-fill: #8a93a3;
 }
 
 .card-value-mono {
     -fx-font-size: 17px;
-    -fx-font-weight: 700;
+    -fx-font-weight: 600;
     -fx-text-fill: #f5f7fb;
 }
 
@@ -575,7 +650,7 @@
 
 .settings-section-title {
     -fx-font-size: 17px;
-    -fx-font-weight: 700;
+    -fx-font-weight: 600;
     -fx-text-fill: #f97316;
 }
 
@@ -634,7 +709,7 @@
 .menu-button {
     -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 13px;
-    -fx-font-weight: 700;
+    -fx-font-weight: 600;
     -fx-padding: 8 14 8 14;
     -fx-min-height: 34;
     -fx-alignment: center;
@@ -746,12 +821,12 @@
     -fx-border-color: transparent;
     -fx-text-fill: rgba(17,24,39,1.0);
     -fx-padding: 8 14 8 16;
-    -fx-font-weight: 800;
+    -fx-font-weight: 700;
 }
 
 .menu-button.load-primary > .label {
     -fx-text-fill: rgba(17,24,39,1.0);
-    -fx-font-weight: 800;
+    -fx-font-weight: 700;
     -fx-padding: 0 6 0 0;
 }
 
@@ -784,7 +859,7 @@
     -fx-border-color: transparent;
     -fx-text-fill: rgba(17,24,39,1.0);
     -fx-padding: 8 16 8 16;
-    -fx-font-weight: 800;
+    -fx-font-weight: 700;
 }
 
 .button.validate-action:hover {
@@ -1081,7 +1156,7 @@
 
 .workflow-step-label {
     -fx-font-size: 13px;
-    -fx-font-weight: 700;
+    -fx-font-weight: 600;
 }
 
 .workflow-step.active {
@@ -1157,7 +1232,7 @@
 
 .metric-grid .card .card-value-mono {
     -fx-font-size: 22px;
-    -fx-font-weight: 800;
+    -fx-font-weight: 700;
     -fx-text-fill: #f5f7fb;
 }
 
@@ -1240,9 +1315,9 @@
 }
 
 .preview-table .column-header .label {
-    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 10px;
-    -fx-font-weight: 700;
+    -fx-font-weight: 600;
     -fx-text-fill: #767e8d;
     -fx-alignment: center-left;
     -fx-padding: 0 12 0 12;
@@ -1439,9 +1514,9 @@
    carried by the ink, and by nothing else. */
 
 .row-status {
-    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
-    -fx-font-size: 11px;
-    -fx-font-weight: 700;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
     -fx-padding: 2 0 2 0;
     -fx-background-color: transparent;
     -fx-border-color: transparent;
@@ -1655,8 +1730,8 @@
 .detail-panel-label {
     -fx-font-size: 10px;
     -fx-text-fill: #767e8d;
-    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
-    -fx-font-weight: 700;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-weight: 600;
 }
 
 .detail-panel-value {
@@ -1793,7 +1868,7 @@
    label: it stays quiet and keeps its distance from the item name. */
 .context-menu .menu-item > .accelerator-text {
     -fx-fill: #6f7787;
-    -fx-font-size: 12px;
+    -fx-font-size: 10px;
     -fx-font-weight: 400;
     -fx-padding: 0 0 0 28;
 }
@@ -1825,7 +1900,7 @@
 
 .screen-root {
     -fx-padding: 26 30 26 30;
-    -fx-spacing: 18;
+    -fx-spacing: 14;
 }
 
 /* ---- 23. Table empty states ------------------------------------------- */
@@ -1863,15 +1938,18 @@
 }
 
 .page-title {
-    -fx-font-size: 10px;
-    -fx-font-weight: 700;
-    -fx-text-fill: #f97316;
-    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #d7dce5;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-padding: 1 0 1 8;
+    -fx-border-color: transparent transparent transparent #f97316;
+    -fx-border-width: 0 0 0 1;
 }
 
 .page-heading {
     -fx-font-size: 22px;
-    -fx-font-weight: 800;
+    -fx-font-weight: 700;
     -fx-text-fill: #f5f7fb;
 }
 
@@ -2114,16 +2192,16 @@
 }
 
 .file-properties-section-title {
-    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 10px;
-    -fx-font-weight: 700;
+    -fx-font-weight: 600;
     -fx-text-fill: rgba(249,115,22,1.0);
 }
 
 .file-properties-label {
-    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 10px;
-    -fx-font-weight: 700;
+    -fx-font-weight: 600;
     -fx-text-fill: rgba(118,126,141,1.0);
 }
 
@@ -2352,7 +2430,7 @@
 /* Every identity row measures the same: the list reads as a table and the four
    columns line up from the first row to the last. */
 .identity-card {
-    -fx-padding: 11 14 11 14;
+    -fx-padding: 10 14 10 14;
     -fx-background-color: rgba(255,255,255,0.03);
     -fx-background-radius: 10;
     -fx-border-radius: 10;
@@ -2457,9 +2535,9 @@
 }
 
 .exec-label {
-    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 10px;
-    -fx-font-weight: 700;
+    -fx-font-weight: 600;
     -fx-text-fill: #767e8d;
 }
 
@@ -2504,9 +2582,9 @@
 .exec-stat-value.alarming { -fx-text-fill: #f87171; }
 
 .exec-stat-label {
-    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 10px;
-    -fx-font-weight: 700;
+    -fx-font-weight: 600;
     -fx-text-fill: #767e8d;
 }
 
@@ -2577,14 +2655,14 @@
 .about-step-label {
     -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 13px;
-    -fx-font-weight: 700;
+    -fx-font-weight: 600;
     -fx-text-fill: #b8c0cc;
 }
 
 .about-label {
-    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 10px;
-    -fx-font-weight: 700;
+    -fx-font-weight: 600;
     -fx-text-fill: #767e8d;
 }
 

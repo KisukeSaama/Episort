@@ -93,7 +93,7 @@ public final class HistoryScreen {
         heading = new Label();
         heading.getStyleClass().addAll("section-heading", "section-heading-accent");
 
-        Label bannerIcon = new Label("//");
+        Label bannerIcon = new Label("•");
         bannerIcon.getStyleClass().add("banner-icon");
 
         bannerText = new Label();
