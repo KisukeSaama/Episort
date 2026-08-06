@@ -188,6 +188,9 @@ written down here.
   selection lives in Settings, not here.
 - Content: each screen's root is wrapped in a `ScrollPane.content-scroll`
   inside the `viewHost` `StackPane`. Sidebar + top bar stay pinned.
+- History keeps at least 240 px of usable table height. When the window is too
+  short for the stacked table and detail panel, the screen scrolls vertically
+  instead of compressing the table to its column header.
 
 ### 3.1 Breakpoints
 
@@ -544,6 +547,9 @@ section of Settings.
   Warnings / Conflicts / Failed / Ignored filters. The selected chip
   drives a `Predicate<RunEvent>` from `HistoryFilter`. Never use chips
   for primary navigation — that is the sidebar's job.
+  The History filter row is a `FlowPane`: search, filters and the grouped
+  rollback/clear actions wrap onto additional rows at narrow widths rather
+  than truncating labels or forcing the table outside the content area.
 
 ### 4.14 Workspace chip
 

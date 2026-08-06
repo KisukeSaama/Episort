@@ -31,6 +31,9 @@ Date: 2026-08-04
   continues with the requested cell edit.
 - Enforced a single active scan-row context menu: a new right-click closes the
   previous popup before opening the menu for the newly targeted row.
+- Hardened History for short and narrow windows: its content now scrolls
+  vertically, the table retains a 240 px usable minimum height, and the search,
+  filters, rollback and clear actions wrap instead of being clipped.
 
 ## Verification
 
@@ -50,3 +53,7 @@ Date: 2026-08-04
 - Manual inspection remains recommended for Scan, History, Settings, About and
   plan review at the 1180 × 760 minimum window size; no graphical display was
   available in the validation environment.
+- Manually verify History at 1180 × 760 and smaller: at least several table
+  rows remain visible, the toolbar wraps without truncated actions, and the
+  detail panel remains reachable with the screen scrollbar.
+- `./gradlew build --rerun-tasks` — passed after the History responsive fix.

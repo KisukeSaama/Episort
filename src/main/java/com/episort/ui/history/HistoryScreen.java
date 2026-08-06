@@ -36,6 +36,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -53,6 +54,7 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 public final class HistoryScreen {
+    private static final double MIN_USABLE_TABLE_HEIGHT = 240;
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
@@ -60,7 +62,8 @@ public final class HistoryScreen {
     private final LastPlanRollbackService rollbackService;
     private final Runnable onRollbackCompleted;
     private final Consumer<Boolean> onRollbackExecutingChanged;
-    private final VBox root;
+    private final ScrollPane root;
+    private final VBox content;
     private final Label heading;
     private final Label bannerText;
     private final HBox banner;
@@ -72,7 +75,7 @@ public final class HistoryScreen {
     private final MetricCard cardConflict = new MetricCard();
     private final MetricCard cardFailed = new MetricCard();
 
-    private final HBox filterRow = new HBox(8);
+    private final FlowPane filterRow = new FlowPane(8, 8);
     private final TableSearchBox searchBox = new TableSearchBox(this::setSearchFilter);
     private final ToggleGroup filterGroup = new ToggleGroup();
     private final Map<HistoryFilter, ToggleButton> filterButtons = new EnumMap<>(HistoryFilter.class);
@@ -157,9 +160,15 @@ public final class HistoryScreen {
         HBox.setHgrow(table, Priority.ALWAYS);
         currentBody = initialBody;
 
-        root = new VBox(14, heading, banner, metricGrid, filterRow, currentBody);
-        root.getStyleClass().add("screen-root");
+        content = new VBox(14, heading, banner, metricGrid, filterRow, currentBody);
+        content.getStyleClass().add("screen-root");
         VBox.setVgrow(currentBody, Priority.ALWAYS);
+
+        root = new ScrollPane(content);
+        root.getStyleClass().add("content-scroll");
+        root.setFitToWidth(true);
+        root.setFitToHeight(true);
+        root.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 
         applyLanguage(AppLanguage.FRENCH);
         refresh();
@@ -274,9 +283,9 @@ public final class HistoryScreen {
             HBox.setHgrow(table, Priority.ALWAYS);
             next = row;
         }
-        int index = root.getChildren().indexOf(currentBody);
+        int index = content.getChildren().indexOf(currentBody);
         if (index >= 0) {
-            root.getChildren().set(index, next);
+            content.getChildren().set(index, next);
         }
         currentBody = next;
         VBox.setVgrow(currentBody, Priority.ALWAYS);
@@ -299,14 +308,14 @@ public final class HistoryScreen {
             filterButtons.put(filter, button);
             filterRow.getChildren().add(button);
         }
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
         clearHistoryButton.getStyleClass().add("ghost");
         clearHistoryButton.setOnAction(event -> confirmAndClearHistory());
         rollbackButton.getStyleClass().add("primary");
         rollbackButton.setDisable(true);
         rollbackButton.setOnAction(event -> confirmAndRollback());
-        filterRow.getChildren().addAll(spacer, rollbackButton, clearHistoryButton);
+        HBox actions = new HBox(8, rollbackButton, clearHistoryButton);
+        actions.setAlignment(Pos.CENTER_LEFT);
+        filterRow.getChildren().add(actions);
         filterButtons.get(HistoryFilter.ALL).setSelected(true);
         applyFilter(HistoryFilter.ALL);
     }
@@ -413,13 +422,13 @@ public final class HistoryScreen {
                 reason -> recordRollbackFailure(execution, reason),
                 onRollbackExecutingChanged);
         Region review = rollbackReviewPane.root();
-        root.getChildren().setAll(review);
+        content.getChildren().setAll(review);
         VBox.setVgrow(review, Priority.ALWAYS);
     }
 
     private void showHistoryContent() {
         rollbackReviewPane = null;
-        root.getChildren().setAll(heading, banner, metricGrid, filterRow, currentBody);
+        content.getChildren().setAll(heading, banner, metricGrid, filterRow, currentBody);
         VBox.setVgrow(currentBody, Priority.ALWAYS);
         refresh();
     }
@@ -534,6 +543,7 @@ public final class HistoryScreen {
 
     private void configureTable() {
         table.getStyleClass().add("preview-table");
+        table.setMinHeight(MIN_USABLE_TABLE_HEIGHT);
         RoundedClip.install(table, 14);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_SUBSEQUENT_COLUMNS);
         table.setItems(filtered);
