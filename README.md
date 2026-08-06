@@ -70,6 +70,10 @@ tar -xzf Episort-0.1.0-linux-x64.tar.gz
 ./Episort/bin/Episort
 ```
 
+The Linux bundle targets x64 glibc-based desktop distributions and expects the
+usual GTK 3 graphical libraries supplied by mainstream Ubuntu, Debian, Fedora,
+and similar desktop installations.
+
 Build the portable archive for the current operating system with:
 
 ```bash

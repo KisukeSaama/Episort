@@ -14,6 +14,8 @@ Run this command from a terminal:
 
     ./bin/Episort
 
+The bundle targets x64 glibc-based desktop Linux systems with GTK 3 available.
+
 If needed, restore its executable permission first:
 
     chmod +x ./bin/Episort

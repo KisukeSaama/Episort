@@ -14,6 +14,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: portable-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   portable:
     name: ${{ matrix.name }}
@@ -28,7 +32,7 @@ jobs:
             artifact: Episort-0.1.0-windows-x64
             path: build/portable/distributions/*
           - name: Linux x64
-            os: ubuntu-latest
+            os: ubuntu-22.04
             command: ./gradlew clean build portableArchive --no-daemon
             artifact: Episort-0.1.0-linux-x64
             path: build/portable/distributions/*

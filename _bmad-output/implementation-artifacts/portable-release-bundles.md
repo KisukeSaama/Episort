@@ -23,6 +23,8 @@ Date: 2026-08-06
 - `.github/workflows/portable-build.yml` builds and tests on native Windows and
   Linux runners for release pull requests, release branches, manual runs and
   version tags, then uploads both archives.
+- Linux uses an Ubuntu 22.04 x64 runner for a conservative glibc baseline and is
+  documented as requiring the ordinary GTK 3 desktop libraries.
 - README instructions cover extraction, direct launch, local packaging, and the
   external `TVDB_API_KEY` requirement.
 
