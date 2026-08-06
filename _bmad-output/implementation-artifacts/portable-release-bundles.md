@@ -40,6 +40,13 @@ Date: 2026-08-06
 - Windows `clean build portableArchive` passed and produced a self-contained
   ZIP containing `Episort.exe`, the application libraries, and the reduced Java
   runtime.
+- The first native Linux run exposed an operating-system difference when a
+  regular file occupied a planned folder name. `OperationPlanner` now reports
+  that blocking folder conflict before canonicalizing the not-yet-created
+  destination, preserving both the workspace boundary check and the expected
+  conflict classification on Windows and Linux.
+- The targeted `OperationPlannerTest` suite and the complete Windows
+  `clean build portableArchive` cycle pass after this correction.
 - The packaged `Episort.exe` remained healthy during a five-second startup smoke
   test using only the bundled image, then the test process was stopped.
 - The final Windows archive contains 440 entries, including the launcher,

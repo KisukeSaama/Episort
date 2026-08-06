@@ -82,6 +82,11 @@ public final class OperationPlanner {
             return PlannedOperation.excluded(source, item.kind(), PlanExclusionReason.UNASSIGNED);
         }
 
+        Optional<PlanConflict> folderConflict = blockedFolder(root, destination);
+        if (folderConflict.isPresent()) {
+            return PlannedOperation.conflicting(source, Optional.of(destination), item.kind(), folderConflict.get());
+        }
+
         Optional<Path> insideWorkspace = boundary.resolvePlannedInside(destination);
         if (insideWorkspace.isEmpty()) {
             return PlannedOperation.conflicting(source, Optional.of(destination), item.kind(),
@@ -89,10 +94,6 @@ public final class OperationPlanner {
                             "Destination would leave the configured workspace: " + destination));
         }
         Path resolved = insideWorkspace.orElseThrow();
-        Optional<PlanConflict> folderConflict = blockedFolder(root, resolved);
-        if (folderConflict.isPresent()) {
-            return PlannedOperation.conflicting(source, Optional.of(resolved), item.kind(), folderConflict.get());
-        }
 
         if (samePath(source, resolved)) {
             return PlannedOperation.alreadyInPlace(source, resolved, item.kind());
