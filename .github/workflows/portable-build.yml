@@ -1,0 +1,55 @@
+name: Portable builds
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "release/**"
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            command: .\gradlew.bat clean build portableArchive --no-daemon
+            artifact: Episort-0.1.0-windows-x64
+            path: build/portable/distributions/*
+          - name: Linux x64
+            os: ubuntu-latest
+            command: ./gradlew clean build portableArchive --no-daemon
+            artifact: Episort-0.1.0-linux-x64
+            path: build/portable/distributions/*
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build and verify portable application
+        run: ${{ matrix.command }}
+
+      - name: Upload portable archive
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.path }}
+          if-no-files-found: error
+          retention-days: 30

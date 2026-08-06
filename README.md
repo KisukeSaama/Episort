@@ -53,9 +53,47 @@ On Windows PowerShell:
 .\gradlew.bat build
 ```
 
+## Portable application
+
+Portable bundles include Java 21 and JavaFX. Users do not need to install Java.
+
+Windows:
+
+1. Extract `Episort-0.1.0-windows-x64.zip`.
+2. Open the extracted `Episort` folder.
+3. Double-click `Episort.exe`.
+
+Linux:
+
+```bash
+tar -xzf Episort-0.1.0-linux-x64.tar.gz
+./Episort/bin/Episort
+```
+
+Build the portable archive for the current operating system with:
+
+```bash
+./gradlew clean build portableArchive
+```
+
+The archive and its SHA-256 checksum are written to
+`build/portable/distributions/`. Native launchers must be built on their target
+operating system, so the repository workflow builds the Windows and Linux
+archives independently.
+
 ## Configuration
 
-TVDB credentials must stay out of source control. Use an environment variable or an ignored config file.
+TVDB credentials must stay out of source control. Set `TVDB_API_KEY` in the
+environment before launching Episort. For example:
+
+```powershell
+$env:TVDB_API_KEY = "your-key"
+.\Episort\Episort.exe
+```
+
+```bash
+TVDB_API_KEY="your-key" ./Episort/bin/Episort
+```
 
 ## Documentation
 
