@@ -50,8 +50,8 @@ import javafx.scene.layout.VBox;
  * disappear with the banner that announced it.
  *
  * <p>The recap then splits what changed on disk from what the run left alone.
- * Eleven counters of equal weight is a table of numbers, not an answer to "what
- * happened to my files"; the four that mean the disk is different now come first,
+ * Twelve counters of equal weight is a table of numbers, not an answer to "what
+ * happened to my files"; the five that mean the disk is different now come first,
  * and the seven that mean nothing moved sit under their own heading.
  */
 public final class ExecutionPane {
@@ -318,7 +318,9 @@ public final class ExecutionPane {
                         stat(UiText.execRecapRenamed(language), executionRecap.renamed().size(), false),
                         stat(UiText.execRecapDeleted(language), executionRecap.deleted().size(), false),
                         stat(UiText.execRecapFoldersDeleted(language),
-                                executionRecap.deletedSourceFolders().size(), false)),
+                                executionRecap.deletedSourceFolders().size(), false),
+                        stat(UiText.execRecapFoldersTagged(language),
+                                executionRecap.renamedSourceFolders().size(), false)),
                 subHeading(UiText.execRecapSectionUntouched(language)),
                 stats(
                         stat(UiText.execRecapFailed(language), executionRecap.failed().size(), true),

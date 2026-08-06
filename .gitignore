@@ -7,3 +7,6 @@ status/
 tvdb.properties
 *.local.properties
 .env
+
+# Machine-specific Gradle toolchain path
+/gradle.properties

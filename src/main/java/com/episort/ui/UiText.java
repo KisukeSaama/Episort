@@ -362,6 +362,10 @@ public final class UiText {
     public static String tvdbChooseMatch(AppLanguage language) { return t(language, "tvdb.chooseMatch"); }
     public static String tvdbSearch(AppLanguage language) { return t(language, "tvdb.search"); }
     public static String tvdbSearchPlaceholder(AppLanguage language) { return t(language, "tvdb.searchPlaceholder"); }
+    public static String tvdbSearchYearPlaceholder(AppLanguage language) { return t(language, "tvdb.searchYearPlaceholder"); }
+    public static String tvdbSearchIdPlaceholder(AppLanguage language) { return t(language, "tvdb.searchIdPlaceholder"); }
+    public static String tvdbSearchCriteriaRequired(AppLanguage language) { return t(language, "tvdb.searchCriteriaRequired"); }
+    public static String tvdbSearchInvalidYear(AppLanguage language) { return t(language, "tvdb.searchInvalidYear"); }
     public static String tvdbNoResults(AppLanguage language) { return t(language, "tvdb.noResults"); }
     public static String tvdbNoResultsHint(AppLanguage language) { return t(language, "tvdb.noResultsHint"); }
     public static String tvdbInitialSearchHint(AppLanguage language) { return t(language, "tvdb.initialSearchHint"); }
@@ -454,6 +458,9 @@ public final class UiText {
     public static String tvdbSettingsResetCache(AppLanguage language) { return t(language, "tvdb.settings.resetCache"); }
     public static String tvdbSettingsCacheCleared(AppLanguage language, int count) { return t(language, "tvdb.settings.cacheCleared").replace("{0}", Integer.toString(count)); }
     public static String tvdbSettingsCacheAlreadyEmpty(AppLanguage language) { return t(language, "tvdb.settings.cacheAlreadyEmpty"); }
+    public static String tvdbSettingsAttribution(AppLanguage language) { return t(language, "tvdb.settings.attribution"); }
+    public static String tvdbSettingsAttributionLink(AppLanguage language) { return t(language, "tvdb.settings.attributionLink"); }
+    public static String tvdbSettingsAttributionLinkAccessible(AppLanguage language) { return t(language, "tvdb.settings.attributionLinkAccessible"); }
 
     /* ---- Empty states (table / detail) ------------------------------ */
 
@@ -539,6 +546,9 @@ public final class UiText {
     public static String planReady(AppLanguage language) { return t(language, "plan.ready"); }
     public static String planEmpty(AppLanguage language) { return t(language, "plan.empty"); }
     public static String planNotice(AppLanguage language) { return t(language, "plan.notice"); }
+    public static String planNoticeSortingFolders(AppLanguage language) {
+        return t(language, "plan.notice.sortingFolders");
+    }
 
     /** The extra line under a plan that will remove files, naming how many. */
     public static String planNoticeDelete(AppLanguage language, int count) {
@@ -638,6 +648,7 @@ public final class UiText {
     public static String execRecapDuplicates(AppLanguage language) { return t(language, "exec.recap.duplicates"); }
     public static String execRecapUnassigned(AppLanguage language) { return t(language, "exec.recap.unassigned"); }
     public static String execRecapFoldersDeleted(AppLanguage language) { return t(language, "exec.recap.foldersDeleted"); }
+    public static String execRecapFoldersTagged(AppLanguage language) { return t(language, "exec.recap.foldersTagged"); }
     public static String execRecapComplete(AppLanguage language) { return t(language, "exec.recap.complete"); }
     public static String execRecapPartial(AppLanguage language) { return t(language, "exec.recap.partial"); }
     public static String execRecapNone(AppLanguage language) { return t(language, "exec.recap.none"); }

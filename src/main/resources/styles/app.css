@@ -2011,6 +2011,40 @@
     -fx-background-color: rgba(255,255,255,0.04);
 }
 
+.tvdb-attribution {
+    -fx-padding: 4 0 0 0;
+    -fx-spacing: 16;
+    -fx-alignment: center-left;
+}
+
+.tvdb-attribution-copy {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #b8c0cc;
+}
+
+.tvdb-attribution-link {
+    -fx-padding: 2 0 2 0;
+    -fx-border-width: 0;
+    -fx-background-color: transparent;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #fb923c;
+    -fx-underline: true;
+}
+
+.tvdb-attribution-link:hover {
+    -fx-text-fill: #f5f7fb;
+}
+
+.tvdb-attribution-link:focus-visible {
+    -fx-border-color: #fb923c;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-padding: 1 3 1 3;
+}
+
 /* ---- 25. ScrollPane viewports (transparent backgrounds) --------------- */
 
 .scroll-pane,
@@ -2371,6 +2405,20 @@
 
 .tvdb-search-text-field {
     -fx-prompt-text-fill: rgba(118,126,141,1.0);
+}
+
+/* Optional exact filters stay compact beside the elastic title field. They
+   reuse the standard text-field states and introduce no parallel control. */
+.text-field.tvdb-search-year {
+    -fx-min-width: 112;
+    -fx-pref-width: 112;
+    -fx-max-width: 112;
+}
+
+.text-field.tvdb-search-id {
+    -fx-min-width: 156;
+    -fx-pref-width: 156;
+    -fx-max-width: 156;
 }
 
 .tvdb-detail-controls .button {

@@ -11,6 +11,11 @@ import java.util.List;
  */
 public final class TvdbSeriesResponseDto {
     public Data data;
+    public Links links;
+
+    public static final class Links {
+        public String next;
+    }
 
     public static final class Data {
         public Series series;

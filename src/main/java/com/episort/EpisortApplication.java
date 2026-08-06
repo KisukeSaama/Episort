@@ -22,6 +22,7 @@ import com.episort.tvdb.cache.TvdbResponseCache;
 import com.episort.tvdb.debug.TvdbRequestBus;
 import com.episort.tvdb.debug.TvdbRequestTrace;
 import com.episort.tvdb.guard.TvdbRateLimitGuard;
+import com.episort.tvdb.guard.TvdbRequestScheduler;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.AppShell;
 import com.episort.ui.AppShellViewModel;
@@ -79,7 +80,9 @@ public class EpisortApplication extends Application {
 
     private final TvdbResponseCache tvdbCache = TvdbResponseCache.userProfileCache();
     private final TvdbRateLimitGuard tvdbGuard = new TvdbRateLimitGuard();
-    private final TvdbClient tvdbClient = new CachedTvdbClient(new HttpTvdbClient(), tvdbCache, tvdbGuard);
+    private final TvdbRequestScheduler tvdbRequestScheduler = new TvdbRequestScheduler();
+    private final TvdbClient tvdbClient = new CachedTvdbClient(
+            new HttpTvdbClient(tvdbRequestScheduler), tvdbCache, tvdbGuard);
     private final TvdbBatchMatchService tvdbBatchMatchService = new TvdbBatchMatchService(tvdbClient);
     private Supplier<Optional<TvdbCredentials>> tvdbCredentialsSupplier = Optional::empty;
 
@@ -94,7 +97,7 @@ public class EpisortApplication extends Application {
                 new WorkspaceConfigurationService(settingsStore),
                 new TvdbCredentialConfigurationService(
                         tvdbCredentialStore,
-                        new HttpTvdbConnectionTester()));
+                        new HttpTvdbConnectionTester(tvdbRequestScheduler)));
         TvdbCredentialConfigurationResult tvdbConfiguration = EmbeddedTvdbCredentialsProvider.load()
                 .map(startupWorkflow::configureAndTestTvdb)
                 .orElseGet(startupWorkflow::loadTvdbConfiguration);
@@ -116,7 +119,8 @@ public class EpisortApplication extends Application {
                 () -> startupWorkflow.loadWorkspaceConfiguration().success(),
                 () -> {},
                 runEventStore,
-                tvdbCache::clear);
+                tvdbCache::clear,
+                getHostServices()::showDocument);
         this.appShellRef = appShell;
         appShell.setScanCancelHandler(this::cancelActiveScan);
         appShell.setInputSourcesLoader(paths -> scanInputSources(startupWorkflow, paths, runEventStore));

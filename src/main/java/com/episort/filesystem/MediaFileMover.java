@@ -135,6 +135,27 @@ public final class MediaFileMover {
     }
 
     /**
+     * Renames one source folder inside its current parent without merging or
+     * replacing another folder.
+     */
+    public void renameFolder(Path source, Path destination) throws IOException {
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(destination, "destination");
+        Path safeSource = requireDeletableFolder(source);
+        if (safeSource == null) {
+            throw new NoSuchFileException(source.toString());
+        }
+        Path safeDestination = requireInsideWorkspace(destination);
+        if (!Objects.equals(safeSource.getParent(), safeDestination.getParent())) {
+            throw new IOException("A source folder may only be renamed inside its current parent: " + safeSource);
+        }
+        if (Files.exists(safeDestination, LinkOption.NOFOLLOW_LINKS)) {
+            throw new FileAlreadyExistsException(safeDestination.toString());
+        }
+        Files.move(safeSource, safeDestination);
+    }
+
+    /**
      * Removes one approved file, because the user decided in front of the exact
      * plan that this copy was the one too many.
      *

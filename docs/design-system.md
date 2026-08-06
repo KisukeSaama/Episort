@@ -318,7 +318,8 @@ section of Settings.
 
 - **Anatomy:** title (Inter accent) → description (muted) → status/action row.
 - **Classes:** `.settings-section`, `.settings-section-title`,
-  `.settings-section-description`, `.workspace-value`.
+  `.settings-section-description`, `.workspace-value`, `.tvdb-attribution`,
+  `.tvdb-attribution-copy`, `.tvdb-attribution-link`.
 - **Rules:**
   - Reuse `SettingsPane` rather than re-implementing the layout per story.
   - The workspace path always uses `.workspace-value` (mono, accent-hover color).
@@ -328,6 +329,10 @@ section of Settings.
     raw connection error and offers no manual test button.
   - Cache feedback is separate from the connection status; clearing an empty
     or populated cache must never change the TVDB availability signal.
+  - The TVDB section ends with the official dark-background logo, the provider's
+    recommended attribution copy, and a keyboard-focusable direct link to the
+    TheTVDB subscription page. The logo is bundled so attribution remains visible
+    offline; the link opens through JavaFX host services.
   - Settings is a sidebar surface, not a dialog: it replaces the content
     area like Scan and History do.
   - The language combo sits alone on its row, so it carries `setAccessibleText`
@@ -666,11 +671,16 @@ section of Settings.
     writes nothing: the file may still land. There is no continue-after-error
     action.
   - **The recap splits the counters, it does not hide them.** Four under
-    `exec.recap.section.disk` (moved, renamed, deleted, source folders removed),
-    seven under `exec.recap.section.untouched`. All eleven are always shown; a
+    `exec.recap.section.disk` (moved, renamed, deleted, source folders removed,
+    parent containers of non-empty source folders renamed with `[TRI]`),
+    seven under `exec.recap.section.untouched`. All twelve are always shown; a
     zero is a real answer and takes `.zero`. Only failures may take
-    `.alarming`, and only when non-zero. Eleven counters of equal weight is a
+    `.alarming`, and only when non-zero. Twelve counters of equal weight is a
     table of numbers, not an answer to "what happened to my files".
+  - The exact-plan notice states the post-run folder rule before validation:
+    empty source folders are removed, while the parent container of a non-empty
+    source folder is renamed in place with the `[TRI]` prefix. The recap count
+    comes from completed filesystem renames, never from a prediction.
   - The outcome sentence is coloured by what happened: `.good` for a complete
     success only, `.error` when the run aborted or any file failed, `.warn`
     otherwise.
@@ -851,6 +861,11 @@ rejected on review.
   and a select action; no-result and initial states use one centered
   `.tvdb-empty-state`; loading and errors stay inside the dialog instead of
   blocking the scan table.
+  The elastic title input may be paired with compact `.tvdb-search-year` and
+  `.tvdb-search-id` standard text fields. Both are optional, digits-only
+  refinements: year maps to TVDB's four-digit `year` filter, while an ID takes
+  priority and performs an exact TVDB record lookup. These fields reuse the
+  existing text-field tokens and states; they add no color or spacing token.
 - Blocking work uses the in-shell overlays, not a window: `.app-loader-overlay`
   + `.app-loader-card` for analysis, and `.prereq-overlay` + `.prereq-card` for
   the missing-workspace gate. Never use a native `Alert` / `Dialog`.

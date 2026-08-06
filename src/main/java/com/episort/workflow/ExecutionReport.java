@@ -17,6 +17,8 @@ import java.util.UUID;
  *                        can find it after a failure
  * @param deletedSourceFolders the source folders removed once every file they
  *                             held had moved out, deepest first
+ * @param renamedSourceFolders parent containers of non-empty source folders
+ *                             renamed with `[TRI]` after successful operations
  */
 public record ExecutionReport(
         UUID runId,
@@ -24,7 +26,8 @@ public record ExecutionReport(
         List<FileExecutionResult> results,
         boolean aborted,
         Optional<Path> journalLocation,
-        List<Path> deletedSourceFolders) {
+        List<Path> deletedSourceFolders,
+        List<FolderRenameResult> renamedSourceFolders) {
 
     public ExecutionReport {
         Objects.requireNonNull(runId, "runId");
@@ -32,6 +35,7 @@ public record ExecutionReport(
         Objects.requireNonNull(journalLocation, "journalLocation");
         results = List.copyOf(results);
         deletedSourceFolders = List.copyOf(deletedSourceFolders);
+        renamedSourceFolders = List.copyOf(renamedSourceFolders);
     }
 
     public ExecutionReport(
@@ -40,7 +44,17 @@ public record ExecutionReport(
             List<FileExecutionResult> results,
             boolean aborted,
             Optional<Path> journalLocation) {
-        this(runId, workspaceRoot, results, aborted, journalLocation, List.of());
+        this(runId, workspaceRoot, results, aborted, journalLocation, List.of(), List.of());
+    }
+
+    public ExecutionReport(
+            UUID runId,
+            Path workspaceRoot,
+            List<FileExecutionResult> results,
+            boolean aborted,
+            Optional<Path> journalLocation,
+            List<Path> deletedSourceFolders) {
+        this(runId, workspaceRoot, results, aborted, journalLocation, deletedSourceFolders, List.of());
     }
 
     public List<FileExecutionResult> succeeded() {

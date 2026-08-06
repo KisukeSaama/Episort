@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ import java.util.Optional;
  * is recorded and never inflates into a successful run.
  */
 public final class ExecutionService {
+    private static final String SORTING_PREFIX = "[TRI]";
     public static final String ERROR_DESTINATION_OCCUPIED = "EXECUTION_DESTINATION_OCCUPIED";
     public static final String ERROR_SOURCE_MISSING = "EXECUTION_SOURCE_MISSING";
     public static final String ERROR_FILE_LOCKED = "EXECUTION_FILE_LOCKED";
@@ -116,13 +118,13 @@ public final class ExecutionService {
                     processed, total, Optional.of(source), operation.destinationPath()));
         }
 
-        List<Path> deletedFolders = aborted
-                ? List.of()
+        SourceFolderCleanup cleanup = aborted
+                ? SourceFolderCleanup.empty()
                 : deleteEmptiedSourceFolders(plan, boundary, mover, results);
 
         ExecutionReport report = new ExecutionReport(
                 plan.id(), plan.workspaceRoot(), results, aborted, Optional.of(journal.location()),
-                deletedFolders);
+                cleanup.deleted(), cleanup.renamed());
         journal.finished(
                 plan.id(), plan.workspaceRoot(), total, report.succeeded().size(), finalState(report));
         return report;
@@ -166,10 +168,12 @@ public final class ExecutionService {
      * folder can never be destroyed by its own cleanup. The workspace root is
      * never a candidate.
      *
-     * <p>Cleanup runs after the last move and never fails the run: a folder that
-     * refuses to go is left in place and reported as not deleted.
+     * <p>Cleanup runs after the last move and never fails the run. An empty
+     * source folder is removed; when it remains non-empty, its parent container
+     * is renamed with {@code [TRI]}. A folder that cannot safely do either is
+     * left in place.
      */
-    private static List<Path> deleteEmptiedSourceFolders(
+    private static SourceFolderCleanup deleteEmptiedSourceFolders(
             ApprovedPlan plan,
             WorkspaceBoundary boundary,
             MediaFileMover mover,
@@ -209,6 +213,7 @@ public final class ExecutionService {
         candidates.sort(Comparator.comparingInt(Path::getNameCount).reversed());
 
         List<Path> deleted = new ArrayList<>();
+        List<FolderRenameResult> renamed = new ArrayList<>();
         for (Path candidate : candidates) {
             if (!isDeletable(candidate, root, preserved)) {
                 continue;
@@ -217,14 +222,46 @@ public final class ExecutionService {
                 if (mover.deleteFolderIfEmpty(candidate)) {
                     deleted.add(candidate);
                     deleteEmptiedAncestors(candidate, root, preserved, mover, deleted);
+                } else if (Files.exists(candidate)) {
+                    renameParentForSorting(candidate, root, preserved, mover).ifPresent(renamed::add);
                 }
             } catch (IOException exception) {
                 System.getLogger(ExecutionService.class.getName()).log(
                         System.Logger.Level.WARNING,
-                        "Source folder could not be removed after the move: " + candidate, exception);
+                        "Source folder could not be cleaned up after the move: " + candidate, exception);
             }
         }
-        return List.copyOf(deleted);
+        return new SourceFolderCleanup(deleted, renamed);
+    }
+
+    private static Optional<FolderRenameResult> renameParentForSorting(
+            Path sourceFolder,
+            Path root,
+            List<Path> preserved,
+            MediaFileMover mover)
+            throws IOException {
+        Path folder = sourceFolder.getParent();
+        if (folder == null || !isDeletable(folder, root, preserved)) {
+            return Optional.empty();
+        }
+        Path name = folder.getFileName();
+        if (name == null || name.toString().startsWith(SORTING_PREFIX)) {
+            return Optional.empty();
+        }
+        Path destination = folder.resolveSibling(SORTING_PREFIX + name);
+        mover.renameFolder(folder, destination);
+        return Optional.of(new FolderRenameResult(folder, destination));
+    }
+
+    private record SourceFolderCleanup(List<Path> deleted, List<FolderRenameResult> renamed) {
+        private SourceFolderCleanup {
+            deleted = List.copyOf(deleted);
+            renamed = List.copyOf(renamed);
+        }
+
+        private static SourceFolderCleanup empty() {
+            return new SourceFolderCleanup(List.of(), List.of());
+        }
     }
 
     private static void deleteEmptiedAncestors(

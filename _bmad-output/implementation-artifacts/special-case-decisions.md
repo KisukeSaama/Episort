@@ -51,6 +51,8 @@ the exact source-to-destination operation plan.
 17. Scan recursively inside the working directory without following symbolic links or
     junctions. Show relative paths, keep every destination inside the workspace, and remove
     source directories after a move only when they and their parents are empty.
+    Prefix the parent container of a source directory that remains non-empty
+    after a successful run with `[TRI]` so it stays visible for manual sorting.
 18. Distinguish TVDB technical failure from no result. Retry temporary failures within API
     limits, preserve local review choices, identify cached data and its date, and create no
     final plan without reliable TVDB data.
@@ -97,7 +99,8 @@ the exact source-to-destination operation plan.
 - Duplicate conflict resolution is non-destructive: duplicates already present in the plan
   or library can be skipped but cannot be replaced or deleted from the conflict UI.
 - Execution removes emptied source folders and their empty parents after successful moves.
-  Non-empty folders and ignored contents are preserved.
+  Non-empty folders and ignored contents are preserved together under a parent
+  container carrying the `[TRI]` prefix. Failed or aborted work is never tagged.
 - The default execution path stops at the first error. The UI offers Retry for recoverable
   errors and Stop; it no longer offers Continue.
 - Numbered specials whose real title contains `Extra`, `Extras`, or `Bonus` are no longer

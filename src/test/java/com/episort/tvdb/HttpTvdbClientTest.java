@@ -44,7 +44,47 @@ class HttpTvdbClientTest {
     }
 
     @Test
-    void enrichesSearchCandidateOverviewsAndNormalizesRelativePosters() throws Exception {
+    void addsYearToTextSearch() throws Exception {
+        FakeTvdbServer server = FakeTvdbServer.start();
+        server.enqueue("/login", 200, "{\"data\":{\"token\":\"token-1\"}}");
+        server.enqueue("/search", 200, "{\"data\":[]}");
+        try {
+            HttpTvdbClient client = new HttpTvdbClient(HttpClient.newHttpClient(), server.baseUri());
+
+            client.search(new TvdbSearchCriteria("The Office", Optional.of(2005), Optional.empty()), credentials());
+
+            assertEquals("query=The+Office&year=2005", server.rawQueries.getFirst());
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void looksUpSeriesDirectlyByTvdbIdWithoutATitle() throws Exception {
+        FakeTvdbServer server = FakeTvdbServer.start();
+        server.enqueue("/login", 200, "{\"data\":{\"token\":\"token-1\"}}");
+        server.enqueue("/series/73244", 200,
+                "{\"data\":{\"id\":73244,\"name\":\"The Office\",\"year\":\"2005\",\"image\":\"/poster.jpg\"}}");
+        server.enqueue("/series/73244/translations/eng", 404, "{}");
+        server.enqueue("/series/73244/translations/fra", 404, "{}");
+        server.enqueue("/movies/73244", 404, "{}");
+        try {
+            HttpTvdbClient client = new HttpTvdbClient(HttpClient.newHttpClient(), server.baseUri());
+
+            TvdbSearchResult result = client.search(
+                    new TvdbSearchCriteria("", Optional.empty(), Optional.of("73244")), credentials());
+
+            assertEquals(1, result.seriesCandidates().size());
+            assertEquals("73244", result.seriesCandidates().getFirst().identity().id());
+            assertEquals(Optional.of(2005), result.seriesCandidates().getFirst().year());
+            assertTrue(result.movieCandidates().isEmpty());
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void usesSearchPayloadWithoutTranslationFanOutAndNormalizesRelativePosters() throws Exception {
         FakeTvdbServer server = FakeTvdbServer.start();
         server.enqueue("/login", 200, "{\"data\":{\"token\":\"token-1\"}}");
         server.enqueue("/search", 200, """
@@ -52,18 +92,17 @@ class HttpTvdbClientTest {
                   {"tvdb_id":"101","type":"series","name":"Show","image_url":"/banners/poster one.jpg","overview":"Default"}
                 ]}
                 """);
-        server.enqueue("/series/101/translations/eng", 200,
-                "{\"data\":{\"language\":\"eng\",\"overview\":\"English overview\"}}");
-        server.enqueue("/series/101/translations/fra", 200,
-                "{\"data\":{\"language\":\"fra\",\"overview\":\"Description francaise\"}}");
         try {
             HttpTvdbClient client = new HttpTvdbClient(HttpClient.newHttpClient(), server.baseUri());
 
             TvdbCandidate candidate = client.search("Show", credentials()).seriesCandidates().getFirst();
 
-            assertEquals(Optional.of("English overview"), candidate.englishOverview());
-            assertEquals(Optional.of("Description francaise"), candidate.frenchOverview());
+            assertEquals(Optional.of("Default"), candidate.overview());
+            assertTrue(candidate.englishOverview().isEmpty());
+            assertTrue(candidate.frenchOverview().isEmpty());
             assertEquals(Optional.of("https://artworks.thetvdb.com/banners/poster%20one.jpg"), candidate.posterUrl());
+            assertEquals(0, server.requestCount("/series/101/translations/eng"));
+            assertEquals(0, server.requestCount("/series/101/translations/fra"));
         } finally {
             server.stop();
         }
@@ -132,7 +171,7 @@ class HttpTvdbClientTest {
             TvdbSeriesDetails details = client.seriesDetails(
                     new TvdbIdentity("101", TvdbMediaType.SERIES, "Local Show"), credentials());
 
-            assertEquals("Fallback Show", details.identity().displayName());
+            assertEquals("Local Show", details.identity().displayName());
             assertTrue(details.supportedOrders().contains(TvdbEpisodeOrder.AIRED));
             assertTrue(details.supportedOrders().contains(TvdbEpisodeOrder.DVD));
             assertTrue(details.supportedOrders().contains(TvdbEpisodeOrder.ABSOLUTE));
@@ -163,13 +202,45 @@ class HttpTvdbClientTest {
         try {
             HttpTvdbClient client = new HttpTvdbClient(HttpClient.newHttpClient(), server.baseUri());
 
+            TvdbIdentity identity = new TvdbIdentity("101", TvdbMediaType.SERIES, "Show");
+            TvdbSeriesDetails dvdDetails = client.seriesDetails(identity, TvdbEpisodeOrder.DVD, credentials());
+            TvdbSeriesDetails absoluteDetails = client.seriesDetails(identity, TvdbEpisodeOrder.ABSOLUTE, credentials());
+
+            assertTrue(dvdDetails.airedEpisodes().isEmpty());
+            assertEquals(29, dvdDetails.dvdEpisodes().getFirst().episodeNumber());
+            assertTrue(dvdDetails.absoluteEpisodes().isEmpty());
+            assertEquals(29, absoluteDetails.absoluteEpisodes().getFirst().absoluteNumber().orElseThrow());
+            assertTrue(absoluteDetails.dvdEpisodes().isEmpty());
+            assertEquals(1, server.requestCount("/series/101/episodes/dvd/eng"));
+            assertEquals(1, server.requestCount("/series/101/episodes/absolute/eng"));
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void followsEpisodePaginationUntilTvdbStopsProvidingNextLink() throws Exception {
+        FakeTvdbServer server = FakeTvdbServer.start();
+        server.enqueue("/login", 200, "{\"data\":{\"token\":\"token-1\"}}");
+        server.enqueue("/series/101/episodes/default/eng", 200, """
+                {"data":{"series":{"id":"101","name":"Show"},
+                "episodes":[{"id":"e1","seasonNumber":1,"number":1,"name":"One"}]},
+                "links":{"next":"/v4/series/101/episodes/default/eng?page=1"}}
+                """);
+        server.enqueue("/series/101/episodes/default/eng", 200, """
+                {"data":{"series":{"id":"101","name":"Show"},
+                "episodes":[{"id":"e2","seasonNumber":1,"number":2,"name":"Two"}]},
+                "links":{"next":null}}
+                """);
+        try {
+            HttpTvdbClient client = new HttpTvdbClient(HttpClient.newHttpClient(), server.baseUri());
+
             TvdbSeriesDetails details = client.seriesDetails(
                     new TvdbIdentity("101", TvdbMediaType.SERIES, "Show"), credentials());
 
-            assertEquals(1, details.airedEpisodes().getFirst().episodeNumber());
-            assertEquals(29, details.dvdEpisodes().getFirst().episodeNumber());
-            assertEquals(29, details.absoluteEpisodes().getFirst().absoluteNumber().orElseThrow());
-            assertTrue(details.supportedOrders().contains(TvdbEpisodeOrder.DVD));
+            assertEquals(2, details.airedEpisodes().size());
+            assertEquals(2, server.requestCount("/series/101/episodes/default/eng"));
+            assertEquals(List.of("page=0", "page=1"), server.rawQueries.subList(0, 2));
         } finally {
             server.stop();
         }
@@ -219,6 +290,7 @@ class HttpTvdbClientTest {
         private final HttpServer server;
         private final List<Response> responses = new ArrayList<>();
         private final List<String> paths = new ArrayList<>();
+        private final List<String> rawQueries = new ArrayList<>();
         private final List<String> authorizationHeaders = new ArrayList<>();
 
         private FakeTvdbServer(HttpServer server) {
@@ -231,6 +303,10 @@ class HttpTvdbClientTest {
             server.createContext("/", exchange -> {
                 String path = exchange.getRequestURI().getPath();
                 fake.paths.add(path);
+                String rawQuery = exchange.getRequestURI().getRawQuery();
+                if (rawQuery != null) {
+                    fake.rawQueries.add(rawQuery);
+                }
                 String authorization = exchange.getRequestHeaders().getFirst("Authorization");
                 if (authorization != null) {
                     fake.authorizationHeaders.add(authorization);

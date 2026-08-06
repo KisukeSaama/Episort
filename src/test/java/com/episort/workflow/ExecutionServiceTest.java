@@ -207,20 +207,26 @@ class ExecutionServiceTest {
     }
 
     @Test
-    void sourceFoldersAndIgnoredSidecarsArePreservedAfterMoves() throws IOException {
+    void sourceFoldersWithIgnoredSidecarsAreTaggedForManualSortingAfterMoves() throws IOException {
         Path workspace = workspace();
-        Path release = Files.createDirectories(workspace.resolve("Show.S01.1080p"));
+        Path container = Files.createDirectories(workspace.resolve("86 Eighty Six [MULTI]"));
+        Path release = Files.createDirectories(container.resolve("Show.S01.1080p"));
         Path source = file(release, "show.s01e01.mkv");
         Files.writeString(release.resolve("show.nfo"), "leftover metadata");
         Files.createDirectories(release.resolve("Sample"));
+        Path canonicalContainer = container.toRealPath();
         ApprovedPlan plan = ApprovedPlan.lock(planner.plan(workspace, List.of(
                 episode(source, "Show", 1, 1, "Pilot"))));
         ExecutionReport report = service().execute(plan);
 
         assertTrue(report.completeSuccess());
-        assertTrue(Files.exists(release.resolve("show.nfo")));
-        assertTrue(Files.isDirectory(release.resolve("Sample")));
+        Path tagged = workspace.resolve("[TRI]86 Eighty Six [MULTI]");
+        assertFalse(Files.exists(container));
+        assertTrue(Files.exists(tagged.resolve("Show.S01.1080p/show.nfo")));
+        assertTrue(Files.isDirectory(tagged.resolve("Show.S01.1080p/Sample")));
         assertTrue(report.deletedSourceFolders().isEmpty());
+        assertEquals(List.of(new FolderRenameResult(canonicalContainer, tagged.toRealPath())),
+                report.renamedSourceFolders());
         assertTrue(Files.exists(workspace), "the workspace root is never a candidate");
     }
 
@@ -241,7 +247,42 @@ class ExecutionServiceTest {
 
         assertEquals(1, report.failed().size());
         assertTrue(report.deletedSourceFolders().isEmpty());
+        assertTrue(report.renamedSourceFolders().isEmpty());
         assertTrue(Files.exists(failing), "the file that never moved must still be where it was");
+    }
+
+    @Test
+    void anExistingTriFolderLeavesTheNonEmptySourceFolderUntouched() throws IOException {
+        Path workspace = workspace();
+        Path container = Files.createDirectories(workspace.resolve("86 Eighty Six [MULTI]"));
+        Path release = Files.createDirectories(container.resolve("Show.S01.1080p"));
+        Path source = file(release, "show.s01e01.mkv");
+        Files.writeString(release.resolve("show.nfo"), "leftover metadata");
+        Files.createDirectory(workspace.resolve("[TRI]86 Eighty Six [MULTI]"));
+        ApprovedPlan plan = ApprovedPlan.lock(planner.plan(workspace, List.of(
+                episode(source, "Show", 1, 1, "Pilot"))));
+
+        ExecutionReport report = service().execute(plan);
+
+        assertTrue(Files.exists(release.resolve("show.nfo")));
+        assertTrue(report.renamedSourceFolders().isEmpty());
+    }
+
+    @Test
+    void aFolderAlreadyTaggedForSortingIsNeverPrefixedAgain() throws IOException {
+        Path workspace = workspace();
+        Path container = Files.createDirectories(workspace.resolve("[TRI]86 Eighty Six [MULTI]"));
+        Path release = Files.createDirectories(container.resolve("Show.S01.1080p"));
+        Path source = file(release, "show.s01e01.mkv");
+        Files.writeString(release.resolve("show.nfo"), "leftover metadata");
+        ApprovedPlan plan = ApprovedPlan.lock(planner.plan(workspace, List.of(
+                episode(source, "Show", 1, 1, "Pilot"))));
+
+        ExecutionReport report = service().execute(plan);
+
+        assertTrue(Files.exists(release.resolve("show.nfo")));
+        assertFalse(Files.exists(workspace.resolve("[TRI][TRI]86 Eighty Six [MULTI]")));
+        assertTrue(report.renamedSourceFolders().isEmpty());
     }
 
     @Test

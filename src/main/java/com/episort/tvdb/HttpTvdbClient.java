@@ -3,11 +3,13 @@ package com.episort.tvdb;
 import com.episort.config.TvdbCredentials;
 import com.episort.tvdb.debug.TvdbRequestBus;
 import com.episort.tvdb.debug.TvdbRequestTrace;
+import com.episort.tvdb.dto.TvdbEntityResponseDto;
 import com.episort.tvdb.dto.TvdbLoginResponseDto;
 import com.episort.tvdb.dto.TvdbMovieResponseDto;
 import com.episort.tvdb.dto.TvdbSearchResponseDto;
 import com.episort.tvdb.dto.TvdbSeriesResponseDto;
 import com.episort.tvdb.dto.TvdbTranslationResponseDto;
+import com.episort.tvdb.guard.TvdbRequestScheduler;
 import com.google.gson.Gson;
 import java.io.IOException;
 import java.net.URI;
@@ -18,6 +20,9 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -25,6 +30,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 public final class HttpTvdbClient implements TvdbClient {
     private static final URI DEFAULT_BASE_URI = URI.create("https://api4.thetvdb.com/v4/");
@@ -34,23 +40,46 @@ public final class HttpTvdbClient implements TvdbClient {
     private final HttpClient httpClient;
     private final URI baseUri;
     private final Gson gson;
+    private final TvdbRequestScheduler requestScheduler;
     private String bearerToken;
 
     public HttpTvdbClient() {
-        this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(), DEFAULT_BASE_URI);
+        this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(),
+                DEFAULT_BASE_URI, new TvdbRequestScheduler());
+    }
+
+    public HttpTvdbClient(TvdbRequestScheduler requestScheduler) {
+        this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(),
+                DEFAULT_BASE_URI, requestScheduler);
     }
 
     HttpTvdbClient(HttpClient httpClient, URI baseUri) {
+        this(httpClient, baseUri, TvdbRequestScheduler.unthrottled());
+    }
+
+    HttpTvdbClient(HttpClient httpClient, URI baseUri, TvdbRequestScheduler requestScheduler) {
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
         this.baseUri = normalizeBaseUri(baseUri);
         this.gson = new Gson();
+        this.requestScheduler = Objects.requireNonNull(requestScheduler, "requestScheduler");
     }
 
     @Override
     public TvdbSearchResult search(String query, TvdbCredentials credentials) {
-        String encoded = URLEncoder.encode(query == null ? "" : query, StandardCharsets.UTF_8);
+        return search(TvdbSearchCriteria.title(query), credentials);
+    }
+
+    @Override
+    public TvdbSearchResult search(TvdbSearchCriteria criteria, TvdbCredentials credentials) {
+        Objects.requireNonNull(criteria, "criteria");
+        if (criteria.tvdbId().isPresent()) {
+            return searchByTvdbId(criteria.tvdbId().orElseThrow(), credentials);
+        }
+        String encoded = URLEncoder.encode(criteria.query(), StandardCharsets.UTF_8);
+        String path = "search?query=" + encoded
+                + criteria.year().map(year -> "&year=" + year).orElse("");
         TvdbSearchResponseDto dto = send(
-                "search?query=" + encoded,
+                path,
                 credentials,
                 TvdbSearchResponseDto.class);
         List<TvdbCandidate> series = new ArrayList<>();
@@ -70,47 +99,93 @@ public final class HttpTvdbClient implements TvdbClient {
         return new TvdbSearchResult(series, movies);
     }
 
+    private TvdbSearchResult searchByTvdbId(String id, TvdbCredentials credentials) {
+        List<TvdbCandidate> series = lookupByTvdbId(id, TvdbMediaType.SERIES, credentials).stream().toList();
+        List<TvdbCandidate> movies = lookupByTvdbId(id, TvdbMediaType.MOVIE, credentials).stream().toList();
+        return new TvdbSearchResult(series, movies);
+    }
+
+    private Optional<TvdbCandidate> lookupByTvdbId(
+            String id, TvdbMediaType mediaType, TvdbCredentials credentials) {
+        String prefix = mediaType == TvdbMediaType.SERIES ? "series/" : "movies/";
+        Optional<TvdbEntityResponseDto> response = sendIfFound(
+                prefix + encodePath(id), credentials, TvdbEntityResponseDto.class);
+        if (response.isEmpty() || response.orElseThrow().data == null) {
+            return Optional.empty();
+        }
+        TvdbEntityResponseDto.Data data = response.orElseThrow().data;
+        String resolvedId = data.id == null ? id : String.valueOf(data.id);
+        String name = data.name == null ? "" : data.name.trim();
+        if (name.isBlank()) {
+            return Optional.empty();
+        }
+        TranslationPair translations = fetchCandidateTranslations(resolvedId, mediaType, credentials);
+        return Optional.of(new TvdbCandidate(
+                new TvdbIdentity(resolvedId, mediaType, name),
+                optional(normalizeImageUrl(data.image)),
+                Optional.empty(),
+                translations.englishOverview(),
+                translations.frenchOverview(),
+                parseYear(fallback(data.year, firstFour(data.firstAired), "")),
+                optional(fallback(data.country, data.originalCountry)),
+                Optional.empty(),
+                OptionalDoubleScore.empty(),
+                0));
+    }
+
     @Override
     public TvdbSeriesDetails seriesDetails(TvdbIdentity identity, TvdbCredentials credentials) {
+        return seriesDetails(identity, TvdbEpisodeOrder.AIRED, credentials);
+    }
+
+    @Override
+    public TvdbSeriesDetails seriesDetails(
+            TvdbIdentity identity,
+            TvdbEpisodeOrder requestedOrder,
+            TvdbCredentials credentials) {
         Objects.requireNonNull(identity, "identity");
+        TvdbEpisodeOrder safeOrder = requestedOrder == null ? TvdbEpisodeOrder.AIRED : requestedOrder;
         // The localized episodes endpoint returns the series name and every
         // episode title in the requested language, with automatic fallback to
         // the original when no translation exists. One call, English-first.
-        TvdbSeriesResponseDto dto = fetchSeriesEpisodes(identity.id(), "default", credentials)
-                .orElseThrow(() -> TvdbException.recoverable("TVDB_SERIES_EMPTY", "TVDB returned no series details.",
-                        "Empty data object from TVDB series details response."));
+        String providerOrder = switch (safeOrder) {
+            case AIRED -> "default";
+            case DVD -> "dvd";
+            case ABSOLUTE -> "absolute";
+        };
+        Optional<TvdbSeriesResponseDto> response = fetchSeriesEpisodes(identity.id(), providerOrder, credentials);
+        if (response.isEmpty() && safeOrder != TvdbEpisodeOrder.AIRED) {
+            return new TvdbSeriesDetails(identity, Set.of(TvdbEpisodeOrder.AIRED),
+                    List.of(), List.of(), List.of());
+        }
+        TvdbSeriesResponseDto dto = response.orElseThrow(() -> TvdbException.recoverable(
+                "TVDB_SERIES_EMPTY", "TVDB returned no series details.",
+                "Empty data object from TVDB series details response."));
         if (dto.data == null) {
             throw TvdbException.recoverable("TVDB_SERIES_EMPTY", "TVDB returned no series details.",
                     "Empty data object from TVDB series details response.");
         }
         TvdbSeriesResponseDto.Series series = dto.data.series;
         String seriesId = series == null ? identity.id() : fallback(series.id, identity.id());
-        // The episodes endpoint returns series.name in TVDB's canonical
-        // language (often Japanese for anime, etc.). Fetch the English
-        // translation explicitly to override it when available.
-        String englishSeriesName = fetchEnglishSeriesName(identity.id(), credentials);
         String name = fallback(
-                englishSeriesName,
+                identity.displayName(),
                 series == null ? null : series.name,
-                identity.displayName());
+                "");
         List<TvdbSeriesResponseDto.Episode> raw = dto.data.episodes == null ? List.of() : dto.data.episodes;
-        List<TvdbEpisode> episodes = raw.stream()
+        List<TvdbEpisode> requestedEpisodes = raw.stream()
                 .map(HttpTvdbClient::mapEpisode)
                 .flatMap(Optional::stream)
                 .toList();
-        List<TvdbEpisode> dvdEpisodes = fetchSeriesEpisodes(identity.id(), "dvd", credentials)
-                .map(HttpTvdbClient::mapEpisodes)
-                .orElse(List.of());
-        List<TvdbEpisode> absoluteEpisodes = fetchSeriesEpisodes(identity.id(), "absolute", credentials)
-                .map(HttpTvdbClient::mapEpisodes)
-                .orElseGet(() -> episodes.stream().filter(episode -> episode.absoluteNumber().isPresent()).toList());
+        List<TvdbEpisode> episodes = safeOrder == TvdbEpisodeOrder.AIRED ? requestedEpisodes : List.of();
+        List<TvdbEpisode> dvdEpisodes = safeOrder == TvdbEpisodeOrder.DVD ? requestedEpisodes : List.of();
+        List<TvdbEpisode> absoluteEpisodes = safeOrder == TvdbEpisodeOrder.ABSOLUTE ? requestedEpisodes : List.of();
         Set<TvdbEpisodeOrder> orders = detectOrders(series == null ? null : series.airsOrder,
                 episodes, dvdEpisodes, absoluteEpisodes);
         return new TvdbSeriesDetails(
                 new TvdbIdentity(seriesId, TvdbMediaType.SERIES, name),
                 orders,
                 episodes,
-                dvdEpisodes.isEmpty() ? episodes : dvdEpisodes,
+                dvdEpisodes,
                 absoluteEpisodes);
     }
 
@@ -132,31 +207,42 @@ public final class HttpTvdbClient implements TvdbClient {
                 parseYear(fallback(dto.data.year, firstFour(dto.data.releaseDate), "")));
     }
 
-    private String fetchEnglishSeriesName(String id, TvdbCredentials credentials) {
-        try {
-            TvdbTranslationResponseDto dto = send(
-                    "series/" + encodePath(id) + "/translations/eng",
-                    credentials,
-                    TvdbTranslationResponseDto.class);
-            if (dto != null && dto.data != null && dto.data.name != null && !dto.data.name.isBlank()) {
-                return dto.data.name.trim();
-            }
-        } catch (TvdbException ignored) {
-            // English translation may not exist; fall back to original.
-        }
-        return null;
-    }
-
     private Optional<TvdbSeriesResponseDto> fetchSeriesEpisodes(
             String id, String order, TvdbCredentials credentials) {
-        try {
-            return Optional.of(send(
-                    "series/" + encodePath(id) + "/episodes/" + encodePath(order) + "/eng?page=0",
-                    credentials,
-                    TvdbSeriesResponseDto.class));
-        } catch (TvdbException ex) {
+        Optional<TvdbSeriesResponseDto> firstResponse = sendIfFound(seriesEpisodesPath(id, order, 0),
+                credentials, TvdbSeriesResponseDto.class);
+        if (firstResponse.isEmpty()) {
             return Optional.empty();
         }
+        TvdbSeriesResponseDto first = firstResponse.orElseThrow();
+        List<TvdbSeriesResponseDto.Episode> episodes = new ArrayList<>();
+        if (first.data != null && first.data.episodes != null) {
+            episodes.addAll(first.data.episodes);
+        }
+        TvdbSeriesResponseDto current = first;
+        int page = 0;
+        while (hasNextPage(current) && page < 999) {
+            page++;
+            current = send(seriesEpisodesPath(id, order, page), credentials, TvdbSeriesResponseDto.class);
+            if (current == null || current.data == null) {
+                break;
+            }
+            if (current.data.episodes != null) {
+                episodes.addAll(current.data.episodes);
+            }
+        }
+        if (first.data != null) {
+            first.data.episodes = episodes;
+        }
+        return Optional.of(first);
+    }
+
+    private static String seriesEpisodesPath(String id, String order, int page) {
+        return "series/" + encodePath(id) + "/episodes/" + encodePath(order) + "/eng?page=" + page;
+    }
+
+    private static boolean hasNextPage(TvdbSeriesResponseDto response) {
+        return response.links != null && response.links.next != null && !response.links.next.isBlank();
     }
 
     private static String pickEnglishTranslation(TvdbMovieResponseDto.Translations translations) {
@@ -177,6 +263,25 @@ public final class HttpTvdbClient implements TvdbClient {
     }
 
     private <T> T send(String path, TvdbCredentials credentials, Class<T> type) {
+        HttpResponse<String> response = sendResponse(path, credentials);
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw requestFailed(response.statusCode());
+        }
+        return gson.fromJson(response.body(), type);
+    }
+
+    private <T> Optional<T> sendIfFound(String path, TvdbCredentials credentials, Class<T> type) {
+        HttpResponse<String> response = sendResponse(path, credentials);
+        if (response.statusCode() == 404) {
+            return Optional.empty();
+        }
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw requestFailed(response.statusCode());
+        }
+        return Optional.ofNullable(gson.fromJson(response.body(), type));
+    }
+
+    private HttpResponse<String> sendResponse(String path, TvdbCredentials credentials) {
         ensureToken(credentials);
         Instant start = Instant.now();
         HttpResponse<String> response;
@@ -194,12 +299,18 @@ public final class HttpTvdbClient implements TvdbClient {
         }
         long ms = Duration.between(start, Instant.now()).toMillis();
         publishTrace("GET", path, response, ms, null);
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw TvdbException.recoverable("TVDB_REQUEST_FAILED",
-                    "TVDB lookup failed (HTTP " + response.statusCode() + ").",
-                    "TVDB returned HTTP " + response.statusCode() + ". Response body omitted.");
+        return response;
+    }
+
+    private static TvdbException requestFailed(int statusCode) {
+        if (statusCode == 429) {
+            return TvdbException.recoverable("TVDB_RATE_LIMITED",
+                    "TVDB is temporarily limiting requests.",
+                    "TVDB returned HTTP 429 after the bounded retry policy.");
         }
-        return gson.fromJson(response.body(), type);
+        return TvdbException.recoverable("TVDB_REQUEST_FAILED",
+                "TVDB lookup failed (HTTP " + statusCode + ").",
+                "TVDB returned HTTP " + statusCode + ". Response body omitted.");
     }
 
     private static void publishTrace(String method, String path, HttpResponse<String> response, long ms, String error) {
@@ -252,16 +363,26 @@ public final class HttpTvdbClient implements TvdbClient {
         InterruptedException lastInterrupted = null;
         for (int attempt = 0; attempt < 3; attempt++) {
             try {
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> response = requestScheduler.execute(
+                        () -> httpClient.send(request, HttpResponse.BodyHandlers.ofString()));
                 if (!TRANSIENT_STATUS_CODES.contains(response.statusCode()) || attempt == 2) {
                     return response;
                 }
+                requestScheduler.deferFor(retryDelay(response, attempt));
             } catch (IOException exception) {
                 lastIo = exception;
+                if (attempt < 2) {
+                    requestScheduler.deferFor(jittered(Duration.ofSeconds(1L << attempt)));
+                }
             } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
                 lastInterrupted = exception;
                 break;
+            } catch (RuntimeException exception) {
+                throw exception;
+            } catch (Exception exception) {
+                throw TvdbException.recoverable("TVDB_UNAVAILABLE", "TVDB is unavailable.",
+                        "Unexpected transport error while calling TVDB.");
             }
         }
         if (lastInterrupted != null) {
@@ -270,6 +391,39 @@ public final class HttpTvdbClient implements TvdbClient {
         }
         throw TvdbException.recoverable("TVDB_UNAVAILABLE", "TVDB is unavailable.",
                 lastIo == null ? "TVDB did not return a usable response." : "Network error while calling TVDB.");
+    }
+
+    private static Duration retryDelay(HttpResponse<?> response, int attempt) {
+        if (response.statusCode() == 429) {
+            Optional<Duration> providerDelay = response.headers().firstValue("Retry-After")
+                    .flatMap(HttpTvdbClient::parseRetryAfter);
+            return providerDelay.orElseGet(() -> jittered(Duration.ofSeconds(60L << attempt)));
+        }
+        return jittered(Duration.ofSeconds(1L << attempt));
+    }
+
+    private static Optional<Duration> parseRetryAfter(String value) {
+        if (value == null || value.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            long seconds = Long.parseLong(value.trim());
+            return Optional.of(Duration.ofSeconds(Math.max(0L, seconds)));
+        } catch (NumberFormatException ignored) {
+            try {
+                Instant retryAt = ZonedDateTime.parse(value.trim(), DateTimeFormatter.RFC_1123_DATE_TIME).toInstant();
+                return Optional.of(Duration.between(Instant.now(), retryAt).isNegative()
+                        ? Duration.ZERO
+                        : Duration.between(Instant.now(), retryAt));
+            } catch (DateTimeParseException invalidDate) {
+                return Optional.empty();
+            }
+        }
+    }
+
+    private static Duration jittered(Duration base) {
+        double factor = ThreadLocalRandom.current().nextDouble(0.8, 1.2);
+        return Duration.ofMillis(Math.max(0L, Math.round(base.toMillis() * factor)));
     }
 
     private HttpRequest request(String path, String token) {
@@ -306,11 +460,6 @@ public final class HttpTvdbClient implements TvdbClient {
         }
         Optional<String> englishOverview = optional(item.overviews == null ? null : item.overviews.get("eng"));
         Optional<String> frenchOverview = optional(item.overviews == null ? null : item.overviews.get("fra"));
-        if (englishOverview.isEmpty() || frenchOverview.isEmpty()) {
-            TranslationPair translations = fetchCandidateTranslations(id, mediaType.orElseThrow(), credentials);
-            englishOverview = englishOverview.or(translations::englishOverview);
-            frenchOverview = frenchOverview.or(translations::frenchOverview);
-        }
         return Optional.of(new TvdbCandidate(
                 new TvdbIdentity(id, mediaType.orElseThrow(), name),
                 optional(normalizeImageUrl(item.image_url)),

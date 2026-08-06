@@ -1,6 +1,6 @@
 # TVDB API access investigation
 
-Date: 2026-07-28
+Date: 2026-08-06
 
 ## Context
 
@@ -10,8 +10,8 @@ The TVDB dashboard currently shows the following information for Episort:
 - Funding model: `Negotiated Contract`
 - Status: `Inactive`
 
-The API key nevertheless appeared to work during an initial Episort test. A
-clean authentication test still needs to be performed.
+The API key works in the current Episort application according to the latest
+user validation. TVDB access is therefore not treated as a runtime blocker.
 
 ## Current interpretation
 
@@ -59,10 +59,10 @@ after TVDB approves the project.
 The current source loads the project key from the `TVDB_API_KEY` environment
 variable rather than embedding it in the repository.
 
-## Authentication test still required
+## Authentication status
 
-The decisive test is a fresh call to `POST /v4/login` using the exact project
-key.
+The application currently authenticates and retrieves TVDB data successfully.
+The Settings connection state remains the supported way to observe that result.
 
 In Episort, the Settings action labelled `Retest` uses the connection tester
 and performs a fresh TVDB login. It does not use the metadata response cache.
@@ -95,9 +95,9 @@ TVDB bearer token may also remain valid for up to one month.
 2. Explain that Episort is a desktop application making direct TVDB v4 calls
    and ask TVDB to confirm that this distribution model is authorised without
    individual subscriber PINs.
-3. Add the required clickable TVDB attribution. Episort currently displays
-   attribution text in its About screen, but it is a plain JavaFX `Label`
-   rather than a direct link.
+3. Keep the required clickable TVDB attribution visible in Settings. Episort
+   now displays the official dark-background logo, recommended provider copy,
+   and a direct link to TheTVDB.
 4. After approval, create or rotate to a new key. Never reactivate or reuse the
    historically exposed key.
 5. Remove the credential from Git history with a coordinated history rewrite,

@@ -1099,7 +1099,7 @@ public final class ScanScreen {
         CompletableFuture
                 .supplyAsync(() -> identity.mediaType() == TvdbMediaType.MOVIE
                         ? tvdbClient.movieDetails(identity, credentials)
-                        : tvdbClient.seriesDetails(identity, credentials))
+                        : tvdbClient.seriesDetails(identity, order, credentials))
                 .thenAccept(details -> Platform.runLater(() -> applySelectedTvdbMetadata(targets, details, order)))
                 .exceptionally(throwable -> {
                     Platform.runLater(() -> applyTvdbLookupFailure(targets, throwable));

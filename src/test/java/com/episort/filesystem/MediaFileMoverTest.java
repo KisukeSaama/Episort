@@ -261,6 +261,29 @@ class MediaFileMoverTest {
         assertThrows(NoSuchFileException.class, () -> mover.deleteFile(workspace.resolve("ghost.mkv")));
     }
 
+    @Test
+    void renamesANonEmptyFolderInsideItsParent() throws IOException {
+        Path workspace = workspace();
+        Path source = Files.createDirectory(workspace.resolve("Show.S01"));
+        Files.writeString(source.resolve("show.nfo"), "metadata");
+        Path destination = workspace.resolve("[TRI]Show.S01");
+
+        mover(workspace).renameFolder(source, destination);
+
+        assertFalse(Files.exists(source));
+        assertTrue(Files.exists(destination.resolve("show.nfo")));
+    }
+
+    @Test
+    void renamingAFolderRefusesAnOccupiedDestination() throws IOException {
+        Path workspace = workspace();
+        Path source = Files.createDirectory(workspace.resolve("Show.S01"));
+        Path destination = Files.createDirectory(workspace.resolve("[TRI]Show.S01"));
+
+        assertThrows(FileAlreadyExistsException.class, () -> mover(workspace).renameFolder(source, destination));
+        assertTrue(Files.exists(source));
+    }
+
     private Path workspace() throws IOException {
         return Files.createDirectories(tempDir.resolve("workspace"));
     }

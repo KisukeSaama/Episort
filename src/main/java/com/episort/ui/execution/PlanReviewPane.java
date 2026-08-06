@@ -288,9 +288,12 @@ public final class PlanReviewPane {
         // button that starts it — a count of deletions is not a detail.
         int deletions = plan.deletions().size();
         notice.getStyleClass().remove("notice-danger");
-        notice.setText(deletions == 0
+        String baseNotice = (deletions == 0
                 ? UiText.planNotice(language)
                 : UiText.planNotice(language) + " " + UiText.planNoticeDelete(language, deletions));
+        notice.setText(plan.executableOperations().isEmpty()
+                ? baseNotice
+                : baseNotice + " " + UiText.planNoticeSortingFolders(language));
         if (deletions > 0) {
             notice.getStyleClass().add("notice-danger");
         }

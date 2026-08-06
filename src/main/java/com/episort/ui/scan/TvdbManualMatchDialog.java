@@ -6,6 +6,7 @@ import com.episort.tvdb.TvdbCandidate;
 import com.episort.tvdb.TvdbCandidateScorer;
 import com.episort.tvdb.TvdbClient;
 import com.episort.tvdb.TvdbException;
+import com.episort.tvdb.TvdbSearchCriteria;
 import com.episort.tvdb.TvdbSearchResult;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.UiText;
@@ -25,6 +26,7 @@ import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -48,6 +50,8 @@ final class TvdbManualMatchDialog {
     private final TvdbCredentials credentials;
     private final Stage stage = new Stage();
     private final TextField queryField = new TextField();
+    private final TextField yearField = new TextField();
+    private final TextField tvdbIdField = new TextField();
     private final Button searchButton = new Button();
     private final Button clearSearchButton = new Button("×");
     private final Button ignoreButton = new Button();
@@ -78,6 +82,14 @@ final class TvdbManualMatchDialog {
         queryField.setText(initialQuery == null ? "" : initialQuery);
         queryField.setPromptText(UiText.tvdbSearchPlaceholder(language));
         queryField.getStyleClass().addAll("episort-search-field", "tvdb-search-text-field");
+        yearField.setPromptText(UiText.tvdbSearchYearPlaceholder(language));
+        yearField.setAccessibleText(UiText.tvdbSearchYearPlaceholder(language));
+        yearField.setTextFormatter(digitsOnly(4));
+        yearField.getStyleClass().add("tvdb-search-year");
+        tvdbIdField.setPromptText(UiText.tvdbSearchIdPlaceholder(language));
+        tvdbIdField.setAccessibleText(UiText.tvdbSearchIdPlaceholder(language));
+        tvdbIdField.setTextFormatter(digitsOnly(18));
+        tvdbIdField.getStyleClass().add("tvdb-search-id");
         searchButton.setText(UiText.tvdbSearch(language));
         searchButton.getStyleClass().add("primary");
         clearSearchButton.getStyleClass().addAll("episort-search-clear", "tvdb-search-clear");
@@ -103,16 +115,16 @@ final class TvdbManualMatchDialog {
 
         searchButton.setOnAction(event -> search());
         queryField.setOnAction(event -> search());
+        yearField.setOnAction(event -> search());
+        tvdbIdField.setOnAction(event -> search());
         queryField.textProperty().addListener((observable, oldValue, newValue) -> {
             boolean hasText = newValue != null && !newValue.isBlank();
             clearSearchButton.setVisible(hasText);
             clearSearchButton.setManaged(hasText);
-            if (!hasText) {
-                results.getItems().clear();
-                setEmptyState(UiText.tvdbInitialSearchHint(language), "");
-                setMessage("");
-            }
+            clearResultsWhenCriteriaAreEmpty();
         });
+        yearField.textProperty().addListener((observable, oldValue, newValue) -> clearResultsWhenCriteriaAreEmpty());
+        tvdbIdField.textProperty().addListener((observable, oldValue, newValue) -> clearResultsWhenCriteriaAreEmpty());
         clearSearchButton.setOnAction(event -> {
             queryField.clear();
             queryField.requestFocus();
@@ -149,7 +161,7 @@ final class TvdbManualMatchDialog {
         HBox searchBox = new HBox(8, searchIcon, queryField, clearSearchButton);
         searchBox.getStyleClass().addAll("episort-search-box", "tvdb-search-box");
         HBox.setHgrow(queryField, Priority.ALWAYS);
-        HBox searchRow = new HBox(10, searchBox, searchButton, loading);
+        HBox searchRow = new HBox(10, searchBox, yearField, tvdbIdField, searchButton, loading);
         HBox.setHgrow(searchBox, Priority.ALWAYS);
         searchRow.setAlignment(Pos.CENTER_LEFT);
         HBox footer = new HBox(8, ignoreButton);
@@ -183,16 +195,27 @@ final class TvdbManualMatchDialog {
 
     private void search() {
         String query = queryField.getText() == null ? "" : queryField.getText().trim();
-        if (query.isBlank()) {
+        String tvdbId = tvdbIdField.getText() == null ? "" : tvdbIdField.getText().trim();
+        if (query.isBlank() && tvdbId.isBlank()) {
             results.getItems().clear();
             setEmptyState(UiText.tvdbInitialSearchHint(language), "");
-            setMessage("");
+            setMessage(UiText.tvdbSearchCriteriaRequired(language));
             return;
         }
+        String yearText = yearField.getText() == null ? "" : yearField.getText().trim();
+        if (!yearText.isBlank() && yearText.length() != 4) {
+            setMessage(UiText.tvdbSearchInvalidYear(language));
+            yearField.requestFocus();
+            return;
+        }
+        TvdbSearchCriteria criteria = new TvdbSearchCriteria(
+                query,
+                yearText.isBlank() ? Optional.empty() : Optional.of(Integer.parseInt(yearText)),
+                tvdbId.isBlank() ? Optional.empty() : Optional.of(tvdbId));
         setBusy(true);
         setMessage(UiText.tvdbLoadingResults(language));
         CompletableFuture
-                .supplyAsync(() -> tvdbClient.search(query, credentials))
+                .supplyAsync(() -> tvdbClient.search(criteria, credentials))
                 .thenAccept(searchResult -> Platform.runLater(() -> showResults(searchResult)))
                 .exceptionally(throwable -> {
                     Platform.runLater(() -> showFailure(throwable));
@@ -206,8 +229,10 @@ final class TvdbManualMatchDialog {
         combined.addAll(searchResult.seriesCandidates());
         combined.addAll(searchResult.movieCandidates());
         // Show the closest title first rather than TVDB's own ranking.
-        combined = SCORER.rankedByRelevance(
-                queryField.getText(), InventoryGroupType.UNKNOWN, combined);
+        if (queryField.getText() != null && !queryField.getText().isBlank()) {
+            combined = SCORER.rankedByRelevance(
+                    queryField.getText(), InventoryGroupType.UNKNOWN, combined);
+        }
         results.getItems().setAll(combined);
         FadeTransition fade = new FadeTransition(Duration.millis(140), results);
         results.setOpacity(0.35);
@@ -236,7 +261,25 @@ final class TvdbManualMatchDialog {
         loading.setManaged(busy);
         searchButton.setDisable(busy);
         queryField.setDisable(busy);
+        yearField.setDisable(busy);
+        tvdbIdField.setDisable(busy);
         searchButton.setText(busy ? UiText.tvdbSearching(language) : UiText.tvdbSearch(language));
+    }
+
+    private void clearResultsWhenCriteriaAreEmpty() {
+        if ((queryField.getText() == null || queryField.getText().isBlank())
+                && (yearField.getText() == null || yearField.getText().isBlank())
+                && (tvdbIdField.getText() == null || tvdbIdField.getText().isBlank())) {
+            results.getItems().clear();
+            setEmptyState(UiText.tvdbInitialSearchHint(language), "");
+            setMessage("");
+        }
+    }
+
+    private static TextFormatter<String> digitsOnly(int maximumLength) {
+        return new TextFormatter<>(change -> change.getControlNewText().matches("\\d{0," + maximumLength + "}")
+                ? change
+                : null);
     }
 
     private VBox emptyState(String title, String hint) {

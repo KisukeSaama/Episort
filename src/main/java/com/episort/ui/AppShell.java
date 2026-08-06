@@ -107,7 +107,8 @@ public final class AppShell {
             BooleanSupplier canContinue,
             Runnable onContinue,
             RunEventStore runEventStore,
-            Supplier<Integer> resetTvdbCache) {
+            Supplier<Integer> resetTvdbCache,
+            Consumer<String> openExternalLink) {
         Fonts.loadAll();
         this.currentViewModel = viewModel;
         this.selectInputFolder = selectInputFolder;
@@ -127,6 +128,7 @@ public final class AppShell {
                     this::applyLanguage,
                     tvdbConfiguration,
                     resetTvdbCache,
+                    openExternalLink,
                     this::onSettingsClose,
                     this::apply);
         } else {
@@ -499,6 +501,7 @@ public final class AppShell {
         metrics.put("moved", String.valueOf(recap.moved().size()));
         metrics.put("renamed", String.valueOf(recap.renamed().size()));
         metrics.put("deleted", String.valueOf(recap.deleted().size()));
+        metrics.put("foldersTagged", String.valueOf(recap.renamedSourceFolders().size()));
         metrics.put("failed", String.valueOf(recap.failed().size()));
         metrics.put("skipped", String.valueOf(recap.skipped().size()));
         metrics.put("untouched", String.valueOf(recap.untouched().size()));

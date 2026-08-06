@@ -8,6 +8,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -16,7 +17,10 @@ import javafx.collections.FXCollections;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -25,6 +29,9 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 
 public final class SettingsPane {
+    static final String TVDB_ATTRIBUTION_URL = "https://thetvdb.com/subscribe";
+    private static final String TVDB_LOGO_RESOURCE = "/assets/thetvdb-logo-dark.png";
+
     private final VBox root;
     private final Label pageEyebrow;
     private final Label pageTitle;
@@ -38,6 +45,8 @@ public final class SettingsPane {
     private final Label tvdbDescription;
     private final Label tvdbStatus;
     private final Label tvdbCacheFeedback;
+    private final Label tvdbAttribution;
+    private final Hyperlink tvdbAttributionLink;
     private final Region tvdbStatusDot;
     private final Button chooseWorkspace;
     private final Button tvdbResetCache;
@@ -55,6 +64,7 @@ public final class SettingsPane {
             Consumer<AppLanguage> onLanguageChange,
             TvdbCredentialConfigurationResult tvdbConfiguration,
             Supplier<Integer> resetTvdbCache,
+            Consumer<String> openExternalLink,
             Runnable onClose,
             Consumer<AppShellViewModel> onConfigured) {
         this.currentWorkspace = currentWorkspace;
@@ -185,7 +195,39 @@ public final class SettingsPane {
         tvdbInputs.setAlignment(Pos.CENTER_LEFT);
         tvdbInputs.getStyleClass().add("settings-row");
 
-        VBox tvdbSection = new VBox(10, tvdbTitle, tvdbDescription, divider(), tvdbInputs);
+        ImageView tvdbLogo = new ImageView(new Image(Objects.requireNonNull(
+                SettingsPane.class.getResource(TVDB_LOGO_RESOURCE),
+                "Missing TVDB attribution logo").toExternalForm()));
+        tvdbLogo.setFitWidth(84);
+        tvdbLogo.setFitHeight(46);
+        tvdbLogo.setPreserveRatio(true);
+        tvdbLogo.setAccessibleText("TheTVDB");
+
+        tvdbAttribution = new Label();
+        tvdbAttribution.getStyleClass().add("tvdb-attribution-copy");
+        tvdbAttribution.setWrapText(true);
+
+        tvdbAttributionLink = new Hyperlink();
+        tvdbAttributionLink.getStyleClass().add("tvdb-attribution-link");
+        tvdbAttributionLink.setDisable(openExternalLink == null);
+        if (openExternalLink != null) {
+            tvdbAttributionLink.setOnAction(event -> openExternalLink.accept(TVDB_ATTRIBUTION_URL));
+        }
+
+        VBox tvdbAttributionText = new VBox(2, tvdbAttribution, tvdbAttributionLink);
+        HBox.setHgrow(tvdbAttributionText, Priority.ALWAYS);
+        HBox tvdbAttributionRow = new HBox(16, tvdbLogo, tvdbAttributionText);
+        tvdbAttributionRow.setAlignment(Pos.CENTER_LEFT);
+        tvdbAttributionRow.getStyleClass().add("tvdb-attribution");
+
+        VBox tvdbSection = new VBox(
+                10,
+                tvdbTitle,
+                tvdbDescription,
+                divider(),
+                tvdbInputs,
+                divider(),
+                tvdbAttributionRow);
         tvdbSection.getStyleClass().add("settings-section");
 
         applyLanguage(AppLanguage.FRENCH);
@@ -231,6 +273,9 @@ public final class SettingsPane {
         tvdbTitle.setText(UiText.tvdbSettingsSectionTitle(language));
         tvdbDescription.setText(UiText.tvdbSettingsSectionDescription(language));
         tvdbResetCache.setText(UiText.tvdbSettingsResetCache(language));
+        tvdbAttribution.setText(UiText.tvdbSettingsAttribution(language));
+        tvdbAttributionLink.setText(UiText.tvdbSettingsAttributionLink(language));
+        tvdbAttributionLink.setAccessibleText(UiText.tvdbSettingsAttributionLinkAccessible(language));
         applyTvdbStatus(language);
 
         languageCombo.setValue(language);

@@ -5,6 +5,7 @@ import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ErrorSeverity;
 import com.episort.workflow.TvdbConnectionTestResult;
 import com.episort.workflow.TvdbConnectionTester;
+import com.episort.tvdb.guard.TvdbRequestScheduler;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -17,14 +18,28 @@ public final class HttpTvdbConnectionTester implements TvdbConnectionTester {
 
     private final HttpClient httpClient;
     private final URI loginEndpoint;
+    private final TvdbRequestScheduler requestScheduler;
 
     public HttpTvdbConnectionTester() {
-        this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(), LOGIN_ENDPOINT);
+        this(new TvdbRequestScheduler());
+    }
+
+    public HttpTvdbConnectionTester(TvdbRequestScheduler requestScheduler) {
+        this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(),
+                LOGIN_ENDPOINT, requestScheduler);
     }
 
     HttpTvdbConnectionTester(HttpClient httpClient, URI loginEndpoint) {
+        this(httpClient, loginEndpoint, TvdbRequestScheduler.unthrottled());
+    }
+
+    HttpTvdbConnectionTester(
+            HttpClient httpClient,
+            URI loginEndpoint,
+            TvdbRequestScheduler requestScheduler) {
         this.httpClient = httpClient;
         this.loginEndpoint = loginEndpoint;
+        this.requestScheduler = requestScheduler;
     }
 
     @Override
@@ -36,7 +51,8 @@ public final class HttpTvdbConnectionTester implements TvdbConnectionTester {
                 .build();
 
         try {
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = requestScheduler.execute(
+                    () -> httpClient.send(request, HttpResponse.BodyHandlers.ofString()));
             if (response.statusCode() >= 200 && response.statusCode() < 300 && successfulLoginResponse(response.body())) {
                 return TvdbConnectionTestResult.passed();
             }
@@ -46,6 +62,8 @@ public final class HttpTvdbConnectionTester implements TvdbConnectionTester {
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             return TvdbConnectionTestResult.failure(tvdbFailure("TVDB connection test was interrupted."));
+        } catch (Exception exception) {
+            return TvdbConnectionTestResult.failure(tvdbFailure("TVDB is unavailable. Check your network and credentials."));
         }
     }
 

@@ -62,6 +62,11 @@ public record ExecutionRecap(OperationPlan plan, ExecutionReport report) {
         return report.deletedSourceFolders();
     }
 
+    /** Parent containers prefixed with [TRI] for manual follow-up. */
+    public List<FolderRenameResult> renamedSourceFolders() {
+        return report.renamedSourceFolders();
+    }
+
     public List<Path> ignoredFiles() {
         return excludedFor(PlanExclusionReason.IGNORED);
     }
