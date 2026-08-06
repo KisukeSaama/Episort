@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: portable-${{ github.ref }}
+  group: portable-${{ github.ref }}-${{ github.sha }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
