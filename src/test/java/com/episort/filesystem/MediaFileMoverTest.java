@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
@@ -125,6 +126,35 @@ class MediaFileMoverTest {
     }
 
     @Test
+    void symbolicLinkSourcesAreRefusedWithoutMovingTheirTargets() throws Exception {
+        Path workspace = workspace();
+        Path target = file(workspace, "target.mkv");
+        Path link = workspace.resolve("linked-source.mkv");
+        assumeSymbolicLink(link, target);
+
+        assertThrows(IOException.class, () -> mover(workspace).move(link, workspace.resolve("moved.mkv")));
+
+        assertTrue(Files.exists(target));
+        assertTrue(Files.isSymbolicLink(link));
+        assertFalse(Files.exists(workspace.resolve("moved.mkv")));
+    }
+
+    @Test
+    void symbolicLinkDestinationsAreRefusedEvenWhenReplacementWasApproved() throws Exception {
+        Path workspace = workspace();
+        Path source = file(workspace, "source.mkv");
+        Path target = file(workspace, "target.mkv");
+        Path link = workspace.resolve("linked-destination.mkv");
+        assumeSymbolicLink(link, target);
+
+        assertThrows(IOException.class, () -> mover(workspace).move(source, link, true));
+
+        assertTrue(Files.exists(source));
+        assertEquals("video-bytes", Files.readString(target));
+        assertTrue(Files.isSymbolicLink(link));
+    }
+
+    @Test
     void existingFoldersAreReusedAndOnlyMissingOnesAreCreated() throws IOException {
         Path workspace = workspace();
         Files.createDirectories(workspace.resolve("Show"));
@@ -184,6 +214,22 @@ class MediaFileMoverTest {
 
         assertThrows(IOException.class, () -> mover.deleteFolderTree(outside));
         assertTrue(Files.exists(outside.resolve("precious.mkv")));
+    }
+
+    @Test
+    void deletingAFolderTreeUnlinksAnExternalSymlinkWithoutTouchingItsTarget() throws Exception {
+        Path workspace = workspace();
+        Path sourceFolder = Files.createDirectory(workspace.resolve("release"));
+        Path outside = Files.createDirectory(tempDir.resolve("outside"));
+        Path precious = file(outside, "precious.mkv");
+        Path link = sourceFolder.resolve("external");
+        assumeSymbolicLink(link, outside);
+
+        assertTrue(mover(workspace).deleteFolderTree(sourceFolder));
+
+        assertFalse(Files.exists(sourceFolder));
+        assertTrue(Files.exists(precious));
+        assertEquals("video-bytes", Files.readString(precious));
     }
 
     @Test
@@ -262,6 +308,19 @@ class MediaFileMoverTest {
     }
 
     @Test
+    void deletingASymbolicLinkIsRefusedWithoutDeletingItsTarget() throws Exception {
+        Path workspace = workspace();
+        Path target = file(workspace, "target.mkv");
+        Path link = workspace.resolve("linked-file.mkv");
+        assumeSymbolicLink(link, target);
+
+        assertThrows(IOException.class, () -> mover(workspace).deleteFile(link));
+
+        assertTrue(Files.exists(target));
+        assertTrue(Files.isSymbolicLink(link));
+    }
+
+    @Test
     void renamesANonEmptyFolderInsideItsParent() throws IOException {
         Path workspace = workspace();
         Path source = Files.createDirectory(workspace.resolve("Show.S01"));
@@ -296,5 +355,16 @@ class MediaFileMoverTest {
         Path path = workspace.resolve(name);
         Files.writeString(path, "video-bytes");
         return path;
+    }
+
+    private static void assumeSymbolicLink(Path link, Path target) throws Exception {
+        boolean symlinkSupported;
+        try {
+            Files.createSymbolicLink(link, target);
+            symlinkSupported = true;
+        } catch (UnsupportedOperationException | IOException exception) {
+            symlinkSupported = false;
+        }
+        assumeTrue(symlinkSupported, "Symlink creation not supported on this platform/permission set");
     }
 }

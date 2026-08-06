@@ -3,7 +3,9 @@ package com.episort.scanner;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -54,6 +56,21 @@ class MediaInventoryScannerTest {
         assertTrue(result.groups().isEmpty());
         assertEquals(0, result.summary().sidecarCount());
         assertEquals(0, result.summary().unsupportedCount());
+    }
+
+    @Test
+    void doesNotTraverseSymbolicLinkDirectoriesEvenWhenTheirTargetIsInternal() throws Exception {
+        Path input = Files.createDirectory(tempDir.resolve("input"));
+        Path realSeason = Files.createDirectory(input.resolve("real-season"));
+        Files.createFile(realSeason.resolve("Show.S01E01.mkv"));
+        Path linkedSeason = input.resolve("linked-season");
+        assumeSymbolicLink(linkedSeason, realSeason);
+
+        InventoryScanResult result = new MediaInventoryScanner().scan(input, progress -> {});
+
+        assertEquals(1, result.summary().supportedVideoCount());
+        assertTrue(result.supportedVideos().stream()
+                .noneMatch(item -> item.sourcePath().startsWith(linkedSeason)));
     }
 
     @Test
@@ -190,5 +207,16 @@ class MediaInventoryScannerTest {
         try (var stream = Files.walk(root)) {
             return stream.sorted().toList();
         }
+    }
+
+    private static void assumeSymbolicLink(Path link, Path target) throws Exception {
+        boolean symlinkSupported;
+        try {
+            Files.createSymbolicLink(link, target);
+            symlinkSupported = true;
+        } catch (UnsupportedOperationException | IOException exception) {
+            symlinkSupported = false;
+        }
+        assumeTrue(symlinkSupported, "Symlink creation not supported on this platform/permission set");
     }
 }

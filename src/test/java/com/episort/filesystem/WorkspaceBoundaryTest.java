@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 
 class WorkspaceBoundaryTest {
     @TempDir
@@ -53,6 +55,38 @@ class WorkspaceBoundaryTest {
         WorkspaceBoundary boundary = new WorkspaceBoundary(workspace);
 
         assertFalse(boundary.contains(link));
+    }
+
+    @Test
+    void rejectsSymlinkEvenWhenItsTargetStaysInsideWorkspace() throws Exception {
+        Path workspace = Files.createDirectory(tempDir.resolve("workspace"));
+        Path target = Files.createDirectory(workspace.resolve("target"));
+        Path link = workspace.resolve("link");
+        assumeSymbolicLink(link, target);
+
+        WorkspaceBoundary boundary = new WorkspaceBoundary(workspace);
+
+        assertFalse(boundary.contains(link));
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    void rejectsWindowsJunctionEvenWhenItsTargetStaysInsideWorkspace() throws Exception {
+        Path workspace = Files.createDirectory(tempDir.resolve("workspace"));
+        Path target = Files.createDirectory(workspace.resolve("target"));
+        Path junction = workspace.resolve("junction");
+        Process creation = new ProcessBuilder(
+                "cmd.exe", "/c", "mklink", "/J", junction.toString(), target.toString())
+                .redirectErrorStream(true)
+                .start();
+        int exitCode = creation.waitFor();
+        String output = new String(creation.getInputStream().readAllBytes());
+        assumeTrue(exitCode == 0, "Junction creation unavailable: " + output);
+
+        WorkspaceBoundary boundary = new WorkspaceBoundary(workspace);
+
+        assertFalse(boundary.contains(junction));
+        assertFalse(boundary.containsPlanned(junction.resolve("Season 01").resolve("Show - S01E01.mkv")));
     }
 
     @Test
@@ -120,5 +154,28 @@ class WorkspaceBoundaryTest {
         WorkspaceBoundary boundary = new WorkspaceBoundary(workspace);
 
         assertFalse(boundary.containsPlanned(link.resolve("Show").resolve("Show - S01E01.mkv")));
+    }
+
+    @Test
+    void plannedDestinationsCannotTraverseAnInternalSymlink() throws Exception {
+        Path workspace = Files.createDirectory(tempDir.resolve("workspace"));
+        Path target = Files.createDirectory(workspace.resolve("target"));
+        Path link = workspace.resolve("link");
+        assumeSymbolicLink(link, target);
+
+        WorkspaceBoundary boundary = new WorkspaceBoundary(workspace);
+
+        assertFalse(boundary.containsPlanned(link.resolve("Season 01").resolve("Show - S01E01.mkv")));
+    }
+
+    private static void assumeSymbolicLink(Path link, Path target) throws Exception {
+        boolean symlinkSupported;
+        try {
+            Files.createSymbolicLink(link, target);
+            symlinkSupported = true;
+        } catch (UnsupportedOperationException | IOException exception) {
+            symlinkSupported = false;
+        }
+        assumeTrue(symlinkSupported, "Symlink creation not supported on this platform/permission set");
     }
 }
