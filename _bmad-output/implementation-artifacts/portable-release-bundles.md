@@ -21,8 +21,8 @@ Date: 2026-08-06
 - Every archive includes a short `README.txt` beside the launcher with direct
   Windows/Linux launch and TVDB environment instructions.
 - `.github/workflows/portable-build.yml` builds and tests on native Windows and
-  Linux runners for release branches, manual runs and version tags, then uploads
-  both archives.
+  Linux runners for release pull requests, release branches, manual runs and
+  version tags, then uploads both archives.
 - README instructions cover extraction, direct launch, local packaging, and the
   external `TVDB_API_KEY` requirement.
 

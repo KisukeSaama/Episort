@@ -2,6 +2,9 @@ name: Portable builds
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - "release/**"
