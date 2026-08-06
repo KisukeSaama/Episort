@@ -113,6 +113,21 @@ final class ScanRowEditor {
                 });
     }
 
+    /** Clears every value derived from a TVDB match for all targeted rows. */
+    static void resetTvdbMatches(List<ScanRow> rows) {
+        for (ScanRow row : rows) {
+            row.setTvdbMatch(Optional.empty());
+            row.setTvdbCandidate(Optional.empty());
+            row.setTvdbSelectedByUser(false);
+            row.setAppliedTvdbOrder(Optional.empty());
+            row.setOrder(Optional.empty());
+            row.setProposedFilename(Optional.empty());
+            row.setDestination(Optional.empty());
+            row.setAlertText(Optional.empty());
+            row.setNoteText(Optional.empty());
+        }
+    }
+
     /** What a role cell reveals on hover: the parse, its positions and its origin. */
     static String patternTooltip(ScanRow row) {
         if (row.inputParse().isEmpty()) {

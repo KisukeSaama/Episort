@@ -43,10 +43,7 @@ public enum PlanConflictType {
      * be dropped from the plan.
      */
     public boolean resolvableByReplacement() {
-        return this == DUPLICATE_DESTINATION
-                || this == DUPLICATE_MEDIA
-                || this == MEDIA_ALREADY_IN_LIBRARY
-                || this == DESTINATION_FILE_EXISTS;
+        return this == DUPLICATE_DESTINATION || this == DESTINATION_FILE_EXISTS;
     }
 
     /**
@@ -59,6 +56,6 @@ public enum PlanConflictType {
      * only be dropped from the plan.
      */
     public boolean deletableSource() {
-        return resolvableByReplacement();
+        return false;
     }
 }

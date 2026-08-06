@@ -89,12 +89,6 @@ public final class OperationPlanner {
                             "Destination would leave the configured workspace: " + destination));
         }
         Path resolved = insideWorkspace.orElseThrow();
-        if (WindowsPathSafety.exceedsMaxPath(resolved)) {
-            return PlannedOperation.conflicting(source, Optional.of(resolved), item.kind(),
-                    PlanConflict.of(PlanConflictType.PATH_TOO_LONG,
-                            "Destination exceeds the Windows path limit: " + resolved));
-        }
-
         Optional<PlanConflict> folderConflict = blockedFolder(root, resolved);
         if (folderConflict.isPresent()) {
             return PlannedOperation.conflicting(source, Optional.of(resolved), item.kind(), folderConflict.get());

@@ -43,7 +43,7 @@ public final class ExecutionService {
     }
 
     public ExecutionReport execute(ApprovedPlan plan) throws IOException {
-        return execute(plan, ExecutionFailureHandler.alwaysContinue(), ExecutionProgressListener.noop());
+        return execute(plan, ExecutionFailureHandler.alwaysAbort(), ExecutionProgressListener.noop());
     }
 
     public ExecutionReport execute(
@@ -214,7 +214,7 @@ public final class ExecutionService {
                 continue;
             }
             try {
-                if (mover.deleteFolderTree(candidate)) {
+                if (mover.deleteFolderIfEmpty(candidate)) {
                     deleted.add(candidate);
                     deleteEmptiedAncestors(candidate, root, preserved, mover, deleted);
                 }

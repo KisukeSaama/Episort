@@ -57,11 +57,13 @@ public final class ScanReviewMapper {
     }
 
     /**
-     * Only unresolved conflicts and duplicates block the pattern gate. Ignored
-     * rows are user decisions, so they never block.
+     * Unresolved conflicts, duplicates, and visible alerts block the pattern
+     * gate. Ignored rows are explicit user decisions, so they never block.
      */
     static boolean isBlockingConflict(ScanRow row) {
         return !row.isIgnored()
-                && (row.status() == ScanRowStatus.CONFLICT || row.status() == ScanRowStatus.DUPLICATE);
+                && (row.status() == ScanRowStatus.CONFLICT
+                        || row.status() == ScanRowStatus.DUPLICATE
+                        || row.alertText().isPresent());
     }
 }

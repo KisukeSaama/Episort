@@ -39,23 +39,21 @@ class MediaInventoryScannerTest {
     }
 
     @Test
-    void classifiesSidecarsUnsupportedAndIgnoredItemsAsNonExecutable() throws Exception {
+    void ignoresEveryNonVideoFileCompletely() throws Exception {
         Path input = Files.createDirectory(tempDir.resolve("input"));
-        Path subtitle = Files.createFile(input.resolve("Show.Name.S01E01.srt"));
-        Path nfo = Files.createFile(input.resolve("Show.Name.nfo"));
-        Path image = Files.createFile(input.resolve("poster.jpg"));
-        Path unsupportedVideo = Files.createFile(input.resolve("clip.mov"));
-        Path diskImage = Files.createFile(input.resolve("archive.iso"));
-        Path ignored = Files.createFile(input.resolve(".DS_Store"));
+        Files.createFile(input.resolve("Show.Name.S01E01.srt"));
+        Files.createFile(input.resolve("Show.Name.nfo"));
+        Files.createFile(input.resolve("poster.jpg"));
+        Files.createFile(input.resolve("clip.mov"));
+        Files.createFile(input.resolve("archive.iso"));
+        Files.createFile(input.resolve(".DS_Store"));
 
         InventoryScanResult result = new MediaInventoryScanner().scan(input, progress -> {});
 
-        assertEquals(List.of(image, nfo, subtitle), result.sidecars().stream().map(InventoryItem::sourcePath).toList());
-        assertEquals(List.of(diskImage, unsupportedVideo), result.unsupported().stream().map(InventoryItem::sourcePath).toList());
-        assertEquals(List.of(ignored), result.ignored().stream().map(InventoryItem::sourcePath).toList());
-        assertTrue(result.sidecars().stream().noneMatch(InventoryItem::operationCandidate));
-        assertTrue(result.unsupported().stream().noneMatch(InventoryItem::operationCandidate));
-        assertTrue(result.ignored().stream().noneMatch(InventoryItem::operationCandidate));
+        assertTrue(result.items().isEmpty());
+        assertTrue(result.groups().isEmpty());
+        assertEquals(0, result.summary().sidecarCount());
+        assertEquals(0, result.summary().unsupportedCount());
     }
 
     @Test
@@ -75,8 +73,8 @@ class MediaInventoryScannerTest {
         assertEquals(1, result.summary().likelyMovieGroupCount());
         assertEquals(1, result.summary().unknownItemCount());
         assertTrue(result.groups().stream().allMatch(group -> group.tvdbIdentityFinal() == false));
-        assertTrue(result.groups().stream().anyMatch(group -> group.type() == InventoryGroupType.UNSUPPORTED));
-        assertTrue(result.groups().stream().anyMatch(group -> group.type() == InventoryGroupType.IGNORED));
+        assertTrue(result.groups().stream().noneMatch(group -> group.type() == InventoryGroupType.UNSUPPORTED));
+        assertTrue(result.groups().stream().noneMatch(group -> group.type() == InventoryGroupType.IGNORED));
     }
 
     @Test
@@ -142,6 +140,19 @@ class MediaInventoryScannerTest {
         assertTrue(result.groups().stream()
                 .filter(group -> group.type() == InventoryGroupType.LIKELY_SERIES)
                 .allMatch(group -> group.items().size() == 1));
+    }
+
+    @Test
+    void keepsNumberedExtraEpisodesInSeriesReviewFlow() throws Exception {
+        Path input = Files.createDirectory(tempDir.resolve("input"));
+        Path special = Files.createFile(input.resolve("Initial D - S00E01 - Extra Stage.mkv"));
+
+        InventoryScanResult result = new MediaInventoryScanner().scan(input, progress -> {});
+
+        InventoryGroup group = result.groups().getFirst();
+        assertEquals(InventoryGroupType.LIKELY_SERIES, group.type());
+        assertEquals("Initial D", group.seedName());
+        assertEquals(List.of(special), group.items().stream().map(InventoryItem::sourcePath).toList());
     }
 
     @Test

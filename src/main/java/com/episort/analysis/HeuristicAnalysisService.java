@@ -5,6 +5,7 @@ import com.episort.filename.FolderContext;
 import com.episort.filename.MediaKindHint;
 import com.episort.filename.ParseWarning;
 import com.episort.filename.ParsedFilename;
+import com.episort.filename.TagKind;
 import com.episort.scanner.InventoryGroupType;
 import com.episort.scanner.InventoryItem;
 import com.episort.scanner.InventoryItemType;
@@ -108,7 +109,12 @@ public final class HeuristicAnalysisService {
      */
     private static VideoMediaType mediaType(InventoryGroupType groupType, ParsedFilename parsed) {
         if (parsed.extraMaterial()) {
-            return VideoMediaType.IGNORED;
+            // A numbered special may legitimately contain words such as
+            // "Extra" in its canonical title. Keep it in the review flow;
+            // only unnumbered samples/trailers are implicit exclusions.
+            return parsed.hasEpisode() && hasAmbiguousExtraTitle(parsed)
+                    ? VideoMediaType.SPECIAL
+                    : VideoMediaType.IGNORED;
         }
         MediaKindHint hint = parsed.kind();
         if (hint == MediaKindHint.SPECIAL) {
@@ -128,6 +134,13 @@ public final class HeuristicAnalysisService {
             case MOVIE -> VideoMediaType.MOVIE;
             default -> VideoMediaType.UNKNOWN;
         };
+    }
+
+    private static boolean hasAmbiguousExtraTitle(ParsedFilename parsed) {
+        return parsed.tags().stream()
+                .filter(tag -> tag.kind() == TagKind.EXTRA)
+                .map(tag -> tag.raw().toLowerCase(Locale.ROOT))
+                .anyMatch(raw -> raw.equals("extra") || raw.equals("extras") || raw.equals("bonus"));
     }
 
     private static Optional<String> describe(ParseWarning warning) {

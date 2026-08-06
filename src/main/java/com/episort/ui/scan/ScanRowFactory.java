@@ -78,6 +78,9 @@ public final class ScanRowFactory {
         row.setOrder(Optional.of(orderText(analysis.tvdbOrder())));
         row.setConfidence(analysis.confidence());
         row.setStatusReasons(analysis.statusReasons());
+        if (row.status() != ScanRowStatus.IGNORED && !analysis.statusReasons().isEmpty()) {
+            row.setAlertText(Optional.of(String.join(" ", analysis.statusReasons())));
+        }
         return row;
     }
 

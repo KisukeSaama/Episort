@@ -4,10 +4,14 @@ import com.episort.persistence.RunEvent;
 import com.episort.persistence.RunEventStatus;
 import com.episort.persistence.RunEventStore;
 import com.episort.persistence.RunEventType;
+import com.episort.persistence.RollbackMove;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.AppShell;
 import com.episort.ui.RoundedClip;
+import com.episort.ui.TableSearchBox;
 import com.episort.ui.UiText;
+import com.episort.workflow.LastPlanRollbackService;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.text.Normalizer;
 import java.time.ZoneId;
@@ -19,6 +23,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Consumer;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -50,6 +57,9 @@ public final class HistoryScreen {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
     private final RunEventStore store;
+    private final LastPlanRollbackService rollbackService;
+    private final Runnable onRollbackCompleted;
+    private final Consumer<Boolean> onRollbackExecutingChanged;
     private final VBox root;
     private final Label heading;
     private final Label bannerText;
@@ -63,9 +73,11 @@ public final class HistoryScreen {
     private final MetricCard cardFailed = new MetricCard();
 
     private final HBox filterRow = new HBox(8);
+    private final TableSearchBox searchBox = new TableSearchBox(this::setSearchFilter);
     private final ToggleGroup filterGroup = new ToggleGroup();
     private final Map<HistoryFilter, ToggleButton> filterButtons = new EnumMap<>(HistoryFilter.class);
     private final Button clearHistoryButton = new Button();
+    private final Button rollbackButton = new Button();
 
     private final TableView<RunEvent> table = new TableView<>();
     private final ObservableList<RunEvent> events = FXCollections.observableArrayList();
@@ -84,11 +96,33 @@ public final class HistoryScreen {
     private Pane currentBody;
     private boolean stackedLayout = false;
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
+    private RollbackFeedback rollbackFeedback = RollbackFeedback.NONE;
+    private String rollbackFailureReason = "";
+    private RollbackReviewPane rollbackReviewPane;
     private HistoryFilter activeFilter = HistoryFilter.ALL;
     private String searchFilter = "";
 
     public HistoryScreen(RunEventStore store) {
+        this(store, null, () -> {}, running -> {});
+    }
+
+    public HistoryScreen(
+            RunEventStore store,
+            LastPlanRollbackService rollbackService,
+            Runnable onRollbackCompleted) {
+        this(store, rollbackService, onRollbackCompleted, running -> {});
+    }
+
+    public HistoryScreen(
+            RunEventStore store,
+            LastPlanRollbackService rollbackService,
+            Runnable onRollbackCompleted,
+            Consumer<Boolean> onRollbackExecutingChanged) {
         this.store = Objects.requireNonNull(store, "store");
+        this.rollbackService = rollbackService;
+        this.onRollbackCompleted = Objects.requireNonNull(onRollbackCompleted, "onRollbackCompleted");
+        this.onRollbackExecutingChanged = Objects.requireNonNull(
+                onRollbackExecutingChanged, "onRollbackExecutingChanged");
 
         heading = new Label();
         heading.getStyleClass().addAll("section-heading", "section-heading-accent");
@@ -135,10 +169,25 @@ public final class HistoryScreen {
         return root;
     }
 
+    public boolean reviewingRollback() {
+        return rollbackReviewPane != null;
+    }
+
+    public boolean rollbackExecuting() {
+        return rollbackReviewPane != null && rollbackReviewPane.executing();
+    }
+
+    public void closeRollbackReview() {
+        if (rollbackReviewPane != null && !rollbackReviewPane.executing()) {
+            showHistoryContent();
+        }
+    }
+
     public void applyLanguage(AppLanguage language) {
         currentLanguage = language;
+        searchBox.applyLanguage(UiText.historySearchPlaceholder(language), UiText.a11yClearSearch(language));
         heading.setText(UiText.historyHeading(language));
-        bannerText.setText(UiText.historyBanner(language));
+        applyBannerState();
 
         cardTotal.setTitle(UiText.historyMetricTotal(language));
         cardSuccess.setTitle(UiText.historyMetricSuccess(language));
@@ -153,6 +202,8 @@ public final class HistoryScreen {
         filterButtons.get(HistoryFilter.FAILED).setText(UiText.historyFilterFailed(language));
         filterButtons.get(HistoryFilter.IGNORED).setText(UiText.historyFilterIgnored(language));
         clearHistoryButton.setText(UiText.historyClearButton(language));
+        rollbackButton.setText(UiText.historyRollbackButton(language));
+        rollbackButton.setTooltip(new Tooltip(UiText.historyRollbackUnavailable(language)));
 
         timestampColumn.setText(UiText.historyColumnTimestamp(language));
         eventColumn.setText(UiText.historyColumnEventType(language));
@@ -169,6 +220,7 @@ public final class HistoryScreen {
                 UiText.historyEmptyHint(language)));
         detailPanel.applyLanguage(language);
         table.refresh();
+        updateRollbackAvailability();
     }
 
     private static VBox buildEmptyState(String iconText, String title, String hint) {
@@ -194,6 +246,7 @@ public final class HistoryScreen {
         selectedEvent.set(null);
         detailPanel.clear();
         table.getSelectionModel().clearSelection();
+        updateRollbackAvailability();
     }
 
     public void setStackedLayout(boolean stacked) {
@@ -231,6 +284,7 @@ public final class HistoryScreen {
 
     private void configureFilters() {
         filterRow.setAlignment(Pos.CENTER_LEFT);
+        filterRow.getChildren().add(searchBox.root());
         for (HistoryFilter filter : HistoryFilter.values()) {
             ToggleButton button = new ToggleButton();
             button.getStyleClass().setAll("filter-chip");
@@ -249,7 +303,10 @@ public final class HistoryScreen {
         HBox.setHgrow(spacer, Priority.ALWAYS);
         clearHistoryButton.getStyleClass().add("ghost");
         clearHistoryButton.setOnAction(event -> confirmAndClearHistory());
-        filterRow.getChildren().addAll(spacer, clearHistoryButton);
+        rollbackButton.getStyleClass().add("primary");
+        rollbackButton.setDisable(true);
+        rollbackButton.setOnAction(event -> confirmAndRollback());
+        filterRow.getChildren().addAll(spacer, rollbackButton, clearHistoryButton);
         filterButtons.get(HistoryFilter.ALL).setSelected(true);
         applyFilter(HistoryFilter.ALL);
     }
@@ -305,6 +362,119 @@ public final class HistoryScreen {
         selectedEvent.set(null);
         detailPanel.clear();
         table.getSelectionModel().clearSelection();
+        updateRollbackAvailability();
+    }
+
+    private void updateRollbackAvailability() {
+        Optional<UUID> runId = selectedExecution().flatMap(HistoryScreen::runId);
+        boolean available = rollbackService != null
+                && runId.flatMap(rollbackService::availablePlan).isPresent();
+        rollbackButton.setDisable(!available);
+    }
+
+    private Optional<RunEvent> selectedExecution() {
+        return Optional.ofNullable(selectedEvent.get())
+                .filter(event -> event.type() == RunEventType.EXECUTION_COMPLETED
+                        || event.type() == RunEventType.EXECUTION_FAILED);
+    }
+
+    private static Optional<UUID> runId(RunEvent event) {
+        try {
+            return Optional.of(UUID.fromString(event.metrics().getOrDefault("runId", "")));
+        } catch (IllegalArgumentException exception) {
+            return Optional.empty();
+        }
+    }
+
+    private void confirmAndRollback() {
+        Optional<RunEvent> execution = selectedExecution();
+        Optional<UUID> runId = execution.flatMap(HistoryScreen::runId);
+        if (rollbackService == null || runId.isEmpty()) {
+            return;
+        }
+        List<RollbackMove> moves;
+        try {
+            moves = rollbackService.validate(runId.orElseThrow());
+        } catch (IOException exception) {
+            recordRollbackFailure(execution.orElseThrow(), exception.getMessage());
+            return;
+        }
+        showRollbackReview(execution.orElseThrow(), runId.orElseThrow(), moves);
+    }
+
+    private void showRollbackReview(RunEvent execution, UUID runId, List<RollbackMove> moves) {
+        rollbackReviewPane = new RollbackReviewPane(
+                currentLanguage,
+                runId,
+                moves,
+                rollbackService,
+                this::showHistoryContent,
+                restored -> recordRollbackSuccess(execution, runId, restored),
+                reason -> recordRollbackFailure(execution, reason),
+                onRollbackExecutingChanged);
+        Region review = rollbackReviewPane.root();
+        root.getChildren().setAll(review);
+        VBox.setVgrow(review, Priority.ALWAYS);
+    }
+
+    private void showHistoryContent() {
+        rollbackReviewPane = null;
+        root.getChildren().setAll(heading, banner, metricGrid, filterRow, currentBody);
+        VBox.setVgrow(currentBody, Priority.ALWAYS);
+        refresh();
+    }
+
+    private void recordRollbackSuccess(RunEvent execution, UUID runId, int restored) {
+        store.append(RunEvent.of(
+                RunEventType.ROLLBACK_COMPLETED,
+                RunEventStatus.SUCCESS,
+                execution.workspace(),
+                Optional.empty(),
+                UiText.historyRollbackCompleted(currentLanguage),
+                Map.of("restored", String.valueOf(restored), "runId", runId.toString())));
+        rollbackFeedback = RollbackFeedback.SUCCESS;
+        rollbackFailureReason = "";
+        applyBannerState();
+        onRollbackCompleted.run();
+    }
+
+    private void recordRollbackFailure(RunEvent execution, String reason) {
+        rollbackFeedback = RollbackFeedback.FAILURE;
+        rollbackFailureReason = String.valueOf(reason);
+        store.append(RunEvent.of(
+                RunEventType.ROLLBACK_FAILED,
+                RunEventStatus.FAILED,
+                execution.workspace(),
+                Optional.empty(),
+                UiText.historyRollbackFailed(currentLanguage).replace("{0}", String.valueOf(reason)),
+                Map.of()));
+        refresh();
+        applyBannerState();
+    }
+
+    private void applyBannerState() {
+        banner.getStyleClass().removeAll("banner-info", "banner-good", "banner-error");
+        switch (rollbackFeedback) {
+            case SUCCESS -> {
+                banner.getStyleClass().add("banner-good");
+                bannerText.setText(UiText.historyRollbackCompleted(currentLanguage));
+            }
+            case FAILURE -> {
+                banner.getStyleClass().add("banner-error");
+                bannerText.setText(UiText.historyRollbackFailed(currentLanguage)
+                        .replace("{0}", rollbackFailureReason));
+            }
+            case NONE -> {
+                banner.getStyleClass().add("banner-info");
+                bannerText.setText(UiText.historyBanner(currentLanguage));
+            }
+        }
+    }
+
+    private enum RollbackFeedback {
+        NONE,
+        SUCCESS,
+        FAILURE
     }
 
     private void applyFilter(HistoryFilter filter) {
@@ -374,6 +544,7 @@ public final class HistoryScreen {
             } else {
                 detailPanel.show(newValue, currentLanguage);
             }
+            updateRollbackAvailability();
         });
 
         timestampColumn.setMinWidth(140);
@@ -497,6 +668,8 @@ public final class HistoryScreen {
             case SCAN_FAILED -> UiText.historyEventScanFailed(language);
             case EXECUTION_COMPLETED -> UiText.historyEventExecutionCompleted(language);
             case EXECUTION_FAILED -> UiText.historyEventExecutionFailed(language);
+            case ROLLBACK_COMPLETED -> UiText.historyEventRollbackCompleted(language);
+            case ROLLBACK_FAILED -> UiText.historyEventRollbackFailed(language);
         };
     }
 

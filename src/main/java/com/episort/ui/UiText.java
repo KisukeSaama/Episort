@@ -103,6 +103,8 @@ public final class UiText {
     /* ---- Top bar ----------------------------------------------------- */
 
     public static String searchPlaceholder(AppLanguage language) { return t(language, "search.placeholder"); }
+    public static String scanSearchPlaceholder(AppLanguage language) { return t(language, "scan.searchPlaceholder"); }
+    public static String historySearchPlaceholder(AppLanguage language) { return t(language, "history.searchPlaceholder"); }
     public static String workspaceChipEmpty(AppLanguage language) { return t(language, "workspace.chip.empty"); }
     public static String topActionLoad(AppLanguage language) { return t(language, "top.action.load"); }
     public static String topActionLoadFolder(AppLanguage language) { return t(language, "top.action.loadFolder"); }
@@ -389,6 +391,23 @@ public final class UiText {
     public static String tvdbFilesUpdated(AppLanguage language, int count) {
         return t(language, "tvdb.filesUpdated").replace("{count}", Integer.toString(count));
     }
+    public static String tvdbFirstEpisode(AppLanguage language) { return t(language, "tvdb.firstEpisode"); }
+    public static String tvdbFirstEpisodePlaceholder(AppLanguage language) { return t(language, "tvdb.firstEpisodePlaceholder"); }
+    public static String tvdbApplySequence(AppLanguage language) { return t(language, "tvdb.applySequence"); }
+    public static String tvdbEpisodeSeason(AppLanguage language, int season) {
+        return t(language, "tvdb.episodeSeason").replace("{season}", String.format("%02d", season));
+    }
+    public static String tvdbEpisodeSpecials(AppLanguage language) { return t(language, "tvdb.episodeSpecials"); }
+    public static String tvdbEpisodeAbsoluteRange(AppLanguage language, int start, int end) {
+        return t(language, "tvdb.episodeAbsoluteRange")
+                .replace("{start}", String.format("%03d", start))
+                .replace("{end}", String.format("%03d", end));
+    }
+    public static String tvdbSequenceIncomplete(AppLanguage language, int applied, int requested) {
+        return t(language, "tvdb.sequenceIncomplete")
+                .replace("{applied}", Integer.toString(applied))
+                .replace("{requested}", Integer.toString(requested));
+    }
     public static String tvdbMatchSuggested(AppLanguage language) { return t(language, "tvdb.matchSuggested"); }
     public static String tvdbAutomaticMatch(AppLanguage language) { return t(language, "tvdb.automaticMatch"); }
     public static String tvdbSuggestionNeedsValidation(AppLanguage language) { return t(language, "tvdb.suggestionNeedsValidation"); }
@@ -450,6 +469,30 @@ public final class UiText {
     public static String historyClearButton(AppLanguage language) { return t(language, "history.clear.button"); }
     public static String historyClearConfirmation(AppLanguage language) { return t(language, "history.clear.confirmation"); }
     public static String historyClearConfirmButton(AppLanguage language) { return t(language, "history.clear.confirm.button"); }
+    public static String historyRollbackButton(AppLanguage language) { return t(language, "history.rollback.button"); }
+    public static String historyRollbackUnavailable(AppLanguage language) { return t(language, "history.rollback.unavailable"); }
+    public static String historyRollbackTitle(AppLanguage language) { return t(language, "history.rollback.title"); }
+    public static String historyRollbackConfirmation(AppLanguage language) { return t(language, "history.rollback.confirmation"); }
+    public static String historyRollbackColumnCurrent(AppLanguage language) { return t(language, "history.rollback.column.current"); }
+    public static String historyRollbackColumnOriginal(AppLanguage language) { return t(language, "history.rollback.column.original"); }
+    public static String historyRollbackConfirmButton(AppLanguage language) { return t(language, "history.rollback.confirm.button"); }
+    public static String historyRollbackCompleted(AppLanguage language) { return t(language, "history.rollback.completed"); }
+    public static String historyRollbackFailed(AppLanguage language) { return t(language, "history.rollback.failed"); }
+    public static String rollbackReviewTitle(AppLanguage language) { return t(language, "rollback.review.title"); }
+    public static String rollbackExecutionTitle(AppLanguage language) { return t(language, "rollback.execution.title"); }
+    public static String rollbackBack(AppLanguage language) { return t(language, "rollback.back"); }
+    public static String rollbackMetricFiles(AppLanguage language) { return t(language, "rollback.metric.files"); }
+    public static String rollbackMetricRestored(AppLanguage language) { return t(language, "rollback.metric.restored"); }
+    public static String rollbackReady(AppLanguage language) { return t(language, "rollback.ready"); }
+    public static String rollbackNotice(AppLanguage language) { return t(language, "rollback.notice"); }
+    public static String rollbackProgressLabel(AppLanguage language) { return t(language, "rollback.progress.label"); }
+    public static String rollbackRecapLabel(AppLanguage language) { return t(language, "rollback.recap.label"); }
+    public static String rollbackRecapDisk(AppLanguage language) { return t(language, "rollback.recap.disk"); }
+    public static String rollbackCompletedCount(AppLanguage language, int count) {
+        return t(language, "rollback.completed.count").replace("{count}", Integer.toString(count));
+    }
+    public static String historyEventRollbackCompleted(AppLanguage language) { return t(language, "history.event.rollbackCompleted"); }
+    public static String historyEventRollbackFailed(AppLanguage language) { return t(language, "history.event.rollbackFailed"); }
 
     /* ---- Batch TVDB ------------------------------------------------- */
 

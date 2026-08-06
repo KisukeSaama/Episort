@@ -1,6 +1,7 @@
 package com.episort.ui.scan;
 
 import com.episort.ui.AppLanguage;
+import com.episort.ui.TableSearchBox;
 import com.episort.ui.UiText;
 import java.util.EnumMap;
 import java.util.Locale;
@@ -39,6 +40,7 @@ final class ScanFilterBar {
     private final Map<ScanRowStatusFilter, ToggleButton> statusButtons =
             new EnumMap<>(ScanRowStatusFilter.class);
     private final Runnable onChanged;
+    private final TableSearchBox searchBox;
 
     private ScanRowFilter activeKind = ScanRowFilter.ALL;
     private ScanRowStatusFilter activeStatus = ScanRowStatusFilter.ALL;
@@ -48,6 +50,9 @@ final class ScanFilterBar {
         this.onChanged = onChanged;
         root.getStyleClass().add("scan-filter-bar");
         root.setAlignment(Pos.CENTER_LEFT);
+
+        searchBox = new TableSearchBox(this::setSearchQuery);
+        root.getChildren().add(searchBox.root());
 
         for (ScanRowFilter filter : KIND_FILTERS) {
             kindButtons.put(filter, chip(filter, kindGroup, root));
@@ -99,6 +104,7 @@ final class ScanFilterBar {
     }
 
     void applyLanguage(AppLanguage language) {
+        searchBox.applyLanguage(UiText.scanSearchPlaceholder(language), UiText.a11yClearSearch(language));
         kindButtons.get(ScanRowFilter.ALL).setText(UiText.scanFilterAll(language));
         kindButtons.get(ScanRowFilter.MOVIES).setText(UiText.scanFilterMovies(language));
         kindButtons.get(ScanRowFilter.SERIES).setText(UiText.scanFilterSeries(language));
@@ -112,8 +118,8 @@ final class ScanFilterBar {
         statusButtons.get(ScanRowStatusFilter.ALERTS).setText(UiText.scanStatusFilterAlerts(language));
     }
 
-    /** The search text from the top bar; blank means "no text filter". */
-    void setSearchQuery(String query) {
+    /** Blank means "no text filter". */
+    private void setSearchQuery(String query) {
         searchQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         refresh();
     }
@@ -123,6 +129,7 @@ final class ScanFilterBar {
         activeKind = ScanRowFilter.ALL;
         activeStatus = ScanRowStatusFilter.ALL;
         searchQuery = "";
+        searchBox.clear();
         kindGroup.selectToggle(kindButtons.get(ScanRowFilter.ALL));
         statusGroup.selectToggle(statusButtons.get(ScanRowStatusFilter.ALL));
         refresh();

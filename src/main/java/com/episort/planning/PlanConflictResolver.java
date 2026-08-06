@@ -106,21 +106,14 @@ public final class PlanConflictResolver {
                 // named by the conflict. Either this one wins — and the other is
                 // retired — or it is the one to let go. A duplicate always ends
                 // with a single file, which is the whole point of the answer.
-                decisions.put(source, conflict.duplicateOf()
-                        .map(kept -> wins(source, kept, keepNewest)
-                                ? ConflictResolution.REPLACE
-                                : ConflictResolution.DELETE_SOURCE)
-                        .orElse(ConflictResolution.SKIP));
+                decisions.put(source, ConflictResolution.SKIP);
                 continue;
             }
             if (conflict.type() == PlanConflictType.MEDIA_ALREADY_IN_LIBRARY) {
                 // The copy already in the library only loses to a file that wins on
                 // age; otherwise the incoming file stays where it is and nothing is
                 // deleted on a guess.
-                decisions.put(source, conflict.duplicateOf()
-                        .filter(existing -> wins(source, existing, keepNewest))
-                        .map(existing -> ConflictResolution.REPLACE)
-                        .orElse(ConflictResolution.SKIP));
+                decisions.put(source, ConflictResolution.SKIP);
                 continue;
             }
             if (conflict.type() == PlanConflictType.DESTINATION_FILE_EXISTS

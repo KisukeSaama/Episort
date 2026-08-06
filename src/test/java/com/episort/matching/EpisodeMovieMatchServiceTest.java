@@ -55,6 +55,18 @@ class EpisodeMovieMatchServiceTest {
     }
 
     @Test
+    void multiEpisodeVideoRequiresManualSingleEpisodeAssignment() {
+        InventoryItem file = video("Show.S01E01E02.mkv");
+        TvdbSeriesMetadata series = new TvdbSeriesMetadata("series-1", "Show", List.of(
+                new TvdbEpisodeMetadata("episode-1", 1, 1, Optional.of(1), "Pilot", false),
+                new TvdbEpisodeMetadata("episode-2", 1, 2, Optional.of(2), "Second", false)));
+
+        List<MediaMatchProposal> proposals = service.proposeSeriesMatches(List.of(file), series);
+
+        assertEquals(MediaMatchType.UNMATCHED, proposals.getFirst().type());
+    }
+
+    @Test
     void absoluteEpisodeNumbersCanMatchWhenTvdbProvidesThem() {
         InventoryItem file = video("Anime.042.mkv");
         TvdbSeriesMetadata series = new TvdbSeriesMetadata("series-1", "Anime", List.of(

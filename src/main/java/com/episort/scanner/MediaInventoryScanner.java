@@ -3,6 +3,7 @@ package com.episort.scanner;
 import com.episort.filename.FilenameParser;
 import com.episort.filename.FolderContext;
 import com.episort.filename.ParsedFilename;
+import com.episort.filename.TagKind;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,8 +17,6 @@ import java.util.Set;
 
 public final class MediaInventoryScanner {
     private static final Set<String> SUPPORTED_VIDEO_EXTENSIONS = Set.of(".avi", ".mp4", ".mkv");
-    private static final Set<String> SIDECAR_EXTENSIONS = Set.of(
-            ".srt", ".ass", ".ssa", ".sub", ".vtt", ".nfo", ".jpg", ".jpeg", ".png", ".webp", ".gif");
 
     public InventoryScanResult scan(Path inputFolder, InventoryProgressListener progressListener) throws IOException {
         return scan(ScanSource.folder(inputFolder), progressListener);
@@ -31,16 +30,18 @@ public final class MediaInventoryScanner {
         List<Path> files;
         if (source.type() == ScanSourceType.FOLDER) {
             try (var stream = Files.walk(source.paths().getFirst())) {
-                files = stream.filter(Files::isRegularFile)
-                        .sorted(Comparator.comparing(MediaInventoryScanner::scanCategoryOrder)
-                                .thenComparing(Comparator.naturalOrder()))
+                files = stream.filter(path -> !Files.isSymbolicLink(path))
+                        .filter(Files::isRegularFile)
+                        .filter(MediaInventoryScanner::isSupportedVisibleVideo)
+                        .sorted(Comparator.naturalOrder())
                         .toList();
             }
         } else {
             files = source.paths().stream()
+                    .filter(path -> !Files.isSymbolicLink(path))
                     .filter(Files::isRegularFile)
-                    .sorted(Comparator.comparing(MediaInventoryScanner::scanCategoryOrder)
-                            .thenComparing(Comparator.naturalOrder()))
+                    .filter(MediaInventoryScanner::isSupportedVisibleVideo)
+                    .sorted(Comparator.naturalOrder())
                     .toList();
         }
 
@@ -60,16 +61,7 @@ public final class MediaInventoryScanner {
     private static InventoryItem classify(Path file) {
         String filename = file.getFileName().toString();
         String extension = extension(filename);
-        if (filename.startsWith(".")) {
-            return item(file, filename, extension, InventoryItemType.IGNORED, false);
-        }
-        if (SUPPORTED_VIDEO_EXTENSIONS.contains(extension)) {
-            return item(file, filename, extension, InventoryItemType.SUPPORTED_VIDEO, true);
-        }
-        if (SIDECAR_EXTENSIONS.contains(extension)) {
-            return item(file, filename, extension, InventoryItemType.SIDECAR, false);
-        }
-        return item(file, filename, extension, InventoryItemType.UNSUPPORTED, false);
+        return item(file, filename, extension, InventoryItemType.SUPPORTED_VIDEO, true);
     }
 
     private static InventoryItem item(
@@ -116,7 +108,14 @@ public final class MediaInventoryScanner {
                     title.isBlank() ? removeExtension(item.filename()) : title);
             case MOVIE -> new GroupSeed(InventoryGroupType.LIKELY_MOVIE,
                     title.isBlank() ? removeExtension(item.filename()) : title);
-            case EXTRA -> new GroupSeed(InventoryGroupType.IGNORED, "ignored");
+            // A numbered season-zero title can legitimately contain "Extra"
+            // (for example Initial D's "Extra Stage"). Keep it in the series
+            // review flow so the user can choose its TVDB special; only
+            // unnumbered bonus material is implicitly ignored.
+            case EXTRA -> parsed.hasEpisode() && hasAmbiguousExtraTitle(parsed)
+                    ? new GroupSeed(InventoryGroupType.LIKELY_SERIES,
+                            title.isBlank() ? removeExtension(item.filename()) : title)
+                    : new GroupSeed(InventoryGroupType.IGNORED, "ignored");
             case UNKNOWN -> new GroupSeed(InventoryGroupType.UNKNOWN, removeExtension(item.filename()));
         };
     }
@@ -154,19 +153,9 @@ public final class MediaInventoryScanner {
         return dotIndex < 0 ? "" : filename.substring(dotIndex).toLowerCase(Locale.ROOT);
     }
 
-    private static int scanCategoryOrder(Path file) {
+    private static boolean isSupportedVisibleVideo(Path file) {
         String filename = file.getFileName().toString();
-        String extension = extension(filename);
-        if (filename.startsWith(".")) {
-            return 3;
-        }
-        if (SUPPORTED_VIDEO_EXTENSIONS.contains(extension)) {
-            return 0;
-        }
-        if (SIDECAR_EXTENSIONS.contains(extension)) {
-            return 1;
-        }
-        return 2;
+        return !filename.startsWith(".") && SUPPORTED_VIDEO_EXTENSIONS.contains(extension(filename));
     }
 
     private static String removeExtension(String filename) {
@@ -177,6 +166,13 @@ public final class MediaInventoryScanner {
     private static String normalizeSeed(String value) {
         String normalized = value.replaceAll("[._-]+", " ").trim().replaceAll("\\s+", " ");
         return normalized.isBlank() ? "unknown" : normalized;
+    }
+
+    private static boolean hasAmbiguousExtraTitle(ParsedFilename parsed) {
+        return parsed.tags().stream()
+                .filter(tag -> tag.kind() == TagKind.EXTRA)
+                .map(tag -> tag.raw().toLowerCase(Locale.ROOT))
+                .anyMatch(raw -> raw.equals("extra") || raw.equals("extras") || raw.equals("bonus"));
     }
 
     private record GroupSeed(InventoryGroupType type, String name) {

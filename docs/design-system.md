@@ -165,7 +165,7 @@ written down here.
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ TOP BAR (12 × 22 padding)                                               │
-│  [workspace-chip]  ⌕ [search………]  ⟶  [pill] [Load ▾] [reset] [rescan] [PRIMARY]│
+│  [workspace-chip]  ⟶  [pill] [rescan] [reset] [Load ▾] [PRIMARY]             │
 ├──────────┬──────────────────────────────────────────────────────────────┤
 │ SIDEBAR  │ CONTENT (ScrollPane)                                         │
 │ 230px    │   .screen-root (22 × 26 padding, 14 vertical gap)            │
@@ -183,7 +183,7 @@ written down here.
 - Sidebar: `min/pref/max width = 220 / 230 / 230` at every width. There is no
   icon-only mode: three entries never justify hiding their labels.
 - Top bar: `HBox` filling width; height driven by content. Hosts the
-  workspace chip, search, status pill, the load menu, the secondary scan
+  workspace chip, status pill, the load menu, the secondary scan
   actions, and the **single primary action** for the current screen. Language
   selection lives in Settings, not here.
 - Content: each screen's root is wrapped in a `ScrollPane.content-scroll`
@@ -247,18 +247,14 @@ Each component is documented as **Anatomy → Class → Rules**.
     the used / total measurement is mono 13, and the readable percentage and
     availability phrases use Inter 13. Monospace never costumes prose.
   - The shell moves initial focus to the load action once the scene attaches.
-    Left alone, JavaFX focuses the first traversable node — the search field —
-    and the window opens with the search box lit while the step the user needs
-    is loading a folder.
 
 ### 4.2 Top bar
 
-- **Anatomy:** workspace chip → search field with `⌕` icon → spacer →
-  status pill → load menu → secondary scan actions → single **primary
+- **Anatomy:** workspace chip → spacer →
+  status pill → `Réanalyser` → `Réinitialiser` → load menu → single **primary
   action** button.
 - **Classes:** `.top-bar`, `.workspace-chip`, `.workspace-chip-prefix`,
-  `.workspace-chip-label`, `.episort-search-box`, `.episort-search-field`,
-  `.episort-search-icon`, `.episort-search-clear`, `.top-search`,
+  `.workspace-chip-label`,
   `.status-pill`, `.window-controls`, `.window-button`, `.window-snap-preview`.
 - **Rules:**
   - The status pill is **derived from `AppShellViewModel.errorCode()`**:
@@ -266,9 +262,9 @@ Each component is documented as **Anatomy → Class → Rules**.
       absence of a warning is the signal.
     - present → variant `.warn`, text = error code (e.g. `TVDB_…`)
     - variant `.error` when the code carries `UNAVAILABLE` or `INVALID`.
-  - The search prompt must be neutral (`Rechercher…` / `Search…`) until a
-    real command palette ships. The Scan screen wires the search field to
-    the preview-table filter (substring match on filename / extension).
+  - Search is local to the table it filters. Scan and History place it at the
+    start of their filter row, with explicit prompts (`Rechercher dans les
+    fichiers…` / `Rechercher dans l’historique…`) so its scope is unambiguous.
   - Search fields use `.episort-search-box` + `.episort-search-field`
     with shared `.episort-search-icon` / `.episort-search-clear` controls:
     dark surface, fixed height, a low-intensity orange inactive border, a
@@ -340,9 +336,13 @@ section of Settings.
 ### 4.7 Buttons
 
 - **Scan topbar:** use `.menu-button.load-primary` for the `Charger` / `Load`
-  dropdown: dark surface, orange border/accent, and visible chevron. It opens
+  dropdown: transparent interior, orange border, white text, and visible orange chevron.
+  Its hover, pressed, and open states remain unfilled. It opens
   `Load folder`, `Load files`, `Add folder`, and `Add files`. Use
   `.button.validate-action` for the screen's primary action.
+  `Réanalyser` / `Reanalyze` and `Réinitialiser` / `Reset` are shared
+  `.button.ghost.header-action` controls immediately to its left. They mirror
+  the Analyse menu actions and always share their enabled/disabled state.
 - **Pressed state:** all `.button` and `.menu-button` variants keep a subtle
   `:pressed` state with 1 px downward translation, tighter shadow, and slightly
   stronger orange border/fill.
@@ -511,10 +511,15 @@ section of Settings.
 - **Rules:**
   - Mirror the row's data exactly — no derived calculations or invented
     fields. Use `—` everywhere data is absent.
-  - The TVDB-correction sub-panel exposes the *shape* of the future
-    interaction (search field + result list + Apply / Reset) but its
-    inputs and buttons must stay disabled until the matching service is
-    real. Mark the panel's stub copy with `.detail-panel-stub`.
+  - The TVDB-correction sub-panel uses the shared combo-box and button
+    vocabulary for identity search, episode order and Apply / Reset.
+  - Once real series metadata is loaded, `Premier épisode` / `First episode`
+    opens a hierarchical `.tvdb-episode-picker`: Diffusion and DVD group the
+    non-special episodes into retractable seasons; Absolu groups them into
+    retractable ranges of 50 and displays their absolute number. Its adjacent default button
+    applies that episode to one row or a consecutive sequence to the checked
+    rows in current table order. Disable both controls when no series metadata
+    or starting episode is available; do not hide them.
   - At narrow widths the panel collapses **below** the table (§3.1).
     Never replace the table with the detail panel — the user must always
     see context.
@@ -639,8 +644,9 @@ section of Settings.
   - **Recap** — the progress panel is hidden, and the recap carries the outcome
     sentence, the counters under two headings, then next actions and the
     diagnostic location.
-  - A per-file failure reveals the inline warn banner with Retry / Continue /
-    Stop, and any answer other than Retry writes the file into
+  - A per-file failure reveals the inline warn banner with Retry / Stop. Retry
+    is available only for a recoverable error; Stop preserves completed work,
+    starts no remaining operation, and writes the file into
     `.exec-failure-log` under the progress panel.
 - **Classes:** `.exec-readout`, `.exec-count`, `.exec-count-total`,
   `.exec-percent`, `.exec-flight`, `.exec-label`, `.exec-path`,
@@ -655,9 +661,10 @@ section of Settings.
     bar over a lone filename says work is happening but not what it is doing to
     the library. A deletion has no destination and renders `—` with
     `.exec-path-empty`; never invent one.
-  - **A waved-through failure stays on screen.** Continue and Stop write the
-    file into `.exec-failure-log`, which outlives the banner that announced it.
-    Retry writes nothing: the file may still land.
+  - **A failure stops the remaining plan.** Stop writes the file into
+    `.exec-failure-log`, which outlives the banner that announced it. Retry
+    writes nothing: the file may still land. There is no continue-after-error
+    action.
   - **The recap splits the counters, it does not hide them.** Four under
     `exec.recap.section.disk` (moved, renamed, deleted, source folders removed),
     seven under `exec.recap.section.untouched`. All eleven are always shown; a
@@ -729,7 +736,7 @@ section of Settings.
   - The TVDB attribution line is required and stays on this screen.
   - About holds the content area, so it disables its own menu entry and the
     plan review disables it in turn (§4.7 refusal by disabling). Opening it
-    hides the top bar's primary action, secondary actions, and search: nothing
+    hides the top bar's primary and secondary actions: nothing
     in the bar acts on what is on screen.
   - The missing-workspace gate does not cover About: it guards the work, not
     the documentation.
@@ -737,6 +744,31 @@ section of Settings.
 ---
 
 ## 5. State, signals & i18n
+
+### History rollback action
+
+- The history filter toolbar reuses the shared `.button.primary` vocabulary for
+  `Rétablir le plan sélectionné`. The action stays visible and disabled unless
+  the selected execution has a retained reversible manifest. Selecting another
+  history row immediately recomputes availability; no parallel component is
+  introduced.
+- Rollback is a full-frame flow in the content area, never a modal. Its review
+  reuses the exact-plan anatomy: header and shared workflow stepper, subtitle,
+  metric chip, `.banner`, `.preview-table.plan-table`, notice, and right-aligned
+  actions. Current path, original path, and status mirror the source,
+  destination, and status columns of the rename-plan review. Each row is one
+  exact inverse move (`current → original`); paths use `.cell-mono`, leading
+  ellipsis, and a full-path tooltip.
+- Confirming swaps the review body in place for the execution anatomy: shared
+  workflow step 5, `.exec-readout`, exact current/original path pair, and
+  `.episort-progress`. Completion swaps that body for an `.exec-recap` and keeps
+  it visible until the user closes it. Navigation is locked only while disk
+  operations are running.
+- Rollback completion and refusal are real audit events. The button disables
+  immediately after success because a manifest can be consumed only once. The
+  history banner then persists the real success (`.banner-good`) or refusal
+  (`.banner-error`) result instead of leaving the disabled action as the only
+  feedback. Both are semantic variants of the shared `.banner` component.
 
 - **No fabricated state.** Every metric, pill, widget value must trace back
   to a `AppShellViewModel` field, an `Optional<Path>` supplier, an
@@ -779,7 +811,7 @@ section of Settings.
 | `src/main/resources/styles/app.css`                               | All visual tokens & component classes               |
 | `src/main/java/com/episort/ui/AppShell.java`                      | Layout shell: sidebar + top bar + view host         |
 | `src/main/java/com/episort/ui/Sidebar.java`                       | Three-entry sidebar (Scan / History / Settings)     |
-| `src/main/java/com/episort/ui/TopBar.java`                        | Workspace chip, search, status, language, primary   |
+| `src/main/java/com/episort/ui/TopBar.java`                        | Workspace chip, status, language, primary           |
 | `src/main/java/com/episort/ui/scan/ScanScreen.java`               | Scan dashboard (table + detail panel)               |
 | `src/main/java/com/episort/ui/scan/RowDetailPanel.java`           | TVDB-correction detail panel                        |
 | `src/main/java/com/episort/ui/execution/PlanReviewPane.java`      | Plan review + inline conflict resolution + execution, in the main window (§4.15) |

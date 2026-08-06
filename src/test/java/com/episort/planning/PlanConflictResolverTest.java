@@ -109,44 +109,28 @@ class PlanConflictResolverTest {
      * Planning it still touches nothing — the file only goes at execution.
      */
     @Test
-    void aDuplicateCanBePlannedForDeletionInsteadOfBeingLeftBehind() throws IOException {
+    void aDuplicateCannotBePlannedForDeletion() throws IOException {
         Path workspace = workspace();
         Path older = file(workspace, "show.s01e01.720p.mkv", "2021-01-01T00:00:00Z");
         Path newer = file(workspace, "show.s01e01.1080p.mkv", "2026-01-01T00:00:00Z");
 
         OperationPlan plan = planner.plan(workspace, List.of(episode(older), episode(newer)));
-        OperationPlan resolved = resolver.resolve(plan, Map.of(
-                older.toRealPath(), ConflictResolution.DELETE_SOURCE,
-                newer.toRealPath(), ConflictResolution.REPLACE));
-
-        assertFalse(resolved.hasBlockingConflicts());
-        assertEquals(1, resolved.executableOperations().size());
-        assertEquals(newer.toRealPath(), resolved.executableOperations().getFirst().sourcePath());
-        assertEquals(1, resolved.deletions().size());
-        assertEquals(older.toRealPath(), resolved.deletions().getFirst().sourcePath());
-        assertTrue(resolved.deletions().getFirst().destinationPath().isEmpty(),
-                "a deletion lands nowhere and must not read as a move");
-        assertEquals(2, resolved.mutatingOperations().size());
-        assertTrue(Files.exists(older), "resolving must not delete anything itself");
+        assertThrows(IllegalArgumentException.class, () -> resolver.resolve(
+                plan, Map.of(plan.conflicts().getFirst().sourcePath(), ConflictResolution.DELETE_SOURCE)));
+        assertTrue(Files.exists(older));
+        assertTrue(Files.exists(newer));
     }
 
     /** Both mutations reach the executor, in plan order. */
     @Test
-    void anApprovedPlanCarriesTheDeletionAlongsideTheMove() throws IOException {
+    void anApprovedPlanCannotContainDuplicateDeletion() throws IOException {
         Path workspace = workspace();
         Path older = file(workspace, "show.s01e01.720p.mkv", "2021-01-01T00:00:00Z");
         Path newer = file(workspace, "show.s01e01.1080p.mkv", "2026-01-01T00:00:00Z");
 
         OperationPlan plan = planner.plan(workspace, List.of(episode(older), episode(newer)));
-        OperationPlan resolved = resolver.resolve(plan, Map.of(
-                older.toRealPath(), ConflictResolution.DELETE_SOURCE,
-                newer.toRealPath(), ConflictResolution.REPLACE));
-
-        ApprovedPlan approved = ApprovedPlan.lock(resolved);
-
-        assertEquals(2, approved.size());
-        assertTrue(approved.operations().stream().anyMatch(PlannedOperation::deletesFile));
-        assertTrue(approved.operations().stream().anyMatch(PlannedOperation::movesFile));
+        assertThrows(IllegalArgumentException.class, () -> resolver.resolve(
+                plan, Map.of(plan.conflicts().getFirst().sourcePath(), ConflictResolution.DELETE_SOURCE)));
     }
 
     /**
@@ -235,7 +219,7 @@ class PlanConflictResolverTest {
     }
 
     @Test
-    void replacingADuplicateTheLibraryHoldsUnderAnotherNameRetiresThatCopy() throws IOException {
+    void duplicateAlreadyInLibraryIsIgnoredWithoutDeletingEitherCopy() throws IOException {
         Path workspace = workspace();
         Path source = file(workspace, "show.s01e01.1080p.mkv", "2026-01-10T00:00:00Z");
         Path existing = libraryCopy(workspace, "Show - S01E01.mkv", "2020-01-01T00:00:00Z");
@@ -244,11 +228,9 @@ class PlanConflictResolverTest {
         OperationPlan resolved = resolver.resolve(plan, resolver.mostRecentWins(plan));
 
         assertFalse(resolved.hasBlockingConflicts());
-        PlannedOperation operation = resolved.executableOperations().getFirst();
-        assertEquals(existing.toRealPath(), operation.supersedes().orElseThrow());
-        // Nothing stands at the destination itself, so no overwrite is granted.
-        assertFalse(operation.replaceExisting());
+        assertTrue(resolved.executableOperations().isEmpty());
         assertTrue(Files.exists(existing), "resolving must not delete anything on its own");
+        assertTrue(Files.exists(source));
     }
 
     @Test
@@ -272,7 +254,7 @@ class PlanConflictResolverTest {
      * has to retire the other copy, or the answer means nothing.
      */
     @Test
-    void lettingTheExtraCopyWinRetiresTheOtherOne() throws IOException {
+    void duplicateCannotReplaceTheCopySelectedDuringReview() throws IOException {
         Path workspace = workspace();
         Path titled = file(workspace, "show.s01e01.720p.mkv", "2021-01-01T00:00:00Z");
         Path untitled = file(workspace, "show-01-untitled.mkv", "2026-01-01T00:00:00Z");
@@ -285,16 +267,10 @@ class PlanConflictResolverTest {
         PlannedOperation extra = plan.conflicts().getFirst();
         assertEquals(untitled.toRealPath(), extra.sourcePath());
 
-        OperationPlan resolved = resolver.resolve(
-                plan, Map.of(extra.sourcePath(), ConflictResolution.REPLACE));
-
-        assertFalse(resolved.hasBlockingConflicts());
-        assertEquals(1, resolved.deletions().size(), "the copy it beat is planned for removal");
-        assertEquals(titled.toRealPath(), resolved.deletions().getFirst().sourcePath());
-        Path winner = untitled.toRealPath();
-        assertTrue(resolved.executableOperations().stream()
-                        .anyMatch(operation -> operation.sourcePath().equals(winner)),
-                "the winning copy is the one that gets sorted");
+        assertThrows(IllegalArgumentException.class, () -> resolver.resolve(
+                plan, Map.of(extra.sourcePath(), ConflictResolution.REPLACE)));
+        assertTrue(Files.exists(titled));
+        assertTrue(Files.exists(untitled));
     }
 
     /**
@@ -315,8 +291,7 @@ class PlanConflictResolverTest {
         OperationPlan resolved = resolver.resolve(plan, resolver.mostRecentWins(plan));
 
         assertFalse(resolved.hasBlockingConflicts());
-        assertEquals(1, resolved.deletions().size(), "the extra copy is planned for removal");
-        assertEquals(untitled.toRealPath(), resolved.deletions().getFirst().sourcePath());
+        assertTrue(resolved.deletions().isEmpty());
         assertEquals(1, resolved.executableOperations().size());
         assertEquals(titled.toRealPath(), resolved.executableOperations().getFirst().sourcePath());
         // Planning is not executing: both files are still there until the run.
@@ -329,7 +304,7 @@ class PlanConflictResolverTest {
      * itself — the only thing its win changes is that the other copy goes.
      */
     @Test
-    void aWinningCopyAlreadyAtItsOwnNameIsNotPlannedToMove() throws IOException {
+    void aDuplicateAlreadyAtItsOwnNameCannotDeleteTheOtherCopy() throws IOException {
         Path workspace = workspace();
         Path seasonFolder = Files.createDirectories(workspace.resolve(Path.of("Show", "Season 01")));
         Path titled = seasonFolder.resolve("Show - S01E01 - Episode Title.mkv");
@@ -345,13 +320,10 @@ class PlanConflictResolverTest {
         PlannedOperation extra = plan.conflicts().getFirst();
         assertEquals(untitled.toRealPath(), extra.sourcePath());
 
-        OperationPlan resolved = resolver.resolve(
-                plan, Map.of(extra.sourcePath(), ConflictResolution.REPLACE));
-
-        assertFalse(resolved.hasBlockingConflicts());
-        assertTrue(resolved.executableOperations().isEmpty(), "no file has anywhere to go");
-        assertEquals(List.of(titled.toRealPath()),
-                resolved.deletions().stream().map(PlannedOperation::sourcePath).toList());
+        assertThrows(IllegalArgumentException.class, () -> resolver.resolve(
+                plan, Map.of(extra.sourcePath(), ConflictResolution.REPLACE)));
+        assertTrue(Files.exists(titled));
+        assertTrue(Files.exists(untitled));
     }
 
     /**
@@ -359,7 +331,7 @@ class PlanConflictResolverTest {
      * a duplicate pair ends as one file, and it is the one they asked for.
      */
     @Test
-    void theTwoAgeAnswersKeepOppositeCopiesOfTheSamePair() throws IOException {
+    void ageShortcutsNeverChooseOrDeleteADuplicate() throws IOException {
         Path workspace = workspace();
         Path titled = file(workspace, "show.s01e01.720p.mkv", "2021-01-01T00:00:00Z");
         Path untitled = file(workspace, "show-01-untitled.mkv", "2026-01-01T00:00:00Z");
@@ -374,15 +346,11 @@ class PlanConflictResolverTest {
 
         OperationPlan newestWins = resolver.resolve(plan, resolver.mostRecentWins(plan));
         assertFalse(newestWins.hasBlockingConflicts());
-        assertEquals(List.of(titled.toRealPath()),
-                newestWins.deletions().stream().map(PlannedOperation::sourcePath).toList(),
-                "keeping the most recent retires the older copy");
+        assertTrue(newestWins.deletions().isEmpty());
 
         OperationPlan oldestWins = resolver.resolve(plan, resolver.oldestWins(plan));
         assertFalse(oldestWins.hasBlockingConflicts());
-        assertEquals(List.of(untitled.toRealPath()),
-                oldestWins.deletions().stream().map(PlannedOperation::sourcePath).toList(),
-                "keeping the oldest retires the fresher copy");
+        assertTrue(oldestWins.deletions().isEmpty());
 
         // Planning is not executing: nothing has gone yet, either way.
         assertTrue(Files.exists(titled));

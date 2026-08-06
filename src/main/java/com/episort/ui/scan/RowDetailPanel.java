@@ -1,6 +1,7 @@
 package com.episort.ui.scan;
 
 import com.episort.tvdb.TvdbCandidate;
+import com.episort.tvdb.TvdbEpisode;
 import com.episort.tvdb.TvdbEpisodeOrder;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.UiText;
@@ -14,6 +15,9 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
@@ -60,6 +64,12 @@ public final class RowDetailPanel {
     private final VBox tvdbMatchCard;
     private final ComboBox<String> tvdbCandidate = new ComboBox<>();
     private final ComboBox<String> tvdbOrder = new ComboBox<>();
+    private final Label tvdbFirstEpisodeLabel;
+    private final MenuButton tvdbFirstEpisode = new MenuButton();
+    private TvdbEpisode selectedFirstEpisode;
+    private List<TvdbEpisode> availableFirstEpisodes = List.of();
+    private TvdbEpisodeOrder firstEpisodeOrder = TvdbEpisodeOrder.AIRED;
+    private final Button tvdbApplySequence = new Button();
     private final Button tvdbSearch = new Button();
     private final Button tvdbApply = new Button();
     private final Button tvdbReset = new Button();
@@ -104,6 +114,7 @@ public final class RowDetailPanel {
     private BiConsumer<ScanRow, String> onApplyCandidate = (r, c) -> {};
     private BiConsumer<ScanRow, String> onApplyInputPattern = (r, p) -> {};
     private BiConsumer<ScanRow, TvdbEpisodeOrder> onApplySelectedMatch = (r, o) -> {};
+    private BiConsumer<ScanRow, TvdbEpisode> onApplyEpisodeSequence = (r, e) -> {};
     private Consumer<ScanRow> onSearchMatch = r -> {};
     private Consumer<ScanRow> onResetMatch = r -> {};
 
@@ -137,6 +148,7 @@ public final class RowDetailPanel {
         tvdbSeedLabel = fieldLabel();
         tvdbTypeLabel = fieldLabel();
         tvdbStatusLabel = fieldLabel();
+        tvdbFirstEpisodeLabel = fieldLabel();
         proposedLabel = fieldLabel();
         destinationLabel = fieldLabel();
         conflictLabel = fieldLabel();
@@ -232,6 +244,16 @@ public final class RowDetailPanel {
                 onResetMatch.accept(currentRow);
             }
         });
+        tvdbFirstEpisode.getStyleClass().add("tvdb-episode-picker");
+        tvdbFirstEpisode.setMaxWidth(Double.MAX_VALUE);
+        tvdbApplySequence.setMaxWidth(Double.MAX_VALUE);
+        tvdbApplySequence.setDisable(true);
+        tvdbApplySequence.setOnAction(e -> {
+            TvdbEpisode first = selectedFirstEpisode;
+            if (currentRow != null && first != null) {
+                onApplyEpisodeSequence.accept(currentRow, first);
+            }
+        });
         tvdbSearch.setMaxWidth(Double.MAX_VALUE);
         tvdbApply.setMaxWidth(Double.MAX_VALUE);
         tvdbReset.setMaxWidth(Double.MAX_VALUE);
@@ -247,7 +269,10 @@ public final class RowDetailPanel {
         tvdbBusyLabel.setManaged(false);
         HBox tvdbBusyRow = new HBox(8, tvdbBusy, tvdbBusyLabel);
         tvdbBusyRow.setAlignment(Pos.CENTER_LEFT);
-        VBox tvdbControls = new VBox(8, tvdbSecondaryControls, tvdbOrder, tvdbApply, tvdbBusyRow);
+        VBox tvdbSequenceControls = new VBox(6,
+                tvdbFirstEpisodeLabel, tvdbFirstEpisode, tvdbApplySequence);
+        VBox tvdbControls = new VBox(8,
+                tvdbSecondaryControls, tvdbOrder, tvdbApply, tvdbSequenceControls, tvdbBusyRow);
         tvdbControls.getStyleClass().add("tvdb-detail-controls");
 
         VBox sourceSection = new VBox(6,
@@ -334,6 +359,23 @@ public final class RowDetailPanel {
         this.onApplySelectedMatch = handler == null ? (r, o) -> {} : handler;
     }
 
+    public void setOnApplyEpisodeSequence(BiConsumer<ScanRow, TvdbEpisode> handler) {
+        this.onApplyEpisodeSequence = handler == null ? (r, e) -> {} : handler;
+    }
+
+    public void setTvdbEpisodeOptions(
+            List<TvdbEpisode> episodes, String selectedEpisodeId, TvdbEpisodeOrder order) {
+        availableFirstEpisodes = episodes == null ? List.of() : List.copyOf(episodes);
+        firstEpisodeOrder = order == null ? TvdbEpisodeOrder.AIRED : order;
+        selectedFirstEpisode = availableFirstEpisodes.stream()
+                .filter(episode -> episode.id().equals(selectedEpisodeId))
+                .findFirst()
+                .orElse(null);
+        rebuildEpisodeMenu();
+        tvdbFirstEpisode.setDisable(!tvdbSearchable || availableFirstEpisodes.isEmpty());
+        tvdbApplySequence.setDisable(!tvdbSearchable || selectedFirstEpisode == null);
+    }
+
     public void setOnSearchMatch(Consumer<ScanRow> handler) {
         this.onSearchMatch = handler == null ? r -> {} : handler;
     }
@@ -356,6 +398,8 @@ public final class RowDetailPanel {
         tvdbOrder.setDisable(busy || !tvdbSearchable);
         tvdbApply.setDisable(busy || !tvdbSearchable || currentRow == null || currentRow.tvdbCandidate().isEmpty());
         tvdbReset.setDisable(busy || !tvdbSearchable || currentRow == null || currentRow.tvdbMatch().isEmpty());
+        tvdbFirstEpisode.setDisable(busy || !tvdbSearchable || availableFirstEpisodes.isEmpty());
+        tvdbApplySequence.setDisable(busy || !tvdbSearchable || selectedFirstEpisode == null);
         tvdbBusy.setVisible(busy);
         tvdbBusy.setManaged(busy);
         tvdbBusyLabel.setText(message == null ? "" : message);
@@ -386,6 +430,7 @@ public final class RowDetailPanel {
         tvdbSeedLabel.setText(UiText.detailFieldGroup(language));
         tvdbTypeLabel.setText(UiText.detailFieldMediaType(language));
         tvdbStatusLabel.setText(UiText.detailFieldStatus(language));
+        tvdbFirstEpisodeLabel.setText(UiText.tvdbFirstEpisode(language));
         proposedLabel.setText(UiText.detailFieldProposed(language));
         destinationLabel.setText(UiText.detailFieldDestination(language));
         conflictLabel.setText(UiText.detailFieldConflict(language));
@@ -401,6 +446,8 @@ public final class RowDetailPanel {
                 UiText.scanBatchTvdbOrderAbsolute(language));
         tvdbApply.setText(UiText.tvdbApply(language));
         tvdbReset.setText(UiText.detailResetButton(language));
+        rebuildEpisodeMenu();
+        tvdbApplySequence.setText(UiText.tvdbApplySequence(language));
         updateTvdbCard(currentRow);
         updateTvdbTargetHint();
     }
@@ -541,6 +588,37 @@ public final class RowDetailPanel {
             return TvdbEpisodeOrder.ABSOLUTE;
         }
         return TvdbEpisodeOrder.AIRED;
+    }
+
+    private void rebuildEpisodeMenu() {
+        tvdbFirstEpisode.getItems().clear();
+        for (TvdbEpisodeMenuModel.Group group
+                : TvdbEpisodeMenuModel.groups(availableFirstEpisodes, firstEpisodeOrder)) {
+            Menu groupMenu = new Menu(group.kind() == TvdbEpisodeMenuModel.GroupKind.SEASON
+                    ? group.start() == 0
+                            ? UiText.tvdbEpisodeSpecials(currentLanguage)
+                            : UiText.tvdbEpisodeSeason(currentLanguage, group.start())
+                    : UiText.tvdbEpisodeAbsoluteRange(currentLanguage, group.start(), group.end()));
+            for (TvdbEpisode episode : group.episodes()) {
+                MenuItem item = new MenuItem(episodeLabel(episode));
+                item.setOnAction(event -> selectFirstEpisode(episode));
+                groupMenu.getItems().add(item);
+            }
+            tvdbFirstEpisode.getItems().add(groupMenu);
+        }
+        tvdbFirstEpisode.setText(selectedFirstEpisode == null
+                ? UiText.tvdbFirstEpisodePlaceholder(currentLanguage)
+                : episodeLabel(selectedFirstEpisode));
+    }
+
+    private void selectFirstEpisode(TvdbEpisode episode) {
+        selectedFirstEpisode = episode;
+        tvdbFirstEpisode.setText(episodeLabel(episode));
+        tvdbApplySequence.setDisable(!tvdbSearchable);
+    }
+
+    private String episodeLabel(TvdbEpisode episode) {
+        return TvdbEpisodeMenuModel.episodeCode(episode, firstEpisodeOrder) + " · " + episode.title();
     }
 
     static boolean isApplyingExistingMatch(ScanRow row, String selectedLabel) {

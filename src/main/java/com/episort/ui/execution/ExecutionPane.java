@@ -70,7 +70,6 @@ public final class ExecutionPane {
     private final VBox failurePanel = new VBox(8);
     private final Label failureMessage = new Label();
     private final Button retryButton = new Button();
-    private final Button continueButton = new Button();
     private final Button abortButton = new Button();
     private final VBox failureLog = new VBox(4);
     private final VBox recapPanel = new VBox(14);
@@ -220,11 +219,10 @@ public final class ExecutionPane {
 
         retryButton.setText(UiText.execFailureRetry(language));
         retryButton.getStyleClass().add("primary");
-        continueButton.setText(UiText.execFailureContinue(language));
         abortButton.setText(UiText.execFailureAbort(language));
         abortButton.getStyleClass().addAll("ghost", "danger");
 
-        HBox failureActions = new HBox(8, retryButton, continueButton, abortButton);
+        HBox failureActions = new HBox(8, retryButton, abortButton);
         failureActions.setAlignment(Pos.CENTER_LEFT);
 
         failurePanel.getChildren().setAll(failureTitle, failureMessage, failureActions);
@@ -244,8 +242,6 @@ public final class ExecutionPane {
             failureMessage.setText(operation.sourcePath() + "\n" + error.safeMessage());
             retryButton.setDisable(!error.recoverable());
             retryButton.setOnAction(event -> resolve(decision, latch, operation, error, ExecutionFailureDecision.RETRY));
-            continueButton.setOnAction(event ->
-                    resolve(decision, latch, operation, error, ExecutionFailureDecision.CONTINUE));
             abortButton.setOnAction(event -> resolve(decision, latch, operation, error, ExecutionFailureDecision.ABORT));
             setVisible(failurePanel, true);
         });
@@ -291,7 +287,6 @@ public final class ExecutionPane {
     private void showFatalFailure(Throwable throwable) {
         setVisible(failurePanel, true);
         retryButton.setDisable(true);
-        continueButton.setDisable(true);
         abortButton.setDisable(true);
         Throwable cause = throwable.getCause() == null ? throwable : throwable.getCause();
         failureMessage.setText(String.valueOf(cause.getMessage()));

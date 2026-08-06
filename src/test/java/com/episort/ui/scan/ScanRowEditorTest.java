@@ -196,6 +196,33 @@ class ScanRowEditorTest {
         });
     }
 
+    @Test
+    void resettingTvdbMatchesClearsEverySelectedRow() {
+        ScanRow first = row("Show.S01E01.mkv", ScanMediaType.SERIES);
+        ScanRow second = row("Show.S01E02.mkv", ScanMediaType.SERIES);
+        for (ScanRow episode : List.of(first, second)) {
+            episode.setTvdbMatch(Optional.of("Show"));
+            episode.setTvdbSelectedByUser(true);
+            episode.setOrder(Optional.of("S01E01"));
+            episode.setProposedFilename(Optional.of("Show - S01E01.mkv"));
+            episode.setDestination(Optional.of(Path.of("C:", "media", "Season 01")));
+            episode.setAlertText(Optional.of("alert"));
+            episode.setNoteText(Optional.of("note"));
+        }
+
+        ScanRowEditor.resetTvdbMatches(List.of(first, second));
+
+        for (ScanRow episode : List.of(first, second)) {
+            assertEquals(Optional.empty(), episode.tvdbMatch());
+            assertEquals(Optional.empty(), episode.order());
+            assertEquals(Optional.empty(), episode.proposedFilename());
+            assertEquals(Optional.empty(), episode.destination());
+            assertEquals(Optional.empty(), episode.alertText());
+            assertEquals(Optional.empty(), episode.noteText());
+            assertTrue(!episode.tvdbSelectedByUser());
+        }
+    }
+
     /* ---- patternTooltip ------------------------------------------------- */
 
     @Test

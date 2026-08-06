@@ -8,8 +8,6 @@ import javafx.collections.transformation.FilteredList;
 import javafx.collections.transformation.SortedList;
 import javafx.scene.Node;
 import javafx.scene.control.SelectionMode;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.input.MouseButton;
@@ -281,23 +279,14 @@ final class ScanSelectionController {
         host.onSelectAllStateChanged(hasSelectableRows, allSelected);
     }
 
+    /** Restores JavaFX's row highlight after a filter refresh clears it. */
+    void restoreTableSelection() {
+        inSync(this::syncTableSelectionFromRows);
+    }
+
     /** Whether a press originated in the checkbox column rather than the row. */
     static boolean isCheckboxCellEvent(MouseEvent event) {
         return ancestorMatches(event, node -> node.getStyleClass().contains("selection-cell"));
-    }
-
-    /** Whether a press landed in a cell the user can type into. */
-    static boolean isEditableCellEvent(MouseEvent event) {
-        if (!(event.getTarget() instanceof Node target)) {
-            return false;
-        }
-        for (Node current = target; current != null; current = current.getParent()) {
-            if (current instanceof TableCell<?, ?> cell) {
-                TableColumn<?, ?> column = cell.getTableColumn();
-                return column != null && column.isEditable();
-            }
-        }
-        return false;
     }
 
     /** Ignored rows are greyed out so they visibly sit outside the run. */

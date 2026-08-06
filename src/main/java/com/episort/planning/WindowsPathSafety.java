@@ -1,6 +1,7 @@
 package com.episort.planning;
 
 import java.nio.file.Path;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -49,10 +50,14 @@ public final class WindowsPathSafety {
         if (raw == null) {
             return FALLBACK;
         }
-        StringBuilder builder = new StringBuilder(raw.length());
-        for (int index = 0; index < raw.length(); index++) {
-            char character = raw.charAt(index);
-            if (!isForbidden(character)) {
+        String decomposed = Normalizer.normalize(raw, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "");
+        StringBuilder builder = new StringBuilder(decomposed.length());
+        for (int index = 0; index < decomposed.length(); index++) {
+            char character = decomposed.charAt(index);
+            if (character == ':' || character == '/' || character == '\\') {
+                builder.append(' ');
+            } else if (!isForbidden(character)) {
                 builder.append(character);
             }
         }
@@ -64,7 +69,7 @@ public final class WindowsPathSafety {
         if (isReservedDeviceName(collapsed)) {
             collapsed = collapsed + DEVICE_NAME_SUFFIX;
         }
-        return truncate(collapsed, MAX_COMPONENT_LENGTH);
+        return collapsed;
     }
 
     /**
@@ -102,16 +107,8 @@ public final class WindowsPathSafety {
         String base = sanitizeComponent(baseName);
         String safeExtension = sanitizeExtension(extension);
 
-        int budget = MAX_PATH - 1 - lengthOf(root);
-        int folderBudget = separatorCount(folders) + totalLength(folders);
-        int available = budget - folderBudget - 1 - safeExtension.length();
-        if (available < base.length()) {
-            base = truncate(base, Math.max(MIN_BASE_NAME_LENGTH, available));
-        }
-
-        List<String> shortened = shrinkFolders(folders, budget - 1 - base.length() - safeExtension.length());
         Path result = root;
-        for (String folder : shortened) {
+        for (String folder : folders) {
             result = result.resolve(folder);
         }
         return result.resolve(base + safeExtension);

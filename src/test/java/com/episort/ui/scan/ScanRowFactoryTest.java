@@ -1,6 +1,7 @@
 package com.episort.ui.scan;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -143,6 +144,24 @@ class ScanRowFactoryTest {
         assertSame(ScanMediaType.IGNORED, rows.get(0).mediaType());
         assertSame(ScanRowStatus.IGNORED, rows.get(1).status());
         assertSame(ScanMediaType.IGNORED, rows.get(1).mediaType());
+    }
+
+    @Test
+    void activeReviewReasonBecomesAVisibleAlert() {
+        Path source = Path.of("C:/Media/Initial D - S00E01 - Extra Stage.mkv").toAbsolutePath().normalize();
+        InventoryItem video = new InventoryItem(
+                source, source.getFileName().toString(), "mkv", source.getParent(),
+                InventoryItemType.SUPPORTED_VIDEO, true);
+        InventoryScanResult result = new InventoryScanResult(
+                List.of(video),
+                List.of(new InventoryGroup(InventoryGroupType.LIKELY_SERIES, "Initial D", List.of(video), false)),
+                summary(1, 0, 0, 0, 1, 0, 0));
+
+        ScanRow row = ScanRowFactory.from(result).getFirst();
+
+        assertFalse(row.isIgnored());
+        assertSame(ScanRowStatus.LOW_CONFIDENCE, row.status());
+        assertTrue(row.alertText().isPresent());
     }
 
     @Test

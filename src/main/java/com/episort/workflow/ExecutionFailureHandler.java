@@ -18,4 +18,9 @@ public interface ExecutionFailureHandler {
     static ExecutionFailureHandler alwaysContinue() {
         return (operation, error, attempt) -> ExecutionFailureDecision.CONTINUE;
     }
+
+    /** Stops the run at the first failure, preserving completed operations. */
+    static ExecutionFailureHandler alwaysAbort() {
+        return (operation, error, attempt) -> ExecutionFailureDecision.ABORT;
+    }
 }

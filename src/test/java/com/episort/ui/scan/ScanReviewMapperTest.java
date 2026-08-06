@@ -45,9 +45,12 @@ class ScanReviewMapperTest {
     }
 
     @Test
-    void onlyConflictsAndDuplicatesBlockThePatternGate() {
+    void conflictsDuplicatesAndVisibleAlertsBlockThePatternGate() {
         assertTrue(ScanReviewMapper.isBlockingConflict(row("c.mkv", ScanMediaType.MOVIE, ScanRowStatus.CONFLICT)));
         assertTrue(ScanReviewMapper.isBlockingConflict(row("d.mkv", ScanMediaType.SERIES, ScanRowStatus.DUPLICATE)));
+        ScanRow alert = row("alert.mkv", ScanMediaType.SERIES, ScanRowStatus.REVIEW);
+        alert.setAlertText(Optional.of("TVDB match required"));
+        assertTrue(ScanReviewMapper.isBlockingConflict(alert));
         assertFalse(ScanReviewMapper.isBlockingConflict(row("e.mkv", ScanMediaType.SERIES, ScanRowStatus.ERROR)));
         assertFalse(ScanReviewMapper.isBlockingConflict(row("o.mkv", ScanMediaType.SERIES, ScanRowStatus.OK)));
     }

@@ -2,6 +2,7 @@ package com.episort.ui;
 
 import com.episort.persistence.ExecutionJournal;
 import com.episort.persistence.FileExecutionJournal;
+import com.episort.persistence.FileRollbackPlanStore;
 import com.episort.persistence.RunEvent;
 import com.episort.persistence.RunEventStatus;
 import com.episort.persistence.RunEventStore;
@@ -17,6 +18,7 @@ import com.episort.ui.scan.ScanScreen;
 import com.episort.ui.settings.SettingsPane;
 import com.episort.workflow.ExecutionRecap;
 import com.episort.workflow.ExecutionService;
+import com.episort.workflow.LastPlanRollbackService;
 import com.episort.workflow.PlanApprovalService;
 import com.episort.workflow.TvdbCredentialConfigurationResult;
 import java.io.File;
@@ -59,6 +61,8 @@ public final class AppShell {
     private final ScrollPane settingsScroll;
     private final SettingsPane settingsPane;
     private final RunEventStore runEventStore;
+    private final LastPlanRollbackService rollbackService =
+            new LastPlanRollbackService(FileRollbackPlanStore.userProfileStore());
     private final PlanApprovalService planApproval = new PlanApprovalService();
     private ExecutionJournal executionJournal =
             FileExecutionJournal.userProfileJournal();
@@ -69,8 +73,6 @@ public final class AppShell {
     private AppShellViewModel currentViewModel;
     private AppView currentView = AppView.SCAN;
     private Optional<Path> lastInputFolder = Optional.empty();
-    private String scanSearchQuery = "";
-    private String historySearchQuery = "";
     private Consumer<AppLanguage> languageChangeListener = lang -> {};
     private boolean loading;
     private final PrerequisiteOverlay prereqOverlay =
@@ -134,7 +136,6 @@ public final class AppShell {
         sidebar = new Sidebar(logoImage(), this::showView);
         topBar = new TopBar(new TopBarActions(
                 this::onPrimaryAction,
-                this::onSearchChange,
                 this::openLoadFolderDialog,
                 this::openLoadFilesDialog,
                 this::openAddFolderDialog,
@@ -146,7 +147,12 @@ public final class AppShell {
                 this::requestQuit));
 
         scanScreen = new ScanScreen();
-        historyScreen = new HistoryScreen(this.runEventStore);
+        scanScreen.setOnReviewStateChanged(this::refreshPrimaryAction);
+        historyScreen = new HistoryScreen(
+                this.runEventStore,
+                rollbackService,
+                this::onRollbackCompleted,
+                this::onPlanReviewExecutingChanged);
 
         settingsScroll = buildSettingsView();
 
@@ -310,6 +316,13 @@ public final class AppShell {
     private void showView(AppView view) {
         // About borrows the content area; asking for any view is asking to leave it.
         aboutPane = null;
+        if (historyScreen.rollbackExecuting()) {
+            sidebar.setActive(currentView);
+            return;
+        }
+        if (historyScreen.reviewingRollback() && view != AppView.HISTORY) {
+            historyScreen.closeRollbackReview();
+        }
         if (planReviewPane != null) {
             // A run in flight owns the window: navigating away would leave the
             // moves happening with nothing on screen to say so.
@@ -342,9 +355,6 @@ public final class AppShell {
         }
         topBar.setActiveView(view);
         topBar.setAboutEnabled(true);
-        topBar.setSearchVisible(view != AppView.SETTINGS);
-        topBar.setSearchText(searchQueryFor(view));
-        applySearchToCurrentView();
         refreshPrimaryAction();
         if (view != AppView.SCAN) {
             setTopSecondaryActionsVisible(false);
@@ -492,6 +502,8 @@ public final class AppShell {
         metrics.put("failed", String.valueOf(recap.failed().size()));
         metrics.put("skipped", String.valueOf(recap.skipped().size()));
         metrics.put("untouched", String.valueOf(recap.untouched().size()));
+        metrics.put("runId", recap.report().runId().toString());
+        rollbackService.record(recap.report());
         runEventStore.append(RunEvent.of(
                 processed > 0
                         ? RunEventType.EXECUTION_COMPLETED
@@ -501,6 +513,22 @@ public final class AppShell {
                 Optional.empty(),
                 UiText.execRecapTitle(currentViewModel.language()),
                 metrics));
+    }
+
+    private void onRollbackCompleted() {
+        lastInputFolder = Optional.empty();
+        scanScreen.discardOperationPlan();
+        apply(new AppShellViewModel(
+                currentViewModel.title(),
+                currentViewModel.primaryStatus(),
+                currentViewModel.description(),
+                Optional.empty(),
+                currentViewModel.errorCode(),
+                Optional.empty(),
+                currentViewModel.theme(),
+                currentViewModel.language()));
+        sidebar.refreshWorkspace();
+        historyScreen.refresh();
     }
 
     /**
@@ -528,39 +556,6 @@ public final class AppShell {
 
     public void setExecutionJournal(ExecutionJournal journal) {
         this.executionJournal = journal == null ? this.executionJournal : journal;
-    }
-
-    private void onSearchChange(String query) {
-        if (currentView == AppView.SCAN) {
-            scanSearchQuery = sanitizeSearchQuery(query);
-        } else if (currentView == AppView.HISTORY) {
-            historySearchQuery = sanitizeSearchQuery(query);
-        }
-        applySearchToCurrentView(query);
-    }
-
-    private void applySearchToCurrentView() {
-        applySearchToCurrentView(topBar.searchField().getText());
-    }
-
-    private void applySearchToCurrentView(String query) {
-        if (currentView == AppView.SCAN) {
-            scanScreen.setSearchFilter(query);
-        } else if (currentView == AppView.HISTORY) {
-            historyScreen.setSearchFilter(query);
-        }
-    }
-
-    private String searchQueryFor(AppView view) {
-        return switch (view) {
-            case SCAN -> scanSearchQuery;
-            case HISTORY -> historySearchQuery;
-            case SETTINGS -> "";
-        };
-    }
-
-    private static String sanitizeSearchQuery(String query) {
-        return query == null ? "" : query;
     }
 
     private void openLoadFolderDialog() {
@@ -735,8 +730,6 @@ public final class AppShell {
      */
     private void resetScanPreview() {
         lastInputFolder = Optional.empty();
-        scanSearchQuery = "";
-        topBar.setSearchText("");
         apply(new AppShellViewModel(
                 currentViewModel.title(),
                 currentViewModel.primaryStatus(),
@@ -922,7 +915,6 @@ public final class AppShell {
         topBar.primaryAction().setVisible(false);
         topBar.primaryAction().setManaged(false);
         setTopSecondaryActionsVisible(false);
-        topBar.setSearchVisible(false);
         topBar.setAboutEnabled(false);
     }
 

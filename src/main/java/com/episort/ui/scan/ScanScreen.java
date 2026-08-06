@@ -42,6 +42,7 @@ import java.awt.Desktop;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -97,12 +98,14 @@ public final class ScanScreen {
     private final ScanFilterBar filterBar = new ScanFilterBar(this::onFilterChanged);
     private final Button resolveManualMatchesButton = new Button();
     private final ScanTableColumns columns = new ScanTableColumns(new ColumnHost());
+    private ContextMenu activeContextMenu;
 
     private final RowDetailPanel detailPanel = new RowDetailPanel();
     private final Region detailRoot;
     private final VBox detailStack;
     private final ScanGroupIndex groups = new ScanGroupIndex();
     private final Map<String, TvdbCandidate> tvdbCandidatesByLabel = new HashMap<>();
+    private final Map<String, TvdbSeriesDetails> tvdbSeriesDetailsById = new HashMap<>();
     private final TvdbCandidateScorer candidateScorer = new TvdbCandidateScorer();
     private final EpisodeMovieMatchService matchService = new EpisodeMovieMatchService();
     private final TvdbEpisodeOrderMapper orderMapper = new TvdbEpisodeOrderMapper();
@@ -120,6 +123,7 @@ public final class ScanScreen {
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
     private TvdbClient tvdbClient;
     private Supplier<Optional<TvdbCredentials>> tvdbCredentialsSupplier = Optional::empty;
+    private Runnable reviewStateChanged = () -> {};
 
     public ScanScreen() {
         selection = new ScanSelectionController(table, rows, filtered, sorted, new SelectionHost());
@@ -138,6 +142,7 @@ public final class ScanScreen {
         configureTable();
         detailPanel.setOnApplyCandidate(this::applyTvdbCandidate);
         detailPanel.setOnApplySelectedMatch(this::applySelectedTvdbMatchToSelection);
+        detailPanel.setOnApplyEpisodeSequence(this::applyTvdbEpisodeSequence);
         detailPanel.setOnResetMatch(this::resetTvdbMatch);
         detailPanel.setOnApplyInputPattern(this::applyInputPatternToSelection);
         detailPanel.setOnSearchMatch(this::openTvdbManualMatchDialog);
@@ -170,6 +175,14 @@ public final class ScanScreen {
 
     public Region root() {
         return root;
+    }
+
+    /**
+     * Notifies the shell when an edit or an asynchronous TVDB result changes
+     * whether the exact-plan action is available.
+     */
+    public void setOnReviewStateChanged(Runnable listener) {
+        reviewStateChanged = listener == null ? () -> {} : listener;
     }
 
     public void applyLanguage(AppLanguage language) {
@@ -221,10 +234,6 @@ public final class ScanScreen {
     /** Where the strip stands, so a screen taking over the content area can carry it on. */
     public WorkflowPhase workflowPhase() {
         return workflowPhase;
-    }
-
-    public void setSearchFilter(String query) {
-        filterBar.setSearchQuery(query);
     }
 
     public void setWorkspaceRoot(Optional<Path> root) {
@@ -302,6 +311,7 @@ public final class ScanScreen {
         selection.updateSelectAllState();
         updateManualMatchNotice();
         refreshWorkflowHelp();
+        reviewStateChanged.run();
     }
 
     public boolean hasRows() {
@@ -445,6 +455,7 @@ public final class ScanScreen {
     }
 
     private void applyBatchGroupMatchToRow(ScanRow row, TvdbBatchMatchResult.GroupMatch match) {
+        match.series().ifPresent(series -> tvdbSeriesDetailsById.put(series.identity().id(), series));
         if (row.tvdbSelectedByUser()) {
             return;
         }
@@ -654,7 +665,7 @@ public final class ScanScreen {
                     selection.focusForContextMenu(item);
                 }
                 selection.anchorOn(item);
-                buildContextMenu(item).show(row, event.getScreenX(), event.getScreenY());
+                showContextMenu(row, item, event.getScreenX(), event.getScreenY());
                 event.consume();
             });
             row.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
@@ -670,8 +681,7 @@ public final class ScanScreen {
             row.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
                 if (row.isEmpty()
                         || event.getButton() != MouseButton.PRIMARY
-                        || ScanSelectionController.isCheckboxCellEvent(event)
-                        || ScanSelectionController.isEditableCellEvent(event)) {
+                        || ScanSelectionController.isCheckboxCellEvent(event)) {
                     return;
                 }
                 selection.focusOnly(row.getItem());
@@ -744,7 +754,7 @@ public final class ScanScreen {
     /** Re-applies the filter chips to the table; a fresh predicate forces a re-filter. */
     private void updateFilterPredicate() {
         filtered.setPredicate(filterBar::test);
-        selection.updateSelectAllState();
+        selection.restoreTableSelection();
     }
 
     /** The filter bar changed: re-filter, and keep the header checkbox honest. */
@@ -793,6 +803,22 @@ public final class ScanScreen {
     /** Repaints the detail panel for a row, carrying its group match along. */
     private void showDetail(ScanRow row) {
         detailPanel.show(row, groups.matchOf(row));
+        configureEpisodeSequenceOptions(row);
+    }
+
+    private void configureEpisodeSequenceOptions(ScanRow row) {
+        if (row == null || row.tvdbCandidate().isEmpty()) {
+            detailPanel.setTvdbEpisodeOptions(List.of(), "", TvdbEpisodeOrder.AIRED);
+            return;
+        }
+        TvdbSeriesDetails details = tvdbSeriesDetailsById.get(row.tvdbCandidate().orElseThrow().identity().id());
+        if (details == null) {
+            detailPanel.setTvdbEpisodeOptions(List.of(), "", TvdbEpisodeOrder.AIRED);
+            return;
+        }
+        TvdbEpisodeOrder order = row.appliedTvdbOrder().orElse(TvdbEpisodeOrder.AIRED);
+        String selectedId = episodeForRow(details.episodesFor(order), row).map(TvdbEpisode::id).orElse("");
+        detailPanel.setTvdbEpisodeOptions(details.episodesFor(order), selectedId, order);
     }
 
     private void applyTvdbCandidate(ScanRow row, String candidate) {
@@ -815,15 +841,7 @@ public final class ScanScreen {
     }
 
     private void resetTvdbMatch(ScanRow row) {
-        row.setTvdbMatch(Optional.empty());
-        row.setTvdbCandidate(Optional.empty());
-        row.setTvdbSelectedByUser(false);
-        row.setAppliedTvdbOrder(Optional.empty());
-        row.setOrder(Optional.empty());
-        row.setProposedFilename(Optional.empty());
-        row.setDestination(Optional.empty());
-        row.setAlertText(Optional.empty());
-        row.setNoteText(Optional.empty());
+        ScanRowEditor.resetTvdbMatches(tvdbTargetRows(row));
         updateMetricsFromRows();
         updateFilterPredicate();
         table.refresh();
@@ -1090,6 +1108,9 @@ public final class ScanScreen {
     }
 
     private void applySelectedTvdbMetadata(List<ScanRow> targetRows, Object details, TvdbEpisodeOrder order) {
+        if (details instanceof TvdbSeriesDetails series) {
+            tvdbSeriesDetailsById.put(series.identity().id(), series);
+        }
         int updated = 0;
         for (ScanRow row : targetRows) {
             applySelectedTvdbMetadataToRow(row, details, order);
@@ -1108,6 +1129,74 @@ public final class ScanScreen {
             showDetail(selection.focused());
             detailPanel.setTvdbTargetCount(tvdbTargetRows(selection.focused()).size());
         }
+    }
+
+    private void applyTvdbEpisodeSequence(ScanRow anchor, TvdbEpisode firstEpisode) {
+        if (anchor == null || firstEpisode == null || anchor.tvdbCandidate().isEmpty()) {
+            return;
+        }
+        TvdbSeriesDetails series = tvdbSeriesDetailsById.get(
+                anchor.tvdbCandidate().orElseThrow().identity().id());
+        if (series == null) {
+            return;
+        }
+        List<ScanRow> targets = new ArrayList<>(tvdbTargetRows(anchor));
+        Optional<List<ScanRow>> confirmed = confirmTargetsAcrossGroups(anchor, targets);
+        if (confirmed.isEmpty()) {
+            return;
+        }
+        targets = new ArrayList<>(confirmed.orElseThrow());
+        targets.sort(Comparator.comparingInt(row -> {
+            int index = sorted.indexOf(row);
+            return index < 0 ? Integer.MAX_VALUE : index;
+        }));
+        TvdbEpisodeOrder order = anchor.appliedTvdbOrder().orElse(TvdbEpisodeOrder.AIRED);
+        List<TvdbEpisode> sequence = TvdbEpisodeSequence.startingAt(
+                series.episodesFor(order), firstEpisode.id(), targets.size());
+        for (int index = 0; index < sequence.size(); index++) {
+            applyTvdbEpisode(targets.get(index), series, order, sequence.get(index));
+        }
+        String message = sequence.size() == targets.size()
+                ? UiText.tvdbFilesUpdated(currentLanguage, sequence.size())
+                : UiText.tvdbSequenceIncomplete(currentLanguage, sequence.size(), targets.size());
+        targets.forEach(row -> row.setNoteText(Optional.of(message)));
+        updateMetricsFromRows();
+        updateFilterPredicate();
+        table.refresh();
+        showDetail(anchor);
+        detailPanel.setTvdbTargetCount(targets.size());
+    }
+
+    private void applyTvdbEpisode(
+            ScanRow row, TvdbSeriesDetails series, TvdbEpisodeOrder order, TvdbEpisode episode) {
+        row.setMediaType(ScanMediaType.SERIES);
+        row.setStatus(ScanRowStatus.TVDB);
+        row.setOrder(Optional.of(String.format("S%02dE%02d",
+                episode.seasonNumber(), episode.episodeNumber())));
+        row.setInputParse(Optional.of(tvdbEpisodeParse(
+                series.identity().displayName(),
+                String.format("%02d", episode.seasonNumber()),
+                String.format("%02d", episode.episodeNumber()),
+                episode.title())));
+        ScanRowEditor.recomputeProposedName(row);
+        row.setAppliedTvdbOrder(Optional.of(order));
+        row.setTvdbSelectedByUser(true);
+        row.setConfidence(OptionalDouble.of(1.0));
+        row.setAlertText(Optional.empty());
+    }
+
+    private static Optional<TvdbEpisode> episodeForRow(List<TvdbEpisode> episodes, ScanRow row) {
+        String value = row.order().orElse("");
+        if (!value.matches("S\\d+E\\d+")) {
+            return Optional.empty();
+        }
+        int marker = value.indexOf('E');
+        int season = Integer.parseInt(value.substring(1, marker));
+        int episode = Integer.parseInt(value.substring(marker + 1));
+        return episodes.stream()
+                .filter(candidate -> candidate.seasonNumber() == season
+                        && candidate.episodeNumber() == episode)
+                .findFirst();
     }
 
     private void applySelectedTvdbMetadataToRow(ScanRow row, Object details, TvdbEpisodeOrder order) {
@@ -1346,9 +1435,25 @@ public final class ScanScreen {
         return menu;
     }
 
+    private void showContextMenu(TableRow<ScanRow> owner, ScanRow row, double screenX, double screenY) {
+        if (activeContextMenu != null) {
+            activeContextMenu.hide();
+        }
+
+        ContextMenu menu = buildContextMenu(row);
+        activeContextMenu = menu;
+        menu.setOnHidden(event -> {
+            if (activeContextMenu == menu) {
+                activeContextMenu = null;
+            }
+        });
+        menu.show(owner, screenX, screenY);
+    }
+
     private void updateMetricsFromRows() {
         metricCards.show(ScanMetrics.from(List.copyOf(rows)));
         refreshWorkflowHelp();
+        reviewStateChanged.run();
     }
 
     public boolean canValidatePattern() {

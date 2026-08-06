@@ -132,6 +132,19 @@ class AnalysisPipelineServiceTest {
     }
 
     @Test
+    void explicitlyNumberedExtraEpisodeRequiresReviewInsteadOfBeingIgnored() {
+        AnalyzedVideoFile file = heuristics.analyze(
+                item("Initial D - S00E01 - Extra Stage.mkv", ".mkv"), InventoryGroupType.LIKELY_SERIES);
+
+        rename.generate(file);
+        validation.validatePreTvdb(List.of(file));
+
+        assertEquals(VideoMediaType.SPECIAL, file.mediaType());
+        assertEquals(AnalysisStatus.LOW_CONFIDENCE, file.status());
+        assertTrue(file.statusReasons().stream().anyMatch(reason -> reason.contains("review threshold")));
+    }
+
+    @Test
     void aResolutionIsNeverMistakenForAMovieYear() {
         AnalyzedVideoFile file = heuristics.analyze(
                 item("Movie.2160p.BluRay.mkv", ".mkv"), InventoryGroupType.LIKELY_MOVIE);

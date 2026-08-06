@@ -9,7 +9,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
-import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -29,11 +28,9 @@ public final class TopBar {
     private final Label workspaceChipPrefix;
     private final Label workspaceChipValue;
     private final HBox workspaceChip;
-    private final Label searchIcon;
-    private final TextField searchField;
-    private final Button clearSearchAction;
-    private final HBox searchBox;
     private final Label statusPill;
+    private final Button rescanAction;
+    private final Button resetAction;
     private final MenuButton loadAction;
     private final MenuItem loadFolderItem;
     private final MenuItem loadFilesItem;
@@ -60,31 +57,6 @@ public final class TopBar {
         workspaceChip.getStyleClass().add("workspace-chip");
         workspaceChip.setAlignment(Pos.CENTER_LEFT);
 
-        searchIcon = new Label("⌕");
-        searchIcon.getStyleClass().addAll("episort-search-icon", "top-search-icon");
-
-        searchField = new TextField();
-        searchField.getStyleClass().add("episort-search-field");
-        HBox.setHgrow(searchField, Priority.ALWAYS);
-
-        clearSearchAction = new Button("×");
-        clearSearchAction.getStyleClass().addAll("episort-search-clear", "top-search-clear");
-        clearSearchAction.setVisible(false);
-        clearSearchAction.setManaged(false);
-        clearSearchAction.setOnAction(event -> clearSearch());
-
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
-            actions.onSearchChange().accept(newValue);
-            boolean hasText = newValue != null && !newValue.isBlank();
-            clearSearchAction.setVisible(hasText);
-            clearSearchAction.setManaged(hasText);
-        });
-
-        searchBox = new HBox(searchIcon, searchField, clearSearchAction);
-        searchBox.getStyleClass().addAll("episort-search-box", "top-search");
-        HBox.setHgrow(searchBox, Priority.ALWAYS);
-        searchBox.setMaxWidth(420);
-
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -92,6 +64,14 @@ public final class TopBar {
         statusPill.getStyleClass().add("status-pill");
         statusPill.setVisible(false);
         statusPill.setManaged(false);
+
+        rescanAction = new Button();
+        rescanAction.getStyleClass().addAll("header-action", "ghost");
+        rescanAction.setOnAction(event -> actions.rescan().run());
+
+        resetAction = new Button();
+        resetAction.getStyleClass().addAll("header-action", "ghost");
+        resetAction.setOnAction(event -> actions.reset().run());
 
         // Loading files is the other half of the workflow, so it carries the
         // same weight as reviewing the plan rather than hiding in a menu.
@@ -118,9 +98,10 @@ public final class TopBar {
         content = new HBox(12,
                 menuBar.root(),
                 workspaceChip,
-                searchBox,
                 spacer,
                 statusPill,
+                rescanAction,
+                resetAction,
                 loadAction,
                 primaryAction);
         content.getStyleClass().add("top-bar-content");
@@ -141,10 +122,6 @@ public final class TopBar {
 
     public Region root() {
         return root;
-    }
-
-    public TextField searchField() {
-        return searchField;
     }
 
     public Button primaryAction() {
@@ -187,10 +164,12 @@ public final class TopBar {
 
     public void setResetActionEnabled(boolean enabled) {
         menuBar.setResetEnabled(enabled);
+        resetAction.setDisable(!enabled);
     }
 
     public void setRescanActionEnabled(boolean enabled) {
         menuBar.setRescanEnabled(enabled);
+        rescanAction.setDisable(!enabled);
     }
 
     /** Locks the bar's controls while a run is executing, window buttons aside. */
@@ -200,6 +179,10 @@ public final class TopBar {
 
     public void setScanActionsVisible(boolean visible) {
         menuBar.setScanActionsVisible(visible);
+        rescanAction.setVisible(visible);
+        rescanAction.setManaged(visible);
+        resetAction.setVisible(visible);
+        resetAction.setManaged(visible);
         loadAction.setVisible(visible);
         loadAction.setManaged(visible);
     }
@@ -213,25 +196,10 @@ public final class TopBar {
         menuBar.setAboutEnabled(enabled);
     }
 
-    public void setSearchVisible(boolean visible) {
-        searchBox.setVisible(visible);
-        searchBox.setManaged(visible);
-    }
-
-    public void setSearchText(String text) {
-        String safeText = text == null ? "" : text;
-        if (!Objects.equals(searchField.getText(), safeText)) {
-            searchField.setText(safeText);
-        }
-    }
-
     public void applyLanguage(AppLanguage language) {
         currentLanguage = language;
-        searchField.setPromptText(UiText.searchPlaceholder(language));
-        // The field and the clear button carry no visible label of their own.
-        searchField.setAccessibleText(UiText.searchPlaceholder(language));
-        clearSearchAction.setAccessibleText(UiText.a11yClearSearch(language));
-        clearSearchAction.setTooltip(new Tooltip(UiText.a11yClearSearch(language)));
+        rescanAction.setText(UiText.topActionReanalyze(language));
+        resetAction.setText(UiText.topActionReset(language));
         loadAction.setText(UiText.topActionLoad(language));
         loadFolderItem.setText(UiText.topActionLoadFolder(language));
         loadFilesItem.setText(UiText.topActionLoadFiles(language));
@@ -286,7 +254,4 @@ public final class TopBar {
         menuBar.setReviewPlanEnabled(!disabled);
     }
 
-    public void clearSearch() {
-        searchField.clear();
-    }
 }

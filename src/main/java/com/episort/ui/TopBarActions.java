@@ -9,7 +9,6 @@ import java.util.function.Consumer;
  */
 public record TopBarActions(
         Runnable primaryAction,
-        Consumer<String> onSearchChange,
         Runnable loadFolder,
         Runnable loadFiles,
         Runnable addFolder,
@@ -22,7 +21,6 @@ public record TopBarActions(
 
     public TopBarActions {
         Objects.requireNonNull(primaryAction, "primaryAction");
-        Objects.requireNonNull(onSearchChange, "onSearchChange");
         Objects.requireNonNull(loadFolder, "loadFolder");
         Objects.requireNonNull(loadFiles, "loadFiles");
         Objects.requireNonNull(addFolder, "addFolder");

@@ -1,6 +1,8 @@
 package com.episort.matching;
 
 import com.episort.filename.SeasonEpisodePattern;
+import com.episort.filename.FilenameParser;
+import com.episort.filename.FolderContext;
 import com.episort.scanner.InventoryItem;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -104,6 +106,9 @@ public final class EpisodeMovieMatchService {
     }
 
     private Optional<ParsedEpisodeKey> parseEpisodeKey(String filename) {
+        if (looksLikeMultipleEpisodes(filename)) {
+            return Optional.empty();
+        }
         Optional<ParsedEpisodeKey> explicit = parse(filename, SeasonEpisodePattern.STRICT);
         if (explicit.isPresent()) {
             return explicit;
@@ -118,6 +123,10 @@ public final class EpisodeMovieMatchService {
             return Optional.of(new ParsedEpisodeKey(1, intValue(absolute.group(1)), true));
         }
         return Optional.empty();
+    }
+
+    private static boolean looksLikeMultipleEpisodes(String filename) {
+        return FilenameParser.parse(filename, FolderContext.none()).multiEpisode();
     }
 
     private Optional<ParsedEpisodeKey> parse(String filename, Pattern pattern) {

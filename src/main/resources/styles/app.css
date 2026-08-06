@@ -814,41 +814,41 @@
     -fx-pref-height: 34;
 }
 
-/* The import action is the other end of the same workflow as reviewing the
-   plan, so it wears the same primary treatment. */
+/* Loading starts the workflow, but stays outlined so the validation action
+   remains the only solid primary control in the top bar. */
 .menu-button.load-primary {
-    -fx-background-color: rgba(249,115,22,1.0);
-    -fx-border-color: transparent;
-    -fx-text-fill: rgba(17,24,39,1.0);
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(249,115,22,0.70);
+    -fx-text-fill: rgba(245,247,251,1.0);
     -fx-padding: 8 14 8 16;
     -fx-font-weight: 700;
 }
 
 .menu-button.load-primary > .label {
-    -fx-text-fill: rgba(17,24,39,1.0);
+    -fx-text-fill: rgba(245,247,251,1.0);
     -fx-font-weight: 700;
     -fx-padding: 0 6 0 0;
 }
 
 .menu-button.load-primary:hover {
-    -fx-background-color: rgba(251,146,60,1.0);
-    -fx-border-color: transparent;
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.65), 18, 0, 0, 0);
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(251,146,60,1.0);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 8, 0, 0, 0);
 }
 
 .menu-button.load-primary:pressed,
 .menu-button.load-primary:showing {
-    -fx-background-color: rgba(234,88,12,1.0);
-    -fx-border-color: transparent;
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(249,115,22,1.0);
     -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.32), 8, 0, 0, 0);
 }
 
 .menu-button.load-primary > .arrow-button > .arrow {
-    -fx-background-color: rgba(17,24,39,0.85);
+    -fx-background-color: rgba(251,146,60,1.0);
 }
 
 .menu-button.load-primary:disabled {
-    -fx-background-color: rgba(138,147,163,0.06);
+    -fx-background-color: transparent;
     -fx-border-color: rgba(138,147,163,0.14);
     -fx-opacity: 0.45;
     -fx-effect: null;
@@ -1066,6 +1066,33 @@
     -fx-background-color: #f97316;
 }
 
+/* Hierarchical episode picker: it reads like the adjacent input while its
+   nested menus keep long series navigable by season or absolute range. */
+.menu-button.tvdb-episode-picker {
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-border-color: rgba(249,115,22,0.25);
+    -fx-text-fill: #f5f7fb;
+    -fx-font-weight: 400;
+    -fx-alignment: center-left;
+}
+
+.menu-button.tvdb-episode-picker > .label {
+    -fx-text-fill: #f5f7fb;
+    -fx-alignment: center-left;
+    -fx-max-width: infinity;
+}
+
+.menu-button.tvdb-episode-picker > .arrow-button > .arrow {
+    -fx-background-color: #f97316;
+}
+
+.menu-button.tvdb-episode-picker:hover,
+.menu-button.tvdb-episode-picker:showing {
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-border-color: #f97316;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 8, 0, 0, 0);
+}
+
 .combo-box-popup .list-view {
     -fx-background-color: rgba(13,15,20,0.97);
     -fx-border-color: rgba(249,115,22,0.25);
@@ -1101,6 +1128,7 @@
 }
 
 .banner.banner-info  { -fx-border-color: rgba(249,115,22,0.45); }
+.banner.banner-good  { -fx-border-color: rgba(74,222,128,0.55); }
 .banner.banner-warn  { -fx-border-color: rgba(251,146,60,0.55); }
 .banner.banner-error { -fx-border-color: rgba(248,113,113,0.55); }
 
@@ -1783,6 +1811,14 @@
     -fx-padding: 0 0 2 0;
     -fx-spacing: 8;
     -fx-alignment: center-left;
+}
+
+/* Table-scoped search stays visually attached to the predicates it combines
+   with, while retaining the shared search focus and clear-button treatment. */
+.table-search {
+    -fx-min-width: 220;
+    -fx-pref-width: 280;
+    -fx-max-width: 320;
 }
 
 .filter-chip {

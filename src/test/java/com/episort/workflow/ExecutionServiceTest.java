@@ -2,6 +2,7 @@ package com.episort.workflow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.episort.persistence.ExecutionJournalEntry;
@@ -180,7 +181,7 @@ class ExecutionServiceTest {
     }
 
     @Test
-    void anExecutedFailureRecordsTheStateAsCompletedWithFailures() throws IOException {
+    void anExecutedFailureRecordsTheRunAsAborted() throws IOException {
         Path workspace = workspace();
         Path journalFile = tempDir.resolve("diagnostics").resolve("execution-journal.jsonl");
         Path source = file(workspace, "show.s01e01.mkv");
@@ -191,7 +192,7 @@ class ExecutionServiceTest {
         FileExecutionJournal journal = new FileExecutionJournal(journalFile);
         new ExecutionService(journal).execute(plan);
 
-        assertEquals(ExecutionRunState.COMPLETED_WITH_FAILURES, journal.readAll().getLast().state());
+        assertEquals(ExecutionRunState.ABORTED, journal.readAll().getLast().state());
     }
 
     @Test
@@ -206,7 +207,7 @@ class ExecutionServiceTest {
     }
 
     @Test
-    void theSourceFolderIsDeletedWithItsLeftoversOnceEveryFileHasMovedOut() throws IOException {
+    void sourceFoldersAndIgnoredSidecarsArePreservedAfterMoves() throws IOException {
         Path workspace = workspace();
         Path release = Files.createDirectories(workspace.resolve("Show.S01.1080p"));
         Path source = file(release, "show.s01e01.mkv");
@@ -214,13 +215,12 @@ class ExecutionServiceTest {
         Files.createDirectories(release.resolve("Sample"));
         ApprovedPlan plan = ApprovedPlan.lock(planner.plan(workspace, List.of(
                 episode(source, "Show", 1, 1, "Pilot"))));
-        Path canonicalRelease = release.toRealPath();
-
         ExecutionReport report = service().execute(plan);
 
         assertTrue(report.completeSuccess());
-        assertFalse(Files.exists(release), "the emptied source folder must be gone");
-        assertEquals(List.of(canonicalRelease), report.deletedSourceFolders());
+        assertTrue(Files.exists(release.resolve("show.nfo")));
+        assertTrue(Files.isDirectory(release.resolve("Sample")));
+        assertTrue(report.deletedSourceFolders().isEmpty());
         assertTrue(Files.exists(workspace), "the workspace root is never a candidate");
     }
 
@@ -258,7 +258,7 @@ class ExecutionServiceTest {
     }
 
     @Test
-    void parentFoldersLeftEmptyByTheCleanupGoTooButTheDestinationTreeStays() throws IOException {
+    void emptySourceFoldersAndTheirEmptyParentsAreDeleted() throws IOException {
         Path workspace = workspace();
         Path release = Files.createDirectories(workspace.resolve(Path.of("Downloads", "Show.S01")));
         Path source = file(release, "show.s01e01.mkv");
@@ -268,6 +268,7 @@ class ExecutionServiceTest {
         ExecutionReport report = service().execute(plan);
 
         assertFalse(Files.exists(workspace.resolve("Downloads")), "the now-empty parent must go too");
+        assertFalse(Files.exists(release));
         assertEquals(2, report.deletedSourceFolders().size());
         assertTrue(Files.exists(workspace.resolve(Path.of("Show", "Season 01", "Show - S01E01 - Pilot.mkv"))));
     }
@@ -296,7 +297,7 @@ class ExecutionServiceTest {
      * failure or a skip.
      */
     @Test
-    void aFileTheUserAskedToDeleteIsRemovedAlongsideTheMoves() throws IOException {
+    void duplicateDeletionIsNotAnAvailableResolution() throws IOException {
         Path workspace = workspace();
         Path duplicate = file(workspace, "show.s01e01.720p.mkv");
         Path keeper = file(workspace, "show.s01e01.1080p.mkv");
@@ -304,18 +305,10 @@ class ExecutionServiceTest {
         OperationPlan planned = planner.plan(workspace, List.of(
                 episode(duplicate, "Show", 1, 1, "Pilot"),
                 episode(keeper, "Show", 1, 1, "Pilot")));
-        OperationPlan resolved = new PlanConflictResolver().resolve(planned, Map.of(
-                duplicate.toRealPath(), ConflictResolution.DELETE_SOURCE,
-                keeper.toRealPath(), ConflictResolution.REPLACE));
-
-        ExecutionReport report = service().execute(ApprovedPlan.lock(resolved));
-
-        assertTrue(report.completeSuccess());
-        assertEquals(1, report.deleted().size());
-        assertEquals(1, report.moved().size());
-        assertTrue(report.failed().isEmpty());
-        assertFalse(Files.exists(duplicate), "the file the user deleted must be gone");
-        assertTrue(Files.exists(workspace.resolve(Path.of("Show", "Season 01", "Show - S01E01 - Pilot.mkv"))));
+        assertThrows(IllegalArgumentException.class, () -> new PlanConflictResolver().resolve(planned, Map.of(
+                duplicate.toRealPath(), ConflictResolution.DELETE_SOURCE)));
+        assertTrue(Files.exists(duplicate));
+        assertTrue(Files.exists(keeper));
     }
 
     /**
@@ -324,7 +317,7 @@ class ExecutionServiceTest {
      * the copy it supersedes goes with it, so the season folder holds one file.
      */
     @Test
-    void theDuplicateAMoveSupersedesIsGoneOnceTheMoveHasLanded() throws IOException {
+    void libraryDuplicateCanOnlyBeIgnored() throws IOException {
         Path workspace = workspace();
         Path incoming = file(workspace, "show.s01e01.1080p.mkv");
         Path seasonFolder = Files.createDirectories(workspace.resolve(Path.of("Show", "Season 01")));
@@ -332,22 +325,14 @@ class ExecutionServiceTest {
         Files.writeString(existing, "older copy");
 
         OperationPlan planned = planner.plan(workspace, List.of(episode(incoming, "Show", 1, 1, "Pilot")));
-        OperationPlan resolved = new PlanConflictResolver().resolve(
-                planned, Map.of(incoming.toRealPath(), ConflictResolution.REPLACE));
-
-        ExecutionReport report = service().execute(ApprovedPlan.lock(resolved));
-
-        assertTrue(report.completeSuccess());
-        assertTrue(report.failed().isEmpty());
-        assertFalse(Files.exists(existing), "the superseded copy must not survive the move");
-        assertTrue(Files.exists(seasonFolder.resolve("Show - S01E01 - Pilot.mkv")));
-        try (var entries = Files.list(seasonFolder)) {
-            assertEquals(1, entries.count(), "the season folder must hold one copy of the episode");
-        }
+        assertThrows(IllegalArgumentException.class, () -> new PlanConflictResolver().resolve(
+                planned, Map.of(incoming.toRealPath(), ConflictResolution.REPLACE)));
+        assertTrue(Files.exists(incoming));
+        assertTrue(Files.exists(existing));
     }
 
     @Test
-    void aFileThatVanishedBeforeItsDeletionIsReportedAsAFailureNotAsRemoved() throws IOException {
+    void ignoredDuplicateIsNeverTouchedByExecution() throws IOException {
         Path workspace = workspace();
         Path duplicate = file(workspace, "show.s01e01.720p.mkv");
         Path keeper = file(workspace, "show.s01e01.1080p.mkv");
@@ -355,17 +340,16 @@ class ExecutionServiceTest {
         OperationPlan planned = planner.plan(workspace, List.of(
                 episode(duplicate, "Show", 1, 1, "Pilot"),
                 episode(keeper, "Show", 1, 1, "Pilot")));
-        OperationPlan resolved = new PlanConflictResolver().resolve(planned, Map.of(
-                duplicate.toRealPath(), ConflictResolution.DELETE_SOURCE,
-                keeper.toRealPath(), ConflictResolution.REPLACE));
-        Files.delete(duplicate);
+        Map<Path, ConflictResolution> ignored = planned.conflicts().stream().collect(
+                java.util.stream.Collectors.toMap(
+                        operation -> operation.sourcePath(), operation -> ConflictResolution.SKIP));
+        OperationPlan resolved = new PlanConflictResolver().resolve(planned, ignored);
 
         ExecutionReport report = service().execute(ApprovedPlan.lock(resolved));
 
         assertTrue(report.deleted().isEmpty());
-        assertEquals(1, report.failed().size());
-        assertEquals(ExecutionService.ERROR_SOURCE_MISSING,
-                report.failed().getFirst().error().orElseThrow().code());
+        assertTrue(report.failed().isEmpty());
+        assertTrue(Files.exists(duplicate));
     }
 
     private ExecutionService service() {
