@@ -30,12 +30,12 @@ jobs:
             os: windows-latest
             command: .\gradlew.bat clean build portableArchive --no-daemon
             artifact: Episort-0.1.0-windows-x64
-            path: build/portable/distributions/*
+            executable: build/portable/distributions/Episort-0.1.0-windows-x64.exe
           - name: Linux x64
             os: ubuntu-22.04
             command: ./gradlew clean build portableArchive --no-daemon
             artifact: Episort-0.1.0-linux-x64
-            path: build/portable/distributions/*
+            executable: build/portable/distributions/Episort-0.1.0-linux-x64
 
     steps:
       - name: Check out repository
@@ -47,17 +47,25 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: tools/portable-launcher/go.mod
+          cache: false
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
       - name: Build and verify portable application
         run: ${{ matrix.command }}
 
-      - name: Upload portable archive
+      - name: Upload portable executable
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
-          path: ${{ matrix.path }}
+          path: |
+            ${{ matrix.executable }}
+            ${{ matrix.executable }}.sha256
           if-no-files-found: error
           retention-days: 30
 
@@ -73,7 +81,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Download portable archives
+      - name: Download portable executables
         uses: actions/download-artifact@v8
         with:
           pattern: Episort-0.1.0-*

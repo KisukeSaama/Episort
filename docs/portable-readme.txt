@@ -1,24 +1,24 @@
 EPISORT 0.1.0 - PORTABLE APPLICATION
 ====================================
 
-No Java installation is required. Keep the extracted Episort folder intact:
-the launcher uses the bundled runtime and libraries beside it.
+No Java installation is required. The public download is one executable. On
+first launch, it extracts its verified private runtime into the user application
+data directory; nothing is created beside the downloaded executable.
 
 WINDOWS
 -------
-Double-click Episort.exe.
+Double-click Episort-0.1.0-windows-x64.exe. Runtime files are stored under
+%LOCALAPPDATA%\Episort.
 
 LINUX
 -----
 Run this command from a terminal:
 
-    ./bin/Episort
+    chmod +x Episort-0.1.0-linux-x64
+    ./Episort-0.1.0-linux-x64
 
-The bundle targets x64 glibc-based desktop Linux systems with GTK 3 available.
-
-If needed, restore its executable permission first:
-
-    chmod +x ./bin/Episort
+Runtime files are stored under ${XDG_DATA_HOME:-~/.local/share}/Episort. The
+bundle targets x64 glibc-based desktop Linux systems with GTK 3 available.
 
 TMDB
 ----
@@ -27,8 +27,8 @@ official distribution. No TMDB or Janus account and no .env file are required.
 
 FRANCAIS
 --------
-Aucune installation de Java n'est necessaire. Conservez tout le dossier
-Episort extrait. Sous Windows, double-cliquez sur Episort.exe. Sous Linux,
-executez ./bin/Episort. L'acces TMDB passe par Janus et est deja configure dans
-cette distribution officielle. Aucun compte TMDB ou Janus ni fichier .env
-n'est necessaire.
+Aucune installation de Java n'est necessaire. Le telechargement public contient
+un seul executable. Au premier lancement, le runtime est extrait dans
+%LOCALAPPDATA%\Episort sous Windows ou
+${XDG_DATA_HOME:-~/.local/share}/Episort sous Linux. L'acces TMDB passe par
+Janus et est deja configure. Aucun compte ni fichier .env n'est necessaire.

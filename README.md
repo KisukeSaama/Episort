@@ -36,6 +36,7 @@ Series Name in English/
 - JavaFX
 - Gradle
 - JUnit 5
+- Go 1.26 (single-file release launcher only)
 
 ## Commands
 
@@ -43,6 +44,7 @@ Series Name in English/
 ./gradlew run
 ./gradlew test
 ./gradlew build
+./gradlew portableArchive # also requires Go 1.26
 ```
 
 On Windows PowerShell:
@@ -55,35 +57,42 @@ On Windows PowerShell:
 
 ## Portable application
 
-Portable bundles include Java 21 and JavaFX. Users do not need to install Java.
+Each portable build is distributed as one executable containing Java 21,
+JavaFX, and the complete application. Users do not install Java and do not keep
+an application folder beside the downloaded file.
 
 Windows:
 
-1. Extract `Episort-0.1.0-windows-x64.zip`.
-2. Open the extracted `Episort` folder.
-3. Double-click `Episort.exe`.
+1. Download `Episort-0.1.0-windows-x64.exe`.
+2. Double-click the downloaded executable.
 
 Linux:
 
 ```bash
-tar -xzf Episort-0.1.0-linux-x64.tar.gz
-./Episort/bin/Episort
+chmod +x Episort-0.1.0-linux-x64
+./Episort-0.1.0-linux-x64
 ```
+
+On first launch, the embedded runtime is verified and extracted to
+`%LOCALAPPDATA%\Episort` on Windows or
+`${XDG_DATA_HOME:-~/.local/share}/Episort` on Linux. Later launches reuse that
+private application-data copy. Nothing is written beside the downloaded
+executable.
 
 The Linux bundle targets x64 glibc-based desktop distributions and expects the
 usual GTK 3 graphical libraries supplied by mainstream Ubuntu, Debian, Fedora,
 and similar desktop installations.
 
-Build the portable archive for the current operating system with:
+Build the single-file executable for the current operating system with:
 
 ```bash
 ./gradlew clean build portableArchive
 ```
 
-The archive and its SHA-256 checksum are written to
+The executable and its SHA-256 checksum are written to
 `build/portable/distributions/`. Native launchers must be built on their target
 operating system, so the repository workflow builds the Windows and Linux
-archives independently.
+executables independently.
 
 ## Configuration
 
