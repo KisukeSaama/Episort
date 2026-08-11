@@ -1,6 +1,6 @@
 package com.episort.ui.scan;
 
-import com.episort.tvdb.TvdbCandidate;
+import com.episort.tmdb.TmdbCandidate;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.UiText;
 import java.io.IOException;
@@ -89,7 +89,7 @@ final class FilePropertiesDialog {
         VBox content = new VBox(12,
                 section(UiText.filePropertiesSectionFile(language), fileRows()),
                 section(UiText.filePropertiesSectionDetection(language), detectionRows()),
-                section(UiText.filePropertiesSectionTvdb(language), tvdbRows()),
+                section(UiText.filePropertiesSectionTmdb(language), tmdbRows()),
                 mediaSection());
         content.getStyleClass().add("file-properties-content");
         ScrollPane scroll = new ScrollPane(content);
@@ -177,20 +177,20 @@ final class FilePropertiesDialog {
                         parse.map(p -> p.source().name()).orElse(UiText.EMPTY)));
     }
 
-    private List<PropertyRow> tvdbRows() {
-        Optional<TvdbCandidate> candidate = row.tvdbCandidate();
+    private List<PropertyRow> tmdbRows() {
+        Optional<TmdbCandidate> candidate = row.tmdbCandidate();
         return List.of(
-                textRow(UiText.filePropertiesStatus(language), tvdbStatus()),
-                textRow(UiText.filePropertiesTvdbTitle(language),
-                        candidate.map(c -> c.identity().displayName()).or(() -> row.tvdbMatch()).orElse(UiText.EMPTY)),
-                textRow(UiText.filePropertiesTvdbType(language),
+                textRow(UiText.filePropertiesStatus(language), tmdbStatus()),
+                textRow(UiText.filePropertiesTmdbTitle(language),
+                        candidate.map(c -> c.identity().displayName()).or(() -> row.tmdbMatch()).orElse(UiText.EMPTY)),
+                textRow(UiText.filePropertiesTmdbType(language),
                         candidate.map(c -> c.identity().mediaType().name()).orElse(UiText.EMPTY)),
                 textRow(UiText.filePropertiesYear(language),
-                        candidate.flatMap(TvdbCandidate::year).map(String::valueOf).orElse(UiText.EMPTY)),
-                textRow(UiText.filePropertiesTvdbId(language),
+                        candidate.flatMap(TmdbCandidate::year).map(String::valueOf).orElse(UiText.EMPTY)),
+                textRow(UiText.filePropertiesTmdbId(language),
                         candidate.map(c -> c.identity().id()).orElse(UiText.EMPTY)),
                 textRow(UiText.filePropertiesOrder(language), row.order().orElse(UiText.EMPTY)),
-                textRow(UiText.filePropertiesSource(language), tvdbSource()));
+                textRow(UiText.filePropertiesSource(language), tmdbSource()));
     }
 
     private VBox mediaSection() {
@@ -229,25 +229,25 @@ final class FilePropertiesDialog {
         copiedFeedback.setManaged(true);
     }
 
-    private String tvdbStatus() {
-        if (row.tvdbSelectedByUser()) {
+    private String tmdbStatus() {
+        if (row.tmdbSelectedByUser()) {
             return language == AppLanguage.FRENCH ? "choix utilisateur" : "user choice";
         }
-        if (row.tvdbMatch().isEmpty() && row.tvdbCandidate().isEmpty()) {
+        if (row.tmdbMatch().isEmpty() && row.tmdbCandidate().isEmpty()) {
             return language == AppLanguage.FRENCH ? "aucune" : "none";
         }
-        if (row.status() == ScanRowStatus.OK && row.tvdbMatch().isPresent()) {
+        if (row.status() == ScanRowStatus.OK && row.tmdbMatch().isPresent()) {
             return language == AppLanguage.FRENCH ? "appliquée" : "applied";
         }
         return language == AppLanguage.FRENCH ? "proposée" : "proposed";
     }
 
-    private String tvdbSource() {
-        if (row.tvdbSelectedByUser()) {
+    private String tmdbSource() {
+        if (row.tmdbSelectedByUser()) {
             return language == AppLanguage.FRENCH ? "Choix utilisateur" : "User choice";
         }
-        if (row.tvdbMatch().isPresent() || row.tvdbCandidate().isPresent()) {
-            return language == AppLanguage.FRENCH ? "TVDB automatique" : "Automatic TVDB";
+        if (row.tmdbMatch().isPresent() || row.tmdbCandidate().isPresent()) {
+            return language == AppLanguage.FRENCH ? "TMDB automatique" : "Automatic TMDB";
         }
         return language == AppLanguage.FRENCH ? "Inconnu" : "Unknown";
     }

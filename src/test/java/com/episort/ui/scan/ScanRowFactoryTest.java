@@ -40,7 +40,7 @@ class ScanRowFactoryTest {
         assertContainsNoPathSeparator(row.proposedFilename().orElseThrow());
         assertEquals("Series: Show | S:01 | E:01 | Ext:mkv", row.inputPattern().orElseThrow());
         assertEquals("SxxExx", row.inputParse().orElseThrow().label());
-        assertTrue(row.tvdbMatch().isEmpty());
+        assertTrue(row.tmdbMatch().isEmpty());
         assertEquals("TO_DEFINE", row.order().orElseThrow());
         assertEquals(0.95, row.confidence().orElseThrow(), 1e-9);
         assertTrue(row.destination().isEmpty());
@@ -73,7 +73,7 @@ class ScanRowFactoryTest {
     }
 
     @Test
-    void mapsBatchTvdbGroupsFromRealInventoryGroups() {
+    void mapsBatchTmdbGroupsFromRealInventoryGroups() {
         Path source = Path.of("C:/Media/Show.S01E01.mkv").toAbsolutePath().normalize();
         InventoryItem video = new InventoryItem(
                 source, "Show.S01E01.mkv", "mkv", source.getParent(), InventoryItemType.SUPPORTED_VIDEO, true);
@@ -82,7 +82,7 @@ class ScanRowFactoryTest {
                 List.of(new InventoryGroup(InventoryGroupType.LIKELY_SERIES, "Show", List.of(video), true)),
                 summary(1, 0, 0, 0, 1, 0, 0));
 
-        List<BatchTvdbMatch> matches = BatchTvdbMatch.from(result);
+        List<BatchTmdbMatch> matches = BatchTmdbMatch.from(result);
 
         assertEquals(1, matches.size());
         assertEquals("Show", matches.get(0).seedName());

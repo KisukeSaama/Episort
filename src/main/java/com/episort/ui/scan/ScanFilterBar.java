@@ -29,7 +29,7 @@ final class ScanFilterBar {
 
     private static final ScanRowStatusFilter[] STATUS_FILTERS = {
         ScanRowStatusFilter.ALL, ScanRowStatusFilter.TO_PROCESS, ScanRowStatusFilter.OK,
-        ScanRowStatusFilter.TVDB, ScanRowStatusFilter.CONFLICTS, ScanRowStatusFilter.IGNORED,
+        ScanRowStatusFilter.TMDB, ScanRowStatusFilter.CONFLICTS, ScanRowStatusFilter.IGNORED,
         ScanRowStatusFilter.ALERTS,
     };
 
@@ -112,7 +112,7 @@ final class ScanFilterBar {
         statusButtons.get(ScanRowStatusFilter.ALL).setText(UiText.scanStatusFilterAll(language));
         statusButtons.get(ScanRowStatusFilter.TO_PROCESS).setText(UiText.scanStatusFilterToProcess(language));
         statusButtons.get(ScanRowStatusFilter.OK).setText(UiText.scanStatusFilterOk(language));
-        statusButtons.get(ScanRowStatusFilter.TVDB).setText(UiText.scanStatusFilterTvdb(language));
+        statusButtons.get(ScanRowStatusFilter.TMDB).setText(UiText.scanStatusFilterTmdb(language));
         statusButtons.get(ScanRowStatusFilter.CONFLICTS).setText(UiText.scanStatusFilterConflicts(language));
         statusButtons.get(ScanRowStatusFilter.IGNORED).setText(UiText.scanStatusFilterIgnored(language));
         statusButtons.get(ScanRowStatusFilter.ALERTS).setText(UiText.scanStatusFilterAlerts(language));

@@ -11,7 +11,7 @@ package com.episort.ui;
 public enum WorkflowPhase {
     CHOOSE_FOLDER,
     ANALYSIS,
-    TVDB_MATCHES,
+    TMDB_MATCHES,
     PLAN_REVIEW,
     APPLY;
 

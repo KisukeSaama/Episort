@@ -18,7 +18,7 @@ class ScanReviewMapperTest {
         assertEquals(ReviewMatchState.READY,
                 ScanReviewMapper.matchState(row("ok.mkv", ScanMediaType.SERIES, ScanRowStatus.OK)));
         assertEquals(ReviewMatchState.READY,
-                ScanReviewMapper.matchState(row("tvdb.mkv", ScanMediaType.SERIES, ScanRowStatus.TVDB)));
+                ScanReviewMapper.matchState(row("tmdb.mkv", ScanMediaType.SERIES, ScanRowStatus.TMDB)));
         assertEquals(ReviewMatchState.NEEDS_REVIEW,
                 ScanReviewMapper.matchState(row("review.mkv", ScanMediaType.SERIES, ScanRowStatus.REVIEW)));
         assertEquals(ReviewMatchState.UNKNOWN,
@@ -49,7 +49,7 @@ class ScanReviewMapperTest {
         assertTrue(ScanReviewMapper.isBlockingConflict(row("c.mkv", ScanMediaType.MOVIE, ScanRowStatus.CONFLICT)));
         assertTrue(ScanReviewMapper.isBlockingConflict(row("d.mkv", ScanMediaType.SERIES, ScanRowStatus.DUPLICATE)));
         ScanRow alert = row("alert.mkv", ScanMediaType.SERIES, ScanRowStatus.REVIEW);
-        alert.setAlertText(Optional.of("TVDB match required"));
+        alert.setAlertText(Optional.of("TMDB match required"));
         assertTrue(ScanReviewMapper.isBlockingConflict(alert));
         assertFalse(ScanReviewMapper.isBlockingConflict(row("e.mkv", ScanMediaType.SERIES, ScanRowStatus.ERROR)));
         assertFalse(ScanReviewMapper.isBlockingConflict(row("o.mkv", ScanMediaType.SERIES, ScanRowStatus.OK)));
@@ -57,9 +57,9 @@ class ScanReviewMapperTest {
 
     @Test
     void highConfidenceRowsStayReadyAndAreNeverValidated() {
-        ScanRow row = row("show.mkv", ScanMediaType.SERIES, ScanRowStatus.TVDB);
+        ScanRow row = row("show.mkv", ScanMediaType.SERIES, ScanRowStatus.TMDB);
         row.setConfidence(OptionalDouble.of(0.99));
-        row.setTvdbMatch(Optional.of("Show (2001)"));
+        row.setTmdbMatch(Optional.of("Show (2001)"));
 
         ReviewItem item = ScanReviewMapper.toReviewItem(row);
 

@@ -10,24 +10,24 @@ class ApplicationErrorTest {
     @Test
     void recoverableErrorKeepsUiSafeMessageSeparateFromDetails() {
         ApplicationError error = ApplicationError.recoverable(
-                "TVDB_AUTH_MISSING",
+                "TMDB_AUTH_MISSING",
                 ErrorSeverity.BLOCKING,
-                "TVDB configuration is required before organization can start.",
+                "TMDB configuration is required before organization can start.",
                 "Bearer token abc.def.ghi failed during startup");
 
-        assertEquals("TVDB_AUTH_MISSING", error.code());
+        assertEquals("TMDB_AUTH_MISSING", error.code());
         assertEquals(ErrorSeverity.BLOCKING, error.severity());
         assertTrue(error.recoverable());
-        assertEquals("TVDB configuration is required before organization can start.", error.message());
+        assertEquals("TMDB configuration is required before organization can start.", error.message());
         assertFalse(error.safeMessage().contains("abc.def.ghi"));
     }
 
     @Test
     void safeMessageRedactsSecretsAccidentallyPlacedInMessage() {
         ApplicationError error = ApplicationError.recoverable(
-                "TVDB_AUTH_FAILED",
+                "TMDB_AUTH_FAILED",
                 ErrorSeverity.BLOCKING,
-                "TVDB failed with apiKey=abc123 Authorization: Bearer ey.secret.token",
+                "TMDB failed with apiKey=abc123 Authorization: Bearer ey.secret.token",
                 "Adapter error");
 
         assertFalse(error.safeMessage().contains("abc123"));

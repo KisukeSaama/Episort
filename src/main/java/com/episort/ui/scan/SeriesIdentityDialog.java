@@ -23,7 +23,7 @@ import javafx.stage.StageStyle;
 import javafx.stage.Window;
 
 /**
- * The gate between "TVDB answered" and "the table is yours": one line per
+ * The gate between "TMDB answered" and "the table is yours": one line per
  * detected group, each with the identity that will name its files.
  *
  * <p>A mixed folder produces several groups, and the damage a wrong identity
@@ -32,7 +32,7 @@ import javafx.stage.Window;
  * list, before the user starts editing individual rows, makes that decision
  * explicit and cheap to correct: one click per group instead of one per file.
  *
- * <p>The screen never blocks. Groups TVDB could not resolve are flagged and
+ * <p>The screen never blocks. Groups TMDB could not resolve are flagged and
  * still reachable manually in the table afterwards.
  */
 final class SeriesIdentityDialog {
@@ -75,15 +75,15 @@ final class SeriesIdentityDialog {
         stage.setTitle(UiText.scanIdentitiesTitle(language));
 
         Label title = new Label(UiText.scanIdentitiesTitle(language));
-        title.getStyleClass().add("tvdb-dialog-title");
+        title.getStyleClass().add("tmdb-dialog-title");
         Button closeButton = new Button("×");
-        closeButton.getStyleClass().addAll("icon-button", "tvdb-dialog-close");
+        closeButton.getStyleClass().addAll("icon-button", "tmdb-dialog-close");
         closeButton.setTooltip(new Tooltip(UiText.scanIdentitiesClose(language)));
         closeButton.setOnAction(event -> stage.close());
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
         HBox header = new HBox(10, title, headerSpacer, closeButton);
-        header.getStyleClass().add("tvdb-dialog-header");
+        header.getStyleClass().add("tmdb-dialog-header");
         header.setAlignment(Pos.CENTER_LEFT);
         header.setOnMousePressed(event -> {
             dragOffsetX = event.getSceneX();
@@ -95,18 +95,18 @@ final class SeriesIdentityDialog {
         });
 
         Label message = new Label(UiText.scanIdentitiesMessage(language));
-        message.getStyleClass().add("tvdb-dialog-message");
+        message.getStyleClass().add("tmdb-dialog-message");
         message.setWrapText(true);
         message.setMinHeight(Region.USE_PREF_SIZE);
 
-        warning.getStyleClass().addAll("tvdb-dialog-message", "identity-warning");
+        warning.getStyleClass().addAll("tmdb-dialog-message", "identity-warning");
         warning.setWrapText(true);
         warning.setVisible(false);
         warning.setManaged(false);
 
         ScrollPane scroll = new ScrollPane(groupList);
         scroll.setFitToWidth(true);
-        scroll.getStyleClass().add("tvdb-search-results");
+        scroll.getStyleClass().add("tmdb-search-results");
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         Button confirm = new Button(UiText.scanIdentitiesConfirm(language));
@@ -119,7 +119,7 @@ final class SeriesIdentityDialog {
         footer.setAlignment(Pos.CENTER_RIGHT);
 
         VBox body = new VBox(14, header, message, warning, scroll, footer);
-        body.getStyleClass().add("tvdb-dialog");
+        body.getStyleClass().add("tmdb-dialog");
         body.setPadding(new Insets(18));
 
         Scene scene = new Scene(body, 760, 520);
@@ -180,14 +180,14 @@ final class SeriesIdentityDialog {
         arrow.setPrefWidth(ARROW_COLUMN);
         arrow.setMaxWidth(ARROW_COLUMN);
 
-        // The TVDB id lives at the end of the identity string. Moving it down to
+        // The TMDB id lives at the end of the identity string. Moving it down to
         // the meta line keeps the ids aligned across rows and lets the title use
         // the whole column before being cropped.
         String identityText = row.identityText();
-        String tvdbId = null;
+        String tmdbId = null;
         int idStart = identityText.lastIndexOf(" [");
         if (idStart > 0 && identityText.endsWith("]")) {
-            tvdbId = identityText.substring(idStart + 2, identityText.length() - 1);
+            tmdbId = identityText.substring(idStart + 2, identityText.length() - 1);
             identityText = identityText.substring(0, idStart);
         }
 
@@ -204,8 +204,8 @@ final class SeriesIdentityDialog {
         state.setMinWidth(Region.USE_PREF_SIZE);
         HBox metaLine = new HBox(8, state);
         metaLine.setAlignment(Pos.CENTER_LEFT);
-        if (tvdbId != null) {
-            Label id = new Label(tvdbId);
+        if (tmdbId != null) {
+            Label id = new Label(tmdbId);
             id.getStyleClass().add("identity-id");
             id.setMinWidth(0);
             metaLine.getChildren().add(id);

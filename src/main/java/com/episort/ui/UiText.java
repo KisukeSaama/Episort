@@ -84,8 +84,7 @@ public final class UiText {
     public static String aboutFieldSystem(AppLanguage language) { return t(language, "about.field.system"); }
     public static String aboutPathRunHistory(AppLanguage language) { return t(language, "about.path.runHistory"); }
     public static String aboutPathJournal(AppLanguage language) { return t(language, "about.path.journal"); }
-    public static String aboutPathTvdbCache(AppLanguage language) { return t(language, "about.path.tvdbCache"); }
-    public static String aboutTvdbAttribution(AppLanguage language) { return t(language, "about.tvdb.attribution"); }
+    public static String aboutTmdbAttribution(AppLanguage language) { return t(language, "about.tmdb.attribution"); }
     public static String aboutFonts(AppLanguage language) { return t(language, "about.fonts"); }
 
     public static String aboutSectionEnvironment(AppLanguage language) {
@@ -162,24 +161,24 @@ public final class UiText {
     public static String historyColumnResult(AppLanguage language) { return t(language, "history.column.result"); }
     public static String historyDetailFieldWorkspace(AppLanguage language) { return t(language, "history.detail.field.workspace"); }
     public static String detailFieldGroup(AppLanguage language) { return t(language, "detail.field.group"); }
-    public static String scanNoteTvdbIdentitySelected(AppLanguage language) { return t(language, "scan.note.tvdbIdentitySelected"); }
-    public static String tvdbApplyingOrder(AppLanguage language) { return t(language, "tvdb.applyingOrder"); }
+    public static String scanNoteTmdbIdentitySelected(AppLanguage language) { return t(language, "scan.note.tmdbIdentitySelected"); }
+    public static String tmdbApplyingOrder(AppLanguage language) { return t(language, "tmdb.applyingOrder"); }
 
-    /** Detail-panel note and alert copy produced while resolving TVDB matches. */
+    /** Detail-panel note and alert copy produced while resolving TMDB matches. */
     private static String note(AppLanguage language, String key, String argument) {
         return t(language, key).replace("{0}", argument == null ? EMPTY : argument);
     }
 
-    public static String scanNoteTvdbIdentityNoEpisode(AppLanguage language, String identity) { return note(language, "scan.note.tvdbIdentityNoEpisode", identity); }
-    public static String scanNoteTvdbIdentityApplied(AppLanguage language, String identity) { return note(language, "scan.note.tvdbIdentityApplied", identity); }
-    public static String scanNoteTvdbCredentialsMissing(AppLanguage language) { return t(language, "scan.note.tvdbCredentialsMissing"); }
-    public static String scanNoteTvdbNoCandidates(AppLanguage language, String query) { return note(language, "scan.note.tvdbNoCandidates", query); }
-    public static String scanNoteTvdbCandidatesLoaded(AppLanguage language) { return t(language, "scan.note.tvdbCandidatesLoaded"); }
-    public static String scanNoteTvdbMovieApplied(AppLanguage language, String title) { return note(language, "scan.note.tvdbMovieApplied", title); }
-    public static String scanNoteTvdbOrderUnavailable(AppLanguage language) { return t(language, "scan.note.tvdbOrderUnavailable"); }
-    public static String scanAlertTvdbOrderUnavailable(AppLanguage language) { return t(language, "scan.alert.tvdbOrderUnavailable"); }
-    public static String scanNoteTvdbNoEpisodeMatch(AppLanguage language) { return t(language, "scan.note.tvdbNoEpisodeMatch"); }
-    public static String scanNoteTvdbEpisodeApplied(AppLanguage language, String title) { return note(language, "scan.note.tvdbEpisodeApplied", title); }
+    public static String scanNoteTmdbIdentityNoEpisode(AppLanguage language, String identity) { return note(language, "scan.note.tmdbIdentityNoEpisode", identity); }
+    public static String scanNoteTmdbIdentityApplied(AppLanguage language, String identity) { return note(language, "scan.note.tmdbIdentityApplied", identity); }
+    public static String scanNoteJanusConfigurationMissing(AppLanguage language) { return t(language, "scan.note.tmdbCredentialsMissing"); }
+    public static String scanNoteTmdbNoCandidates(AppLanguage language, String query) { return note(language, "scan.note.tmdbNoCandidates", query); }
+    public static String scanNoteTmdbCandidatesLoaded(AppLanguage language) { return t(language, "scan.note.tmdbCandidatesLoaded"); }
+    public static String scanNoteTmdbMovieApplied(AppLanguage language, String title) { return note(language, "scan.note.tmdbMovieApplied", title); }
+    public static String scanNoteTmdbOrderUnavailable(AppLanguage language) { return t(language, "scan.note.tmdbOrderUnavailable"); }
+    public static String scanAlertTmdbOrderUnavailable(AppLanguage language) { return t(language, "scan.alert.tmdbOrderUnavailable"); }
+    public static String scanNoteTmdbNoEpisodeMatch(AppLanguage language) { return t(language, "scan.note.tmdbNoEpisodeMatch"); }
+    public static String scanNoteTmdbEpisodeApplied(AppLanguage language, String title) { return note(language, "scan.note.tmdbEpisodeApplied", title); }
 
     /* ---- Scan screen ------------------------------------------------- */
 
@@ -216,8 +215,8 @@ public final class UiText {
     public static String loadingStartup(AppLanguage language) { return t(language, "loading.startup"); }
     public static String loadingScan(AppLanguage language) { return t(language, "loading.scan"); }
 
-    public static String loadingScanTvdb(AppLanguage language) {
-        return t(language, "loading.scan.tvdb");
+    public static String loadingScanTmdb(AppLanguage language) {
+        return t(language, "loading.scan.tmdb");
     }
 
     public static String loadingCancel(AppLanguage language) {
@@ -256,7 +255,7 @@ public final class UiText {
     public static String scanColumnYear(AppLanguage language) { return t(language, "scan.column.year"); }
     public static String scanColumnExtension(AppLanguage language) { return t(language, "scan.column.extension"); }
     public static String scanColumnType(AppLanguage language) { return t(language, "scan.column.type"); }
-    public static String scanColumnTvdb(AppLanguage language) { return t(language, "scan.column.tvdb"); }
+    public static String scanColumnTmdb(AppLanguage language) { return t(language, "scan.column.tmdb"); }
     public static String scanColumnDestination(AppLanguage language) { return t(language, "scan.column.destination"); }
     public static String scanColumnConfidence(AppLanguage language) { return t(language, "scan.column.confidence"); }
     public static String scanColumnStatus(AppLanguage language) { return t(language, "scan.column.status"); }
@@ -268,7 +267,7 @@ public final class UiText {
     public static String scanStatusFilterAll(AppLanguage language) { return t(language, "scan.statusFilter.all"); }
     public static String scanStatusFilterToProcess(AppLanguage language) { return t(language, "scan.statusFilter.toProcess"); }
     public static String scanStatusFilterOk(AppLanguage language) { return t(language, "scan.statusFilter.ok"); }
-    public static String scanStatusFilterTvdb(AppLanguage language) { return t(language, "scan.statusFilter.tvdb"); }
+    public static String scanStatusFilterTmdb(AppLanguage language) { return t(language, "scan.statusFilter.tmdb"); }
     public static String scanStatusFilterConflicts(AppLanguage language) { return t(language, "scan.statusFilter.conflicts"); }
     public static String scanStatusFilterIgnored(AppLanguage language) { return t(language, "scan.statusFilter.ignored"); }
     public static String scanStatusFilterAlerts(AppLanguage language) { return t(language, "scan.statusFilter.alerts"); }
@@ -281,7 +280,7 @@ public final class UiText {
     public static String scanRowStatusOk(AppLanguage language) { return t(language, "scan.row.status.ok"); }
     public static String scanRowStatusReview(AppLanguage language) { return t(language, "scan.row.status.review"); }
     public static String scanRowStatusLowConfidence(AppLanguage language) { return t(language, "scan.row.status.lowConfidence"); }
-    public static String scanRowStatusTvdb(AppLanguage language) { return t(language, "scan.row.status.tvdb"); }
+    public static String scanRowStatusTmdb(AppLanguage language) { return t(language, "scan.row.status.tmdb"); }
     public static String scanRowStatusType(AppLanguage language) { return t(language, "scan.row.status.type"); }
     public static String scanRowStatusExt(AppLanguage language) { return t(language, "scan.row.status.ext"); }
     public static String scanRowStatusPattern(AppLanguage language) { return t(language, "scan.row.status.pattern"); }
@@ -307,7 +306,7 @@ public final class UiText {
     public static String filePropertiesTitle(AppLanguage language) { return t(language, "file.properties.title"); }
     public static String filePropertiesSectionFile(AppLanguage language) { return t(language, "file.properties.section.file"); }
     public static String filePropertiesSectionDetection(AppLanguage language) { return t(language, "file.properties.section.detection"); }
-    public static String filePropertiesSectionTvdb(AppLanguage language) { return t(language, "file.properties.section.tvdb"); }
+    public static String filePropertiesSectionTmdb(AppLanguage language) { return t(language, "file.properties.section.tmdb"); }
     public static String filePropertiesSectionMedia(AppLanguage language) { return t(language, "file.properties.section.media"); }
     public static String filePropertiesCurrentName(AppLanguage language) { return t(language, "file.properties.currentName"); }
     public static String filePropertiesProposedName(AppLanguage language) { return t(language, "file.properties.proposedName"); }
@@ -324,10 +323,10 @@ public final class UiText {
     public static String filePropertiesConfidence(AppLanguage language) { return t(language, "file.properties.confidence"); }
     public static String filePropertiesSource(AppLanguage language) { return t(language, "file.properties.source"); }
     public static String filePropertiesStatus(AppLanguage language) { return t(language, "file.properties.status"); }
-    public static String filePropertiesTvdbTitle(AppLanguage language) { return t(language, "file.properties.tvdbTitle"); }
-    public static String filePropertiesTvdbType(AppLanguage language) { return t(language, "file.properties.tvdbType"); }
+    public static String filePropertiesTmdbTitle(AppLanguage language) { return t(language, "file.properties.tmdbTitle"); }
+    public static String filePropertiesTmdbType(AppLanguage language) { return t(language, "file.properties.tmdbType"); }
     public static String filePropertiesYear(AppLanguage language) { return t(language, "file.properties.year"); }
-    public static String filePropertiesTvdbId(AppLanguage language) { return t(language, "file.properties.tvdbId"); }
+    public static String filePropertiesTmdbId(AppLanguage language) { return t(language, "file.properties.tmdbId"); }
     public static String filePropertiesOrder(AppLanguage language) { return t(language, "file.properties.order"); }
     public static String filePropertiesMediaUnavailable(AppLanguage language) { return t(language, "file.properties.mediaUnavailable"); }
     public static String filePropertiesClose(AppLanguage language) { return t(language, "file.properties.close"); }
@@ -338,7 +337,7 @@ public final class UiText {
 
     public static String detailSectionSource(AppLanguage language) { return t(language, "detail.section.source"); }
     public static String detailSectionDetection(AppLanguage language) { return t(language, "detail.section.detection"); }
-    public static String detailSectionTvdb(AppLanguage language) { return t(language, "detail.section.tvdb"); }
+    public static String detailSectionTmdb(AppLanguage language) { return t(language, "detail.section.tmdb"); }
     public static String detailSectionDestination(AppLanguage language) { return t(language, "detail.section.destination"); }
     public static String detailSectionNotes(AppLanguage language) { return t(language, "detail.section.notes"); }
 
@@ -358,63 +357,63 @@ public final class UiText {
 
     public static String detailApplyToSelection(AppLanguage language) { return t(language, "detail.apply.toSelection"); }
     public static String detailResetButton(AppLanguage language) { return t(language, "detail.reset.button"); }
-    public static String tvdbSearchForMatch(AppLanguage language) { return t(language, "tvdb.searchForMatch"); }
-    public static String tvdbChooseMatch(AppLanguage language) { return t(language, "tvdb.chooseMatch"); }
-    public static String tvdbSearch(AppLanguage language) { return t(language, "tvdb.search"); }
-    public static String tvdbSearchPlaceholder(AppLanguage language) { return t(language, "tvdb.searchPlaceholder"); }
-    public static String tvdbSearchYearPlaceholder(AppLanguage language) { return t(language, "tvdb.searchYearPlaceholder"); }
-    public static String tvdbSearchIdPlaceholder(AppLanguage language) { return t(language, "tvdb.searchIdPlaceholder"); }
-    public static String tvdbSearchCriteriaRequired(AppLanguage language) { return t(language, "tvdb.searchCriteriaRequired"); }
-    public static String tvdbSearchInvalidYear(AppLanguage language) { return t(language, "tvdb.searchInvalidYear"); }
-    public static String tvdbNoResults(AppLanguage language) { return t(language, "tvdb.noResults"); }
-    public static String tvdbNoResultsHint(AppLanguage language) { return t(language, "tvdb.noResultsHint"); }
-    public static String tvdbInitialSearchHint(AppLanguage language) { return t(language, "tvdb.initialSearchHint"); }
-    public static String tvdbNoMatchSelected(AppLanguage language) { return t(language, "tvdb.noMatchSelected"); }
-    public static String tvdbResolveNow(AppLanguage language) { return t(language, "tvdb.resolveNow"); }
-    public static String tvdbIgnore(AppLanguage language) { return t(language, "tvdb.ignore"); }
-    public static String tvdbSelect(AppLanguage language) { return t(language, "tvdb.select"); }
-    public static String tvdbApply(AppLanguage language) { return t(language, "tvdb.apply"); }
-    public static String tvdbNoFileSelected(AppLanguage language) { return t(language, "tvdb.noFileSelected"); }
-    public static String tvdbNoResultSelected(AppLanguage language) { return t(language, "tvdb.noResultSelected"); }
-    public static String tvdbNoDescription(AppLanguage language) { return t(language, "tvdb.noDescription"); }
-    public static String tvdbSearching(AppLanguage language) { return t(language, "tvdb.searching"); }
-    public static String tvdbLoadingResults(AppLanguage language) { return t(language, "tvdb.loadingResults"); }
-    public static String tvdbSeries(AppLanguage language) { return t(language, "tvdb.series"); }
-    public static String tvdbMovie(AppLanguage language) { return t(language, "tvdb.movie"); }
-    public static String tvdbIdLabel(AppLanguage language) { return t(language, "tvdb.id"); }
-    public static String tvdbClose(AppLanguage language) { return t(language, "tvdb.close"); }
+    public static String tmdbSearchForMatch(AppLanguage language) { return t(language, "tmdb.searchForMatch"); }
+    public static String tmdbChooseMatch(AppLanguage language) { return t(language, "tmdb.chooseMatch"); }
+    public static String tmdbSearch(AppLanguage language) { return t(language, "tmdb.search"); }
+    public static String tmdbSearchPlaceholder(AppLanguage language) { return t(language, "tmdb.searchPlaceholder"); }
+    public static String tmdbSearchYearPlaceholder(AppLanguage language) { return t(language, "tmdb.searchYearPlaceholder"); }
+    public static String tmdbSearchIdPlaceholder(AppLanguage language) { return t(language, "tmdb.searchIdPlaceholder"); }
+    public static String tmdbSearchCriteriaRequired(AppLanguage language) { return t(language, "tmdb.searchCriteriaRequired"); }
+    public static String tmdbSearchInvalidYear(AppLanguage language) { return t(language, "tmdb.searchInvalidYear"); }
+    public static String tmdbNoResults(AppLanguage language) { return t(language, "tmdb.noResults"); }
+    public static String tmdbNoResultsHint(AppLanguage language) { return t(language, "tmdb.noResultsHint"); }
+    public static String tmdbInitialSearchHint(AppLanguage language) { return t(language, "tmdb.initialSearchHint"); }
+    public static String tmdbNoMatchSelected(AppLanguage language) { return t(language, "tmdb.noMatchSelected"); }
+    public static String tmdbResolveNow(AppLanguage language) { return t(language, "tmdb.resolveNow"); }
+    public static String tmdbIgnore(AppLanguage language) { return t(language, "tmdb.ignore"); }
+    public static String tmdbSelect(AppLanguage language) { return t(language, "tmdb.select"); }
+    public static String tmdbApply(AppLanguage language) { return t(language, "tmdb.apply"); }
+    public static String tmdbNoFileSelected(AppLanguage language) { return t(language, "tmdb.noFileSelected"); }
+    public static String tmdbNoResultSelected(AppLanguage language) { return t(language, "tmdb.noResultSelected"); }
+    public static String tmdbNoDescription(AppLanguage language) { return t(language, "tmdb.noDescription"); }
+    public static String tmdbSearching(AppLanguage language) { return t(language, "tmdb.searching"); }
+    public static String tmdbLoadingResults(AppLanguage language) { return t(language, "tmdb.loadingResults"); }
+    public static String tmdbSeries(AppLanguage language) { return t(language, "tmdb.series"); }
+    public static String tmdbMovie(AppLanguage language) { return t(language, "tmdb.movie"); }
+    public static String tmdbIdLabel(AppLanguage language) { return t(language, "tmdb.id"); }
+    public static String tmdbClose(AppLanguage language) { return t(language, "tmdb.close"); }
 
-    public static String tvdbManualRequired(AppLanguage language, int count) {
-        return t(language, "tvdb.manualRequired").replace("{0}", Integer.toString(count));
-    }
-
-    public static String tvdbMatchWillApplyTo(AppLanguage language, int count) {
-        return t(language, "tvdb.matchWillApplyTo").replace("{count}", Integer.toString(count));
+    public static String tmdbManualRequired(AppLanguage language, int count) {
+        return t(language, "tmdb.manualRequired").replace("{0}", Integer.toString(count));
     }
 
-    public static String tvdbFilesUpdated(AppLanguage language, int count) {
-        return t(language, "tvdb.filesUpdated").replace("{count}", Integer.toString(count));
+    public static String tmdbMatchWillApplyTo(AppLanguage language, int count) {
+        return t(language, "tmdb.matchWillApplyTo").replace("{count}", Integer.toString(count));
     }
-    public static String tvdbFirstEpisode(AppLanguage language) { return t(language, "tvdb.firstEpisode"); }
-    public static String tvdbFirstEpisodePlaceholder(AppLanguage language) { return t(language, "tvdb.firstEpisodePlaceholder"); }
-    public static String tvdbApplySequence(AppLanguage language) { return t(language, "tvdb.applySequence"); }
-    public static String tvdbEpisodeSeason(AppLanguage language, int season) {
-        return t(language, "tvdb.episodeSeason").replace("{season}", String.format("%02d", season));
+
+    public static String tmdbFilesUpdated(AppLanguage language, int count) {
+        return t(language, "tmdb.filesUpdated").replace("{count}", Integer.toString(count));
     }
-    public static String tvdbEpisodeSpecials(AppLanguage language) { return t(language, "tvdb.episodeSpecials"); }
-    public static String tvdbEpisodeAbsoluteRange(AppLanguage language, int start, int end) {
-        return t(language, "tvdb.episodeAbsoluteRange")
+    public static String tmdbFirstEpisode(AppLanguage language) { return t(language, "tmdb.firstEpisode"); }
+    public static String tmdbFirstEpisodePlaceholder(AppLanguage language) { return t(language, "tmdb.firstEpisodePlaceholder"); }
+    public static String tmdbApplySequence(AppLanguage language) { return t(language, "tmdb.applySequence"); }
+    public static String tmdbEpisodeSeason(AppLanguage language, int season) {
+        return t(language, "tmdb.episodeSeason").replace("{season}", String.format("%02d", season));
+    }
+    public static String tmdbEpisodeSpecials(AppLanguage language) { return t(language, "tmdb.episodeSpecials"); }
+    public static String tmdbEpisodeAbsoluteRange(AppLanguage language, int start, int end) {
+        return t(language, "tmdb.episodeAbsoluteRange")
                 .replace("{start}", String.format("%03d", start))
                 .replace("{end}", String.format("%03d", end));
     }
-    public static String tvdbSequenceIncomplete(AppLanguage language, int applied, int requested) {
-        return t(language, "tvdb.sequenceIncomplete")
+    public static String tmdbSequenceIncomplete(AppLanguage language, int applied, int requested) {
+        return t(language, "tmdb.sequenceIncomplete")
                 .replace("{applied}", Integer.toString(applied))
                 .replace("{requested}", Integer.toString(requested));
     }
-    public static String tvdbMatchSuggested(AppLanguage language) { return t(language, "tvdb.matchSuggested"); }
-    public static String tvdbAutomaticMatch(AppLanguage language) { return t(language, "tvdb.automaticMatch"); }
-    public static String tvdbSuggestionNeedsValidation(AppLanguage language) { return t(language, "tvdb.suggestionNeedsValidation"); }
+    public static String tmdbMatchSuggested(AppLanguage language) { return t(language, "tmdb.matchSuggested"); }
+    public static String tmdbAutomaticMatch(AppLanguage language) { return t(language, "tmdb.automaticMatch"); }
+    public static String tmdbSuggestionNeedsValidation(AppLanguage language) { return t(language, "tmdb.suggestionNeedsValidation"); }
 
     /* ---- History screen --------------------------------------------- */
 
@@ -450,17 +449,14 @@ public final class UiText {
     public static String settingsPageSubtitle(AppLanguage language) { return t(language, "settings.page.subtitle"); }
     public static String preferencesSectionTitle(AppLanguage language) { return t(language, "preferences.section.title"); }
     public static String preferencesSectionDescription(AppLanguage language) { return t(language, "preferences.section.description"); }
-    public static String tvdbSettingsSectionTitle(AppLanguage language) { return t(language, "tvdb.settings.section.title"); }
-    public static String tvdbSettingsSectionDescription(AppLanguage language) { return t(language, "tvdb.settings.section.description"); }
-    public static String tvdbSettingsActive(AppLanguage language) { return t(language, "tvdb.settings.active"); }
-    public static String tvdbSettingsInactive(AppLanguage language) { return t(language, "tvdb.settings.inactive"); }
-    public static String tvdbSettingsUnavailable(AppLanguage language) { return t(language, "tvdb.settings.unavailable"); }
-    public static String tvdbSettingsResetCache(AppLanguage language) { return t(language, "tvdb.settings.resetCache"); }
-    public static String tvdbSettingsCacheCleared(AppLanguage language, int count) { return t(language, "tvdb.settings.cacheCleared").replace("{0}", Integer.toString(count)); }
-    public static String tvdbSettingsCacheAlreadyEmpty(AppLanguage language) { return t(language, "tvdb.settings.cacheAlreadyEmpty"); }
-    public static String tvdbSettingsAttribution(AppLanguage language) { return t(language, "tvdb.settings.attribution"); }
-    public static String tvdbSettingsAttributionLink(AppLanguage language) { return t(language, "tvdb.settings.attributionLink"); }
-    public static String tvdbSettingsAttributionLinkAccessible(AppLanguage language) { return t(language, "tvdb.settings.attributionLinkAccessible"); }
+    public static String tmdbSettingsSectionTitle(AppLanguage language) { return t(language, "tmdb.settings.section.title"); }
+    public static String tmdbSettingsSectionDescription(AppLanguage language) { return t(language, "tmdb.settings.section.description"); }
+    public static String tmdbSettingsActive(AppLanguage language) { return t(language, "tmdb.settings.active"); }
+    public static String tmdbSettingsInactive(AppLanguage language) { return t(language, "tmdb.settings.inactive"); }
+    public static String tmdbSettingsUnavailable(AppLanguage language) { return t(language, "tmdb.settings.unavailable"); }
+    public static String tmdbSettingsAttribution(AppLanguage language) { return t(language, "tmdb.settings.attribution"); }
+    public static String tmdbSettingsAttributionLink(AppLanguage language) { return t(language, "tmdb.settings.attributionLink"); }
+    public static String tmdbSettingsAttributionLinkAccessible(AppLanguage language) { return t(language, "tmdb.settings.attributionLinkAccessible"); }
 
     /* ---- Empty states (table / detail) ------------------------------ */
 
@@ -501,15 +497,15 @@ public final class UiText {
     public static String historyEventRollbackCompleted(AppLanguage language) { return t(language, "history.event.rollbackCompleted"); }
     public static String historyEventRollbackFailed(AppLanguage language) { return t(language, "history.event.rollbackFailed"); }
 
-    /* ---- Batch TVDB ------------------------------------------------- */
+    /* ---- Batch TMDB ------------------------------------------------- */
 
-    public static String scanBatchTvdbCandidatePlaceholder(AppLanguage language) { return t(language, "scan.batch.tvdb.candidate.placeholder"); }
-    public static String scanBatchTvdbOrderPlaceholder(AppLanguage language) { return t(language, "scan.batch.tvdb.order.placeholder"); }
-    public static String scanBatchTvdbOrderAired(AppLanguage language) { return t(language, "scan.batch.tvdb.order.aired"); }
-    public static String scanBatchTvdbOrderDvd(AppLanguage language) { return t(language, "scan.batch.tvdb.order.dvd"); }
-    public static String scanBatchTvdbOrderAbsolute(AppLanguage language) { return t(language, "scan.batch.tvdb.order.absolute"); }
-    public static String scanBatchTvdbStatusFinal(AppLanguage language) { return t(language, "scan.batch.tvdb.status.final"); }
-    public static String scanBatchTvdbStatusUnresolved(AppLanguage language) { return t(language, "scan.batch.tvdb.status.unresolved"); }
+    public static String scanBatchTmdbCandidatePlaceholder(AppLanguage language) { return t(language, "scan.batch.tmdb.candidate.placeholder"); }
+    public static String scanBatchTmdbOrderPlaceholder(AppLanguage language) { return t(language, "scan.batch.tmdb.order.placeholder"); }
+    public static String scanBatchTmdbOrderAired(AppLanguage language) { return t(language, "scan.batch.tmdb.order.aired"); }
+    public static String scanBatchTmdbOrderDvd(AppLanguage language) { return t(language, "scan.batch.tmdb.order.dvd"); }
+    public static String scanBatchTmdbOrderAbsolute(AppLanguage language) { return t(language, "scan.batch.tmdb.order.absolute"); }
+    public static String scanBatchTmdbStatusFinal(AppLanguage language) { return t(language, "scan.batch.tmdb.status.final"); }
+    public static String scanBatchTmdbStatusUnresolved(AppLanguage language) { return t(language, "scan.batch.tmdb.status.unresolved"); }
 
     public static String prereqOverlayTitle(AppLanguage language) { return t(language, "prereq.overlay.title"); }
     public static String prereqOverlaySubtitle(AppLanguage language) { return t(language, "prereq.overlay.subtitle"); }

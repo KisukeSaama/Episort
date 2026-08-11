@@ -1,8 +1,8 @@
 package com.episort.ui.scan;
 
-import com.episort.tvdb.TvdbCandidate;
-import com.episort.tvdb.TvdbEpisode;
-import com.episort.tvdb.TvdbEpisodeOrder;
+import com.episort.tmdb.TmdbCandidate;
+import com.episort.tmdb.TmdbEpisode;
+import com.episort.tmdb.TmdbEpisodeOrder;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.UiText;
 import java.nio.file.Path;
@@ -51,30 +51,30 @@ public final class RowDetailPanel {
     private final TextArea inputPatternEditor = new TextArea();
     private final Button inputPatternApply = new Button();
 
-    private final Label tvdbSeedValue;
-    private final Label tvdbTypeValue;
-    private final Label tvdbStatusValue;
-    private final ImageView tvdbPoster = new ImageView();
-    private final Label tvdbPosterPlaceholder = new Label();
-    private final Label tvdbMatchTitle = new Label();
-    private final Label tvdbMatchMeta = new Label();
-    private final Label tvdbMatchId = new Label();
-    private final Label tvdbMatchOverview = new Label();
-    private final Label tvdbTargetHint = new Label();
-    private final VBox tvdbMatchCard;
-    private final ComboBox<String> tvdbCandidate = new ComboBox<>();
-    private final ComboBox<String> tvdbOrder = new ComboBox<>();
-    private final Label tvdbFirstEpisodeLabel;
-    private final MenuButton tvdbFirstEpisode = new MenuButton();
-    private TvdbEpisode selectedFirstEpisode;
-    private List<TvdbEpisode> availableFirstEpisodes = List.of();
-    private TvdbEpisodeOrder firstEpisodeOrder = TvdbEpisodeOrder.AIRED;
-    private final Button tvdbApplySequence = new Button();
-    private final Button tvdbSearch = new Button();
-    private final Button tvdbApply = new Button();
-    private final Button tvdbReset = new Button();
-    private final ProgressIndicator tvdbBusy = new ProgressIndicator();
-    private final Label tvdbBusyLabel = new Label();
+    private final Label tmdbSeedValue;
+    private final Label tmdbTypeValue;
+    private final Label tmdbStatusValue;
+    private final ImageView tmdbPoster = new ImageView();
+    private final Label tmdbPosterPlaceholder = new Label();
+    private final Label tmdbMatchTitle = new Label();
+    private final Label tmdbMatchMeta = new Label();
+    private final Label tmdbMatchId = new Label();
+    private final Label tmdbMatchOverview = new Label();
+    private final Label tmdbTargetHint = new Label();
+    private final VBox tmdbMatchCard;
+    private final ComboBox<String> tmdbCandidate = new ComboBox<>();
+    private final ComboBox<String> tmdbOrder = new ComboBox<>();
+    private final Label tmdbFirstEpisodeLabel;
+    private final MenuButton tmdbFirstEpisode = new MenuButton();
+    private TmdbEpisode selectedFirstEpisode;
+    private List<TmdbEpisode> availableFirstEpisodes = List.of();
+    private TmdbEpisodeOrder firstEpisodeOrder = TmdbEpisodeOrder.AIRED;
+    private final Button tmdbApplySequence = new Button();
+    private final Button tmdbSearch = new Button();
+    private final Button tmdbApply = new Button();
+    private final Button tmdbReset = new Button();
+    private final ProgressIndicator tmdbBusy = new ProgressIndicator();
+    private final Label tmdbBusyLabel = new Label();
 
     private final Label proposedValue;
     private final Label destinationValue;
@@ -84,7 +84,7 @@ public final class RowDetailPanel {
 
     private final Label sourceHeading;
     private final Label detectionHeading;
-    private final Label tvdbHeading;
+    private final Label tmdbHeading;
     private final Label destinationHeading;
     private final Label notesHeading;
 
@@ -96,9 +96,9 @@ public final class RowDetailPanel {
     private final Label confidenceLabel;
     private final Label seasonEpisodeLabel;
     private final Label inputPatternLabel;
-    private final Label tvdbSeedLabel;
-    private final Label tvdbTypeLabel;
-    private final Label tvdbStatusLabel;
+    private final Label tmdbSeedLabel;
+    private final Label tmdbTypeLabel;
+    private final Label tmdbStatusLabel;
     private final Label proposedLabel;
     private final Label destinationLabel;
     private final Label conflictLabel;
@@ -107,14 +107,14 @@ public final class RowDetailPanel {
 
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
     private ScanRow currentRow;
-    private BatchTvdbMatch currentGroupMatch;
-    private int tvdbTargetCount = 0;
+    private BatchTmdbMatch currentGroupMatch;
+    private int tmdbTargetCount = 0;
     /** False for rows whose group names no media — sidecars have no identity to look up. */
-    private boolean tvdbSearchable = true;
+    private boolean tmdbSearchable = true;
     private BiConsumer<ScanRow, String> onApplyCandidate = (r, c) -> {};
     private BiConsumer<ScanRow, String> onApplyInputPattern = (r, p) -> {};
-    private BiConsumer<ScanRow, TvdbEpisodeOrder> onApplySelectedMatch = (r, o) -> {};
-    private BiConsumer<ScanRow, TvdbEpisode> onApplyEpisodeSequence = (r, e) -> {};
+    private BiConsumer<ScanRow, TmdbEpisodeOrder> onApplySelectedMatch = (r, o) -> {};
+    private BiConsumer<ScanRow, TmdbEpisode> onApplyEpisodeSequence = (r, e) -> {};
     private Consumer<ScanRow> onSearchMatch = r -> {};
     private Consumer<ScanRow> onResetMatch = r -> {};
 
@@ -133,7 +133,7 @@ public final class RowDetailPanel {
 
         sourceHeading = sectionHeading();
         detectionHeading = sectionHeading();
-        tvdbHeading = sectionHeading();
+        tmdbHeading = sectionHeading();
         destinationHeading = sectionHeading();
         notesHeading = sectionHeading();
 
@@ -145,10 +145,10 @@ public final class RowDetailPanel {
         confidenceLabel = fieldLabel();
         seasonEpisodeLabel = fieldLabel();
         inputPatternLabel = fieldLabel();
-        tvdbSeedLabel = fieldLabel();
-        tvdbTypeLabel = fieldLabel();
-        tvdbStatusLabel = fieldLabel();
-        tvdbFirstEpisodeLabel = fieldLabel();
+        tmdbSeedLabel = fieldLabel();
+        tmdbTypeLabel = fieldLabel();
+        tmdbStatusLabel = fieldLabel();
+        tmdbFirstEpisodeLabel = fieldLabel();
         proposedLabel = fieldLabel();
         destinationLabel = fieldLabel();
         conflictLabel = fieldLabel();
@@ -162,9 +162,9 @@ public final class RowDetailPanel {
         statusValue = proseValue();
         confidenceValue = monoValue();
         seasonEpisodeValue = monoValue();
-        tvdbSeedValue = monoValue();
-        tvdbTypeValue = proseValue();
-        tvdbStatusValue = proseValue();
+        tmdbSeedValue = monoValue();
+        tmdbTypeValue = proseValue();
+        tmdbStatusValue = proseValue();
         proposedValue = monoValue();
         proposedValue.getStyleClass().add("proposed-name-value");
         destinationValue = monoValue();
@@ -185,36 +185,36 @@ public final class RowDetailPanel {
             }
         });
 
-        tvdbPoster.setFitWidth(118);
-        tvdbPoster.setFitHeight(176);
-        tvdbPoster.setPreserveRatio(true);
-        tvdbPoster.getStyleClass().add("tvdb-poster-image");
-        tvdbPosterPlaceholder.getStyleClass().add("tvdb-poster-placeholder");
-        tvdbPosterPlaceholder.setAlignment(Pos.CENTER);
-        StackPane posterPane = new StackPane(tvdbPosterPlaceholder, tvdbPoster);
-        posterPane.getStyleClass().add("tvdb-poster-frame");
-        tvdbMatchTitle.getStyleClass().add("tvdb-match-title");
-        tvdbMatchMeta.getStyleClass().add("tvdb-match-meta");
-        tvdbMatchId.getStyleClass().add("tvdb-match-meta");
-        tvdbMatchOverview.getStyleClass().add("tvdb-match-overview");
-        tvdbMatchOverview.setWrapText(true);
-        tvdbMatchOverview.setMaxHeight(62);
-        tvdbTargetHint.getStyleClass().add("tvdb-match-meta");
-        tvdbTargetHint.setWrapText(true);
-        VBox matchText = new VBox(6, tvdbMatchTitle, tvdbMatchMeta, tvdbMatchId, tvdbMatchOverview);
+        tmdbPoster.setFitWidth(118);
+        tmdbPoster.setFitHeight(176);
+        tmdbPoster.setPreserveRatio(true);
+        tmdbPoster.getStyleClass().add("tmdb-poster-image");
+        tmdbPosterPlaceholder.getStyleClass().add("tmdb-poster-placeholder");
+        tmdbPosterPlaceholder.setAlignment(Pos.CENTER);
+        StackPane posterPane = new StackPane(tmdbPosterPlaceholder, tmdbPoster);
+        posterPane.getStyleClass().add("tmdb-poster-frame");
+        tmdbMatchTitle.getStyleClass().add("tmdb-match-title");
+        tmdbMatchMeta.getStyleClass().add("tmdb-match-meta");
+        tmdbMatchId.getStyleClass().add("tmdb-match-meta");
+        tmdbMatchOverview.getStyleClass().add("tmdb-match-overview");
+        tmdbMatchOverview.setWrapText(true);
+        tmdbMatchOverview.setMaxHeight(62);
+        tmdbTargetHint.getStyleClass().add("tmdb-match-meta");
+        tmdbTargetHint.setWrapText(true);
+        VBox matchText = new VBox(6, tmdbMatchTitle, tmdbMatchMeta, tmdbMatchId, tmdbMatchOverview);
         HBox.setHgrow(matchText, Priority.ALWAYS);
         StackPane posterHost = new StackPane(posterPane);
-        posterHost.getStyleClass().add("tvdb-detail-poster-host");
+        posterHost.getStyleClass().add("tmdb-detail-poster-host");
         HBox matchBody = new HBox(10, posterHost, matchText);
         matchBody.setAlignment(Pos.TOP_LEFT);
-        tvdbMatchCard = new VBox(10, matchBody);
-        tvdbMatchCard.getStyleClass().add("tvdb-selected-card");
+        tmdbMatchCard = new VBox(10, matchBody);
+        tmdbMatchCard.getStyleClass().add("tmdb-selected-card");
 
-        tvdbCandidate.setMaxWidth(Double.MAX_VALUE);
-        tvdbCandidate.setVisible(false);
-        tvdbCandidate.setManaged(false);
-        tvdbSearch.getStyleClass().add("ghost");
-        tvdbSearch.setOnAction(e -> {
+        tmdbCandidate.setMaxWidth(Double.MAX_VALUE);
+        tmdbCandidate.setVisible(false);
+        tmdbCandidate.setManaged(false);
+        tmdbSearch.getStyleClass().add("ghost");
+        tmdbSearch.setOnAction(e -> {
             if (currentRow != null) {
                 onSearchMatch.accept(currentRow);
             }
@@ -223,9 +223,9 @@ public final class RowDetailPanel {
         // "Voir le plan" in the top bar. Two full-orange buttons on screen at
         // once read as two next steps, so this one keeps the default .button
         // treatment and still outranks the .ghost controls beside it.
-        tvdbReset.getStyleClass().add("ghost");
-        tvdbApply.setOnAction(e -> {
-            String selected = tvdbCandidate.getValue();
+        tmdbReset.getStyleClass().add("ghost");
+        tmdbApply.setOnAction(e -> {
+            String selected = tmdbCandidate.getValue();
             boolean selectedExistingMatch = isApplyingExistingMatch(currentRow, selected);
             if (selectedExistingMatch) {
                 onApplySelectedMatch.accept(currentRow, selectedOrder());
@@ -235,45 +235,45 @@ public final class RowDetailPanel {
                 onApplyCandidate.accept(currentRow, selected);
                 return;
             }
-            if (currentRow != null && currentRow.tvdbCandidate().isPresent()) {
+            if (currentRow != null && currentRow.tmdbCandidate().isPresent()) {
                 onApplySelectedMatch.accept(currentRow, selectedOrder());
             }
         });
-        tvdbReset.setOnAction(e -> {
+        tmdbReset.setOnAction(e -> {
             if (currentRow != null) {
                 onResetMatch.accept(currentRow);
             }
         });
-        tvdbFirstEpisode.getStyleClass().add("tvdb-episode-picker");
-        tvdbFirstEpisode.setMaxWidth(Double.MAX_VALUE);
-        tvdbApplySequence.setMaxWidth(Double.MAX_VALUE);
-        tvdbApplySequence.setDisable(true);
-        tvdbApplySequence.setOnAction(e -> {
-            TvdbEpisode first = selectedFirstEpisode;
+        tmdbFirstEpisode.getStyleClass().add("tmdb-episode-picker");
+        tmdbFirstEpisode.setMaxWidth(Double.MAX_VALUE);
+        tmdbApplySequence.setMaxWidth(Double.MAX_VALUE);
+        tmdbApplySequence.setDisable(true);
+        tmdbApplySequence.setOnAction(e -> {
+            TmdbEpisode first = selectedFirstEpisode;
             if (currentRow != null && first != null) {
                 onApplyEpisodeSequence.accept(currentRow, first);
             }
         });
-        tvdbSearch.setMaxWidth(Double.MAX_VALUE);
-        tvdbApply.setMaxWidth(Double.MAX_VALUE);
-        tvdbReset.setMaxWidth(Double.MAX_VALUE);
-        HBox tvdbSecondaryControls = new HBox(8, tvdbSearch, tvdbReset);
-        tvdbSecondaryControls.getStyleClass().add("tvdb-detail-secondary-controls");
-        HBox.setHgrow(tvdbSearch, Priority.ALWAYS);
-        HBox.setHgrow(tvdbReset, Priority.ALWAYS);
-        tvdbBusy.setMaxSize(18, 18);
-        tvdbBusy.setVisible(false);
-        tvdbBusy.setManaged(false);
-        tvdbBusyLabel.getStyleClass().add("tvdb-match-meta");
-        tvdbBusyLabel.setVisible(false);
-        tvdbBusyLabel.setManaged(false);
-        HBox tvdbBusyRow = new HBox(8, tvdbBusy, tvdbBusyLabel);
-        tvdbBusyRow.setAlignment(Pos.CENTER_LEFT);
-        VBox tvdbSequenceControls = new VBox(6,
-                tvdbFirstEpisodeLabel, tvdbFirstEpisode, tvdbApplySequence);
-        VBox tvdbControls = new VBox(8,
-                tvdbSecondaryControls, tvdbOrder, tvdbApply, tvdbSequenceControls, tvdbBusyRow);
-        tvdbControls.getStyleClass().add("tvdb-detail-controls");
+        tmdbSearch.setMaxWidth(Double.MAX_VALUE);
+        tmdbApply.setMaxWidth(Double.MAX_VALUE);
+        tmdbReset.setMaxWidth(Double.MAX_VALUE);
+        HBox tmdbSecondaryControls = new HBox(8, tmdbSearch, tmdbReset);
+        tmdbSecondaryControls.getStyleClass().add("tmdb-detail-secondary-controls");
+        HBox.setHgrow(tmdbSearch, Priority.ALWAYS);
+        HBox.setHgrow(tmdbReset, Priority.ALWAYS);
+        tmdbBusy.setMaxSize(18, 18);
+        tmdbBusy.setVisible(false);
+        tmdbBusy.setManaged(false);
+        tmdbBusyLabel.getStyleClass().add("tmdb-match-meta");
+        tmdbBusyLabel.setVisible(false);
+        tmdbBusyLabel.setManaged(false);
+        HBox tmdbBusyRow = new HBox(8, tmdbBusy, tmdbBusyLabel);
+        tmdbBusyRow.setAlignment(Pos.CENTER_LEFT);
+        VBox tmdbSequenceControls = new VBox(6,
+                tmdbFirstEpisodeLabel, tmdbFirstEpisode, tmdbApplySequence);
+        VBox tmdbControls = new VBox(8,
+                tmdbSecondaryControls, tmdbOrder, tmdbApply, tmdbSequenceControls, tmdbBusyRow);
+        tmdbControls.getStyleClass().add("tmdb-detail-controls");
 
         VBox sourceSection = new VBox(6,
                 sourceHeading,
@@ -292,15 +292,15 @@ public final class RowDetailPanel {
                 inputPatternApply);
         detectionSection.getStyleClass().add("detail-panel-section");
 
-        VBox tvdbSection = new VBox(6,
-                tvdbHeading,
-                fieldRow(tvdbSeedLabel, tvdbSeedValue),
-                fieldRow(tvdbTypeLabel, tvdbTypeValue),
-                fieldRow(tvdbStatusLabel, tvdbStatusValue),
-                tvdbMatchCard,
-                tvdbTargetHint,
-                tvdbControls);
-        tvdbSection.getStyleClass().add("detail-panel-section");
+        VBox tmdbSection = new VBox(6,
+                tmdbHeading,
+                fieldRow(tmdbSeedLabel, tmdbSeedValue),
+                fieldRow(tmdbTypeLabel, tmdbTypeValue),
+                fieldRow(tmdbStatusLabel, tmdbStatusValue),
+                tmdbMatchCard,
+                tmdbTargetHint,
+                tmdbControls);
+        tmdbSection.getStyleClass().add("detail-panel-section");
 
         VBox destinationSection = new VBox(6,
                 destinationHeading,
@@ -315,7 +315,7 @@ public final class RowDetailPanel {
                 fieldRow(noteLabel, noteValue));
         notesSection.getStyleClass().add("detail-panel-section");
 
-        content = new VBox(12, tvdbSection, destinationSection, notesSection);
+        content = new VBox(12, tmdbSection, destinationSection, notesSection);
 
         contentScroll = new ScrollPane(content);
         contentScroll.getStyleClass().add("detail-scroll");
@@ -355,56 +355,56 @@ public final class RowDetailPanel {
         this.onApplyInputPattern = handler == null ? (r, p) -> {} : handler;
     }
 
-    public void setOnApplySelectedMatch(BiConsumer<ScanRow, TvdbEpisodeOrder> handler) {
+    public void setOnApplySelectedMatch(BiConsumer<ScanRow, TmdbEpisodeOrder> handler) {
         this.onApplySelectedMatch = handler == null ? (r, o) -> {} : handler;
     }
 
-    public void setOnApplyEpisodeSequence(BiConsumer<ScanRow, TvdbEpisode> handler) {
+    public void setOnApplyEpisodeSequence(BiConsumer<ScanRow, TmdbEpisode> handler) {
         this.onApplyEpisodeSequence = handler == null ? (r, e) -> {} : handler;
     }
 
-    public void setTvdbEpisodeOptions(
-            List<TvdbEpisode> episodes, String selectedEpisodeId, TvdbEpisodeOrder order) {
+    public void setTmdbEpisodeOptions(
+            List<TmdbEpisode> episodes, String selectedEpisodeId, TmdbEpisodeOrder order) {
         availableFirstEpisodes = episodes == null ? List.of() : List.copyOf(episodes);
-        firstEpisodeOrder = order == null ? TvdbEpisodeOrder.AIRED : order;
+        firstEpisodeOrder = order == null ? TmdbEpisodeOrder.AIRED : order;
         selectedFirstEpisode = availableFirstEpisodes.stream()
                 .filter(episode -> episode.id().equals(selectedEpisodeId))
                 .findFirst()
                 .orElse(null);
         rebuildEpisodeMenu();
-        tvdbFirstEpisode.setDisable(!tvdbSearchable || availableFirstEpisodes.isEmpty());
-        tvdbApplySequence.setDisable(!tvdbSearchable || selectedFirstEpisode == null);
+        tmdbFirstEpisode.setDisable(!tmdbSearchable || availableFirstEpisodes.isEmpty());
+        tmdbApplySequence.setDisable(!tmdbSearchable || selectedFirstEpisode == null);
     }
 
     public void setOnSearchMatch(Consumer<ScanRow> handler) {
         this.onSearchMatch = handler == null ? r -> {} : handler;
     }
 
-    public void setTvdbTargetCount(int count) {
-        tvdbTargetCount = Math.max(0, count);
-        updateTvdbTargetHint();
+    public void setTmdbTargetCount(int count) {
+        tmdbTargetCount = Math.max(0, count);
+        updateTmdbTargetHint();
     }
 
-    public void setTvdbCandidateOptions(List<String> candidates) {
-        String current = tvdbCandidate.getValue();
-        tvdbCandidate.getItems().setAll(candidates == null ? List.of() : candidates);
-        if (current != null && tvdbCandidate.getItems().contains(current)) {
-            tvdbCandidate.setValue(current);
+    public void setTmdbCandidateOptions(List<String> candidates) {
+        String current = tmdbCandidate.getValue();
+        tmdbCandidate.getItems().setAll(candidates == null ? List.of() : candidates);
+        if (current != null && tmdbCandidate.getItems().contains(current)) {
+            tmdbCandidate.setValue(current);
         }
     }
 
-    public void setTvdbBusy(boolean busy, String message) {
-        tvdbSearch.setDisable(busy || !tvdbSearchable);
-        tvdbOrder.setDisable(busy || !tvdbSearchable);
-        tvdbApply.setDisable(busy || !tvdbSearchable || currentRow == null || currentRow.tvdbCandidate().isEmpty());
-        tvdbReset.setDisable(busy || !tvdbSearchable || currentRow == null || currentRow.tvdbMatch().isEmpty());
-        tvdbFirstEpisode.setDisable(busy || !tvdbSearchable || availableFirstEpisodes.isEmpty());
-        tvdbApplySequence.setDisable(busy || !tvdbSearchable || selectedFirstEpisode == null);
-        tvdbBusy.setVisible(busy);
-        tvdbBusy.setManaged(busy);
-        tvdbBusyLabel.setText(message == null ? "" : message);
-        tvdbBusyLabel.setVisible(busy);
-        tvdbBusyLabel.setManaged(busy);
+    public void setTmdbBusy(boolean busy, String message) {
+        tmdbSearch.setDisable(busy || !tmdbSearchable);
+        tmdbOrder.setDisable(busy || !tmdbSearchable);
+        tmdbApply.setDisable(busy || !tmdbSearchable || currentRow == null || currentRow.tmdbCandidate().isEmpty());
+        tmdbReset.setDisable(busy || !tmdbSearchable || currentRow == null || currentRow.tmdbMatch().isEmpty());
+        tmdbFirstEpisode.setDisable(busy || !tmdbSearchable || availableFirstEpisodes.isEmpty());
+        tmdbApplySequence.setDisable(busy || !tmdbSearchable || selectedFirstEpisode == null);
+        tmdbBusy.setVisible(busy);
+        tmdbBusy.setManaged(busy);
+        tmdbBusyLabel.setText(message == null ? "" : message);
+        tmdbBusyLabel.setVisible(busy);
+        tmdbBusyLabel.setManaged(busy);
     }
 
     public void applyLanguage(AppLanguage language) {
@@ -414,7 +414,7 @@ public final class RowDetailPanel {
 
         sourceHeading.setText(UiText.detailSectionSource(language));
         detectionHeading.setText(UiText.detailSectionDetection(language));
-        tvdbHeading.setText(UiText.detailSectionTvdb(language));
+        tmdbHeading.setText(UiText.detailSectionTmdb(language));
         destinationHeading.setText(UiText.detailSectionDestination(language));
         notesHeading.setText(UiText.detailSectionNotes(language));
 
@@ -427,43 +427,43 @@ public final class RowDetailPanel {
         seasonEpisodeLabel.setText(UiText.detailFieldSeasonEpisode(language));
         inputPatternLabel.setText(UiText.detailFieldInputPattern(language));
         inputPatternApply.setText(UiText.detailApplyToSelection(language));
-        tvdbSeedLabel.setText(UiText.detailFieldGroup(language));
-        tvdbTypeLabel.setText(UiText.detailFieldMediaType(language));
-        tvdbStatusLabel.setText(UiText.detailFieldStatus(language));
-        tvdbFirstEpisodeLabel.setText(UiText.tvdbFirstEpisode(language));
+        tmdbSeedLabel.setText(UiText.detailFieldGroup(language));
+        tmdbTypeLabel.setText(UiText.detailFieldMediaType(language));
+        tmdbStatusLabel.setText(UiText.detailFieldStatus(language));
+        tmdbFirstEpisodeLabel.setText(UiText.tmdbFirstEpisode(language));
         proposedLabel.setText(UiText.detailFieldProposed(language));
         destinationLabel.setText(UiText.detailFieldDestination(language));
         conflictLabel.setText(UiText.detailFieldConflict(language));
         alertLabel.setText(UiText.detailFieldAlert(language));
         noteLabel.setText(UiText.detailFieldNote(language));
 
-        tvdbCandidate.setPromptText(UiText.scanBatchTvdbCandidatePlaceholder(language));
-        tvdbSearch.setText(UiText.tvdbSearchForMatch(language));
-        tvdbOrder.setPromptText(UiText.scanBatchTvdbOrderPlaceholder(language));
-        tvdbOrder.getItems().setAll(
-                UiText.scanBatchTvdbOrderAired(language),
-                UiText.scanBatchTvdbOrderDvd(language),
-                UiText.scanBatchTvdbOrderAbsolute(language));
-        tvdbApply.setText(UiText.tvdbApply(language));
-        tvdbReset.setText(UiText.detailResetButton(language));
+        tmdbCandidate.setPromptText(UiText.scanBatchTmdbCandidatePlaceholder(language));
+        tmdbSearch.setText(UiText.tmdbSearchForMatch(language));
+        tmdbOrder.setPromptText(UiText.scanBatchTmdbOrderPlaceholder(language));
+        tmdbOrder.getItems().setAll(
+                UiText.scanBatchTmdbOrderAired(language),
+                UiText.scanBatchTmdbOrderDvd(language),
+                UiText.scanBatchTmdbOrderAbsolute(language));
+        tmdbApply.setText(UiText.tmdbApply(language));
+        tmdbReset.setText(UiText.detailResetButton(language));
         rebuildEpisodeMenu();
-        tvdbApplySequence.setText(UiText.tvdbApplySequence(language));
-        updateTvdbCard(currentRow);
-        updateTvdbTargetHint();
+        tmdbApplySequence.setText(UiText.tmdbApplySequence(language));
+        updateTmdbCard(currentRow);
+        updateTmdbTargetHint();
     }
 
     public void show(ScanRow row) {
         show(row, null);
     }
 
-    public void show(ScanRow row, BatchTvdbMatch groupMatch) {
+    public void show(ScanRow row, BatchTmdbMatch groupMatch) {
         if (row == null) {
             clear();
             return;
         }
         currentRow = row;
         currentGroupMatch = groupMatch;
-        tvdbSearchable = groupMatch == null || groupMatch.namesAMedia();
+        tmdbSearchable = groupMatch == null || groupMatch.namesAMedia();
         emptyState.setVisible(false);
         emptyState.setManaged(false);
         contentScroll.setVisible(true);
@@ -486,27 +486,27 @@ public final class RowDetailPanel {
         inputPatternEditor.setText(patternDetail(row));
 
         if (groupMatch == null) {
-            tvdbSeedValue.setText(UiText.EMPTY);
-            tvdbTypeValue.setText(UiText.EMPTY);
-            tvdbStatusValue.setText(UiText.EMPTY);
+            tmdbSeedValue.setText(UiText.EMPTY);
+            tmdbTypeValue.setText(UiText.EMPTY);
+            tmdbStatusValue.setText(UiText.EMPTY);
         } else {
-            tvdbSeedValue.setText(groupMatch.seedText(currentLanguage));
-            tvdbTypeValue.setText(groupMatch.typeText(currentLanguage));
-            tvdbStatusValue.setText(groupMatch.statusText(currentLanguage));
+            tmdbSeedValue.setText(groupMatch.seedText(currentLanguage));
+            tmdbTypeValue.setText(groupMatch.typeText(currentLanguage));
+            tmdbStatusValue.setText(groupMatch.statusText(currentLanguage));
         }
-        String currentMatch = row.tvdbMatch().orElse(null);
-        if (currentMatch != null && !tvdbCandidate.getItems().contains(currentMatch)) {
-            tvdbCandidate.getItems().add(currentMatch);
+        String currentMatch = row.tmdbMatch().orElse(null);
+        if (currentMatch != null && !tmdbCandidate.getItems().contains(currentMatch)) {
+            tmdbCandidate.getItems().add(currentMatch);
         }
-        tvdbCandidate.setValue(currentMatch);
-        tvdbOrder.setValue(orderLabel(row.appliedTvdbOrder().orElse(TvdbEpisodeOrder.AIRED)));
-        tvdbReset.setDisable(row.tvdbMatch().isEmpty());
-        updateTvdbCard(row);
-        if (!tvdbSearchable) {
-            tvdbSearch.setDisable(true);
-            tvdbOrder.setDisable(true);
-            tvdbApply.setDisable(true);
-            tvdbReset.setDisable(true);
+        tmdbCandidate.setValue(currentMatch);
+        tmdbOrder.setValue(orderLabel(row.appliedTmdbOrder().orElse(TmdbEpisodeOrder.AIRED)));
+        tmdbReset.setDisable(row.tmdbMatch().isEmpty());
+        updateTmdbCard(row);
+        if (!tmdbSearchable) {
+            tmdbSearch.setDisable(true);
+            tmdbOrder.setDisable(true);
+            tmdbApply.setDisable(true);
+            tmdbReset.setDisable(true);
         }
 
         proposedValue.setText(row.proposedFilename().orElse(UiText.EMPTY));
@@ -516,46 +516,46 @@ public final class RowDetailPanel {
         noteValue.setText(row.noteText().orElse(UiText.EMPTY));
     }
 
-    private void updateTvdbCard(ScanRow row) {
-        Optional<TvdbCandidate> candidate = row == null ? Optional.empty() : row.tvdbCandidate();
+    private void updateTmdbCard(ScanRow row) {
+        Optional<TmdbCandidate> candidate = row == null ? Optional.empty() : row.tmdbCandidate();
         if (candidate.isEmpty()) {
-            tvdbPoster.setImage(null);
-            tvdbPoster.setVisible(false);
-            tvdbPosterPlaceholder.setText("TVDB");
-            tvdbMatchTitle.setText(UiText.tvdbNoMatchSelected(currentLanguage));
-            tvdbMatchMeta.setText(UiText.EMPTY);
-            tvdbMatchId.setText(UiText.EMPTY);
-            tvdbMatchOverview.setText("");
-            tvdbReset.setDisable(true);
-            tvdbApply.setDisable(true);
+            tmdbPoster.setImage(null);
+            tmdbPoster.setVisible(false);
+            tmdbPosterPlaceholder.setText("TMDB");
+            tmdbMatchTitle.setText(UiText.tmdbNoMatchSelected(currentLanguage));
+            tmdbMatchMeta.setText(UiText.EMPTY);
+            tmdbMatchId.setText(UiText.EMPTY);
+            tmdbMatchOverview.setText("");
+            tmdbReset.setDisable(true);
+            tmdbApply.setDisable(true);
             return;
         }
-        TvdbCandidate value = candidate.orElseThrow();
-        tvdbMatchTitle.setText(value.identity().displayName());
-        tvdbMatchMeta.setText(ScanRowText.mediaType(value.identity().mediaType(), currentLanguage)
+        TmdbCandidate value = candidate.orElseThrow();
+        tmdbMatchTitle.setText(value.identity().displayName());
+        tmdbMatchMeta.setText(ScanRowText.mediaType(value.identity().mediaType(), currentLanguage)
                 + value.year().map(year -> " • " + year).orElse(""));
-        tvdbMatchId.setText(UiText.tvdbIdLabel(currentLanguage) + ": " + value.identity().id());
-        tvdbMatchOverview.setText(shortOverview(localizedOverview(value).filter(v -> !v.isBlank())
-                .orElseGet(() -> UiText.tvdbNoDescription(currentLanguage))));
-        tvdbPosterPlaceholder.setText("TVDB");
-        tvdbPoster.setVisible(false);
-        tvdbPoster.setImage(null);
+        tmdbMatchId.setText(UiText.tmdbIdLabel(currentLanguage) + ": " + value.identity().id());
+        tmdbMatchOverview.setText(shortOverview(localizedOverview(value).filter(v -> !v.isBlank())
+                .orElseGet(() -> UiText.tmdbNoDescription(currentLanguage))));
+        tmdbPosterPlaceholder.setText("TMDB");
+        tmdbPoster.setVisible(false);
+        tmdbPoster.setImage(null);
         value.posterUrl().ifPresent(url -> {
             Image image = new Image(url, true);
             image.errorProperty().addListener((obs, was, failed) -> {
                 if (failed) {
                     System.getLogger(RowDetailPanel.class.getName())
-                            .log(System.Logger.Level.DEBUG, "TVDB poster failed to load: " + url);
-                    tvdbPoster.setImage(null);
-                    tvdbPoster.setVisible(false);
+                            .log(System.Logger.Level.DEBUG, "TMDB poster failed to load: " + url);
+                    tmdbPoster.setImage(null);
+                    tmdbPoster.setVisible(false);
                 }
             });
-            tvdbPoster.setImage(image);
-            tvdbPoster.setVisible(true);
+            tmdbPoster.setImage(image);
+            tmdbPoster.setVisible(true);
         });
-        tvdbReset.setDisable(false);
-        tvdbApply.setDisable(false);
-        updateTvdbTargetHint();
+        tmdbReset.setDisable(false);
+        tmdbApply.setDisable(false);
+        updateTmdbTargetHint();
     }
 
     private static String shortOverview(String value) {
@@ -566,7 +566,7 @@ public final class RowDetailPanel {
         return normalized.substring(0, 357).stripTrailing() + "...";
     }
 
-    private Optional<String> localizedOverview(TvdbCandidate candidate) {
+    private Optional<String> localizedOverview(TmdbCandidate candidate) {
         Optional<String> primary = currentLanguage == AppLanguage.FRENCH
                 ? candidate.frenchOverview()
                 : candidate.englishOverview();
@@ -576,78 +576,78 @@ public final class RowDetailPanel {
         return primary.or(() -> secondary).or(candidate::overview);
     }
 
-    private TvdbEpisodeOrder selectedOrder() {
-        String value = tvdbOrder.getValue();
+    private TmdbEpisodeOrder selectedOrder() {
+        String value = tmdbOrder.getValue();
         if (value == null || value.isBlank()) {
-            return TvdbEpisodeOrder.AIRED;
+            return TmdbEpisodeOrder.AIRED;
         }
-        if (value.equals(UiText.scanBatchTvdbOrderDvd(currentLanguage))) {
-            return TvdbEpisodeOrder.DVD;
+        if (value.equals(UiText.scanBatchTmdbOrderDvd(currentLanguage))) {
+            return TmdbEpisodeOrder.DVD;
         }
-        if (value.equals(UiText.scanBatchTvdbOrderAbsolute(currentLanguage))) {
-            return TvdbEpisodeOrder.ABSOLUTE;
+        if (value.equals(UiText.scanBatchTmdbOrderAbsolute(currentLanguage))) {
+            return TmdbEpisodeOrder.ABSOLUTE;
         }
-        return TvdbEpisodeOrder.AIRED;
+        return TmdbEpisodeOrder.AIRED;
     }
 
     private void rebuildEpisodeMenu() {
-        tvdbFirstEpisode.getItems().clear();
-        for (TvdbEpisodeMenuModel.Group group
-                : TvdbEpisodeMenuModel.groups(availableFirstEpisodes, firstEpisodeOrder)) {
-            Menu groupMenu = new Menu(group.kind() == TvdbEpisodeMenuModel.GroupKind.SEASON
+        tmdbFirstEpisode.getItems().clear();
+        for (TmdbEpisodeMenuModel.Group group
+                : TmdbEpisodeMenuModel.groups(availableFirstEpisodes, firstEpisodeOrder)) {
+            Menu groupMenu = new Menu(group.kind() == TmdbEpisodeMenuModel.GroupKind.SEASON
                     ? group.start() == 0
-                            ? UiText.tvdbEpisodeSpecials(currentLanguage)
-                            : UiText.tvdbEpisodeSeason(currentLanguage, group.start())
-                    : UiText.tvdbEpisodeAbsoluteRange(currentLanguage, group.start(), group.end()));
-            for (TvdbEpisode episode : group.episodes()) {
+                            ? UiText.tmdbEpisodeSpecials(currentLanguage)
+                            : UiText.tmdbEpisodeSeason(currentLanguage, group.start())
+                    : UiText.tmdbEpisodeAbsoluteRange(currentLanguage, group.start(), group.end()));
+            for (TmdbEpisode episode : group.episodes()) {
                 MenuItem item = new MenuItem(episodeLabel(episode));
                 item.setOnAction(event -> selectFirstEpisode(episode));
                 groupMenu.getItems().add(item);
             }
-            tvdbFirstEpisode.getItems().add(groupMenu);
+            tmdbFirstEpisode.getItems().add(groupMenu);
         }
-        tvdbFirstEpisode.setText(selectedFirstEpisode == null
-                ? UiText.tvdbFirstEpisodePlaceholder(currentLanguage)
+        tmdbFirstEpisode.setText(selectedFirstEpisode == null
+                ? UiText.tmdbFirstEpisodePlaceholder(currentLanguage)
                 : episodeLabel(selectedFirstEpisode));
     }
 
-    private void selectFirstEpisode(TvdbEpisode episode) {
+    private void selectFirstEpisode(TmdbEpisode episode) {
         selectedFirstEpisode = episode;
-        tvdbFirstEpisode.setText(episodeLabel(episode));
-        tvdbApplySequence.setDisable(!tvdbSearchable);
+        tmdbFirstEpisode.setText(episodeLabel(episode));
+        tmdbApplySequence.setDisable(!tmdbSearchable);
     }
 
-    private String episodeLabel(TvdbEpisode episode) {
-        return TvdbEpisodeMenuModel.episodeCode(episode, firstEpisodeOrder) + " · " + episode.title();
+    private String episodeLabel(TmdbEpisode episode) {
+        return TmdbEpisodeMenuModel.episodeCode(episode, firstEpisodeOrder) + " · " + episode.title();
     }
 
     static boolean isApplyingExistingMatch(ScanRow row, String selectedLabel) {
         return row != null
                 && selectedLabel != null
-                && row.tvdbMatch().filter(selectedLabel::equals).isPresent()
-                && row.tvdbCandidate().isPresent();
+                && row.tmdbMatch().filter(selectedLabel::equals).isPresent()
+                && row.tmdbCandidate().isPresent();
     }
 
-    private String orderLabel(TvdbEpisodeOrder order) {
+    private String orderLabel(TmdbEpisodeOrder order) {
         return switch (order) {
-            case DVD -> UiText.scanBatchTvdbOrderDvd(currentLanguage);
-            case ABSOLUTE -> UiText.scanBatchTvdbOrderAbsolute(currentLanguage);
-            case AIRED -> UiText.scanBatchTvdbOrderAired(currentLanguage);
+            case DVD -> UiText.scanBatchTmdbOrderDvd(currentLanguage);
+            case ABSOLUTE -> UiText.scanBatchTmdbOrderAbsolute(currentLanguage);
+            case AIRED -> UiText.scanBatchTmdbOrderAired(currentLanguage);
         };
     }
 
-    private void updateTvdbTargetHint() {
-        if (tvdbTargetCount <= 0) {
-            tvdbTargetHint.setText(UiText.tvdbNoFileSelected(currentLanguage));
+    private void updateTmdbTargetHint() {
+        if (tmdbTargetCount <= 0) {
+            tmdbTargetHint.setText(UiText.tmdbNoFileSelected(currentLanguage));
             return;
         }
-        tvdbTargetHint.setText(UiText.tvdbMatchWillApplyTo(currentLanguage, tvdbTargetCount));
+        tmdbTargetHint.setText(UiText.tmdbMatchWillApplyTo(currentLanguage, tmdbTargetCount));
     }
 
     public void clear() {
         currentRow = null;
         currentGroupMatch = null;
-        tvdbSearchable = true;
+        tmdbSearchable = true;
         emptyState.setVisible(true);
         emptyState.setManaged(true);
         contentScroll.setVisible(false);

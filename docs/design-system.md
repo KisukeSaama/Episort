@@ -263,7 +263,7 @@ Each component is documented as **Anatomy → Class → Rules**.
   - The status pill is **derived from `AppShellViewModel.errorCode()`**:
     - empty → the pill is hidden. A permanent green `OK` is decoration; the
       absence of a warning is the signal.
-    - present → variant `.warn`, text = error code (e.g. `TVDB_…`)
+    - present → variant `.warn`, text = error code (e.g. `TMDB_…`)
     - variant `.error` when the code carries `UNAVAILABLE` or `INVALID`.
   - Search is local to the table it filters. Scan and History place it at the
     start of their filter row, with explicit prompts (`Rechercher dans les
@@ -272,7 +272,7 @@ Each component is documented as **Anatomy → Class → Rules**.
     with shared `.episort-search-icon` / `.episort-search-clear` controls:
     dark surface, fixed height, a low-intensity orange inactive border, a
     high-contrast orange focus border, and orange glow without an inner white
-    text-field flash. TVDB, Scan, and History searches reuse this
+    text-field flash. TMDB, Scan, and History searches reuse this
     active/focus treatment while keeping separate text state.
   - The workspace chip mirrors the configured workspace (mono, accent
     color). When no workspace is configured it shows the localized empty
@@ -314,27 +314,26 @@ Each component is documented as **Anatomy → Class → Rules**.
 The dashboard `.widget` and the single-column `.activity-table` are gone.
 Every multi-column surface — scan preview, history, exact plan — is a
 `.preview-table` (§4.11). Status dots survive on their own as `.dot` plus
-`.dot-good` / `.dot-warn` / `.dot-error` / `.dot-idle`, used today by the TVDB
+`.dot-good` / `.dot-warn` / `.dot-error` / `.dot-idle`, used today by the TMDB
 section of Settings.
 
 ### 4.6 Settings section
 
 - **Anatomy:** title (Inter accent) → description (muted) → status/action row.
 - **Classes:** `.settings-section`, `.settings-section-title`,
-  `.settings-section-description`, `.workspace-value`, `.tvdb-attribution`,
-  `.tvdb-attribution-copy`, `.tvdb-attribution-link`.
+  `.settings-section-description`, `.workspace-value`, `.tmdb-attribution`,
+  `.tmdb-attribution-copy`, `.tmdb-attribution-link`.
 - **Rules:**
   - Reuse `SettingsPane` rather than re-implementing the layout per story.
   - The workspace path always uses `.workspace-value` (mono, accent-hover color).
-  - The TVDB row displays the real connection result established automatically
-    during application startup: `.dot-good` + `Actif` on success,
-    `.dot-error` + `Inactif` otherwise. It never exposes the API key, PIN, or
-    raw connection error and offers no manual test button.
-  - Cache feedback is separate from the connection status; clearing an empty
-    or populated cache must never change the TVDB availability signal.
-  - The TVDB section ends with the official dark-background logo, the provider's
+  - The TMDB row displays the real Janus-backed connection result established
+    automatically during application startup: `.dot-good` + `Actif` on success,
+    `.dot-error` + `Inactif` otherwise. It never exposes the caller key, upstream
+    TMDB credential, or raw connection error and offers no manual test button.
+    There is no local cache control because Janus owns response caching.
+  - The TMDB section ends with the official dark-background logo, the provider's
     recommended attribution copy, and a keyboard-focusable direct link to the
-    TheTVDB subscription page. The logo is bundled so attribution remains visible
+    The Movie Database website. The logo is bundled so attribution remains visible
     offline; the link opens through JavaFX host services.
   - Settings is a sidebar surface, not a dialog: it replaces the content
     area like Scan and History do.
@@ -450,7 +449,7 @@ section of Settings.
   `.workflow-step-label`, `.workflow-step-connector`, `.workflow-help`.
 - **Rules:**
   - Use on the Scan page above the metrics to show the current organization
-    workflow: Workspace & Scan, Scan des fichiers, Correspondances TVDB,
+    workflow: Workspace & Scan, Scan des fichiers, Correspondances TMDB,
     Revue du plan, Appliquer.
   - Exactly one step carries `.active`; prior steps may be `.complete`; future
     steps are `.pending`.
@@ -494,7 +493,7 @@ section of Settings.
   - Long values display the truncated text in the cell **plus a tooltip
     with the full value** so the user always has access to the original.
   - Empty cells render the design-system placeholder `—` with the
-    `.cell-muted` style. Never fabricate proposed names, TVDB matches,
+    `.cell-muted` style. Never fabricate proposed names, TMDB matches,
     destinations, or confidences before the matching service produces
     them.
   - Empty table state goes through `setPlaceholder(...)`. A screen that
@@ -519,10 +518,10 @@ section of Settings.
 - **Rules:**
   - Mirror the row's data exactly — no derived calculations or invented
     fields. Use `—` everywhere data is absent.
-  - The TVDB-correction sub-panel uses the shared combo-box and button
+  - The TMDB-correction sub-panel uses the shared combo-box and button
     vocabulary for identity search, episode order and Apply / Reset.
   - Once real series metadata is loaded, `Premier épisode` / `First episode`
-    opens a hierarchical `.tvdb-episode-picker`: Diffusion and DVD group the
+    opens a hierarchical `.tmdb-episode-picker`: Diffusion and DVD group the
     non-special episodes into retractable seasons; Absolu groups them into
     retractable ranges of 50 and displays their absolute number. Its adjacent default button
     applies that episode to one row or a consecutive sequence to the checked
@@ -613,10 +612,10 @@ section of Settings.
   `ComboBox` and its source/destination dates in the very list being validated.
   The selection, dates, and decision columns — and the batch toolbar — are
   hidden as soon as no conflict remains. There is no separate conflict window.
-- **Classes:** reuses `.screen-root`, `.tvdb-dialog-header`,
-  `.tvdb-dialog-title`, `.tvdb-dialog-message`, `.selection-column` /
+- **Classes:** reuses `.screen-root`, `.tmdb-dialog-header`,
+  `.tmdb-dialog-title`, `.tmdb-dialog-message`, `.selection-column` /
   `.selection-header` / `.selection-cell` / `.row-checkbox`,
-  `.tvdb-match-meta` (metric chips), `.banner` + `.banner-info` /
+  `.tmdb-match-meta` (metric chips), `.banner` + `.banner-info` /
   `.banner-warn`, `.preview-table` with `.cell-mono` / `.cell-muted`, and
   `.row-status` with `.quiet` / `.quiet-muted` / `.replace` / `.conflict` /
   `.danger`.
@@ -696,7 +695,7 @@ section of Settings.
   - `Retry` is enabled only for `ApplicationError.recoverable()` failures —
     never offer a retry that cannot succeed.
   - Failure text goes through `ApplicationError.safeMessage()`; the recap
-    never carries credentials, tokens, or PINs.
+    never carries credentials, API keys, or read access tokens.
   - The outcome sentence distinguishes complete success, partial success,
     nothing processed, and aborted. Partial success is never worded as
     success.
@@ -716,14 +715,14 @@ section of Settings.
     `FICHIERS ÉCRITS` as three stacked label-over-path fields.
   - **footer** — pinned to the bottom of the content area by a growing spacer,
     opened by a `.settings-section-divider` rule: `SOURCES ET CRÉDITS` over
-    the TVDB attribution and the font credit, side by side on the same 640 /
+    the TMDB attribution and the font credit, side by side on the same 640 /
     360 grid as the body.
 - **Classes:** `.about-pane` on the `.screen-root` (spacing 26),
   `.about-fact-panel` on the right panel (`.detail-panel` plus spacing 18, for
   the divider between its two groups), plus `.about-brand-name`,
   `.about-tagline`, `.about-version`, `.about-body`, `.about-step-index`,
   `.about-step-label`, `.about-label`, `.about-value`, `.about-value-path`,
-  `.about-note`. Header reuses `.tvdb-dialog-header` / `.tvdb-dialog-title` /
+  `.about-note`. Header reuses `.tmdb-dialog-header` / `.tmdb-dialog-title` /
   `.header-action`; the rules reuse `.settings-section-divider`.
 - **Rules:**
   - **Section headings follow §4.9.** `LABEL`, uppercase, Inter, with the
@@ -749,7 +748,8 @@ section of Settings.
     runtime from `Runtime.version()` and the JavaFX / OS system properties, and
     the three paths from the stores that own them. Anything unreadable renders
     `—`.
-  - The TVDB attribution line is required and stays on this screen.
+  - The TMDB attribution row is required and stays on this screen. It includes
+    the approved TMDB logo and the provider's endorsement disclaimer.
   - About holds the content area, so it disables its own menu entry and the
     plan review disables it in turn (§4.7 refusal by disabling). Opening it
     hides the top bar's primary and secondary actions: nothing
@@ -829,7 +829,7 @@ section of Settings.
 | `src/main/java/com/episort/ui/Sidebar.java`                       | Three-entry sidebar (Scan / History / Settings)     |
 | `src/main/java/com/episort/ui/TopBar.java`                        | Workspace chip, status, language, primary           |
 | `src/main/java/com/episort/ui/scan/ScanScreen.java`               | Scan dashboard (table + detail panel)               |
-| `src/main/java/com/episort/ui/scan/RowDetailPanel.java`           | TVDB-correction detail panel                        |
+| `src/main/java/com/episort/ui/scan/RowDetailPanel.java`           | TMDB-correction detail panel                        |
 | `src/main/java/com/episort/ui/execution/PlanReviewPane.java`      | Plan review + inline conflict resolution + execution, in the main window (§4.15) |
 | `src/main/java/com/episort/ui/execution/ExecutionPane.java`       | Execution progress, failures, and recap (§4.16)     |
 | `src/main/java/com/episort/ui/AboutPane.java`                     | About screen in the content area (§4.17)            |
@@ -859,18 +859,18 @@ rejected on review.
 - `.preview-table` owns complete dark scrollbar styling for bars, tracks, buttons, thumbs, and corners.
 - Ignored scan rows use `.ignored-row`: reduced opacity, muted background, and
   disabled action checkbox. They remain readable and context-menu reactivable.
-- Manual TVDB search uses `.tvdb-dialog`, `.tvdb-search-results`,
-  `.tvdb-result-card`, `.tvdb-selected-card`, `.tvdb-poster-frame`,
-  `.tvdb-poster-placeholder`, `.tvdb-match-title`, `.tvdb-match-meta`,
-  `.tvdb-match-overview`, and the top-search-compatible `.tvdb-search-box`.
+- Manual TMDB search uses `.tmdb-dialog`, `.tmdb-search-results`,
+  `.tmdb-result-card`, `.tmdb-selected-card`, `.tmdb-poster-frame`,
+  `.tmdb-poster-placeholder`, `.tmdb-match-title`, `.tmdb-match-meta`,
+  `.tmdb-match-overview`, and the top-search-compatible `.tmdb-search-box`.
   Results are visual rows with a poster/placeholder, metadata, short overview,
   and a select action; no-result and initial states use one centered
-  `.tvdb-empty-state`; loading and errors stay inside the dialog instead of
+  `.tmdb-empty-state`; loading and errors stay inside the dialog instead of
   blocking the scan table.
-  The elastic title input may be paired with compact `.tvdb-search-year` and
-  `.tvdb-search-id` standard text fields. Both are optional, digits-only
-  refinements: year maps to TVDB's four-digit `year` filter, while an ID takes
-  priority and performs an exact TVDB record lookup. These fields reuse the
+  The elastic title input may be paired with compact `.tmdb-search-year` and
+  `.tmdb-search-id` standard text fields. Both are optional, digits-only
+  refinements: year maps to TMDB's four-digit `year` filter, while an ID takes
+  priority and performs an exact TMDB record lookup. These fields reuse the
   existing text-field tokens and states; they add no color or spacing token.
 - Blocking work uses the in-shell overlays, not a window: `.app-loader-overlay`
   + `.app-loader-card` for analysis, and `.prereq-overlay` + `.prereq-card` for

@@ -25,7 +25,7 @@ public final class ScanReviewMapper {
         Objects.requireNonNull(row, "row");
         return new ReviewItem(
                 row.sourcePath(),
-                row.tvdbMatch().or(row::proposedFilename),
+                row.tmdbMatch().or(row::proposedFilename),
                 matchState(row),
                 row.confidence(),
                 row.isIgnored(),
@@ -38,7 +38,7 @@ public final class ScanReviewMapper {
             return ReviewMatchState.IGNORED;
         }
         ReviewMatchState state = switch (row.status()) {
-            case OK, TVDB -> ReviewMatchState.READY;
+            case OK, TMDB -> ReviewMatchState.READY;
             case REVIEW, LOW_CONFIDENCE, TYPE, PATTERN, META -> ReviewMatchState.NEEDS_REVIEW;
             case CONFLICT -> ReviewMatchState.CONFLICT;
             case DUPLICATE -> ReviewMatchState.DUPLICATE;

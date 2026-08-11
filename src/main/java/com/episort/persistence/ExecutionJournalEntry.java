@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /**
  * One recorded execution run. Deliberately holds counts and paths only — never
- * credentials, tokens, or TVDB metadata.
+ * credentials, tokens, or TMDB metadata.
  */
 public record ExecutionJournalEntry(
         UUID runId,

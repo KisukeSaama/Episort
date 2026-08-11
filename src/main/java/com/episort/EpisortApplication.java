@@ -1,10 +1,8 @@
 package com.episort;
 
-import com.episort.config.EmbeddedTvdbCredentialsProvider;
+import com.episort.config.JanusConfigurationProvider;
 import com.episort.config.FileSettingsStore;
-import com.episort.config.FileTvdbCredentialStore;
-import com.episort.config.SafeTvdbCredentialsProvider;
-import com.episort.config.TvdbCredentials;
+import com.episort.config.JanusConfiguration;
 import com.episort.persistence.FileExecutionJournal;
 import com.episort.persistence.FileRunEventStore;
 import com.episort.persistence.RunEvent;
@@ -14,15 +12,11 @@ import com.episort.persistence.RunEventType;
 import com.episort.scanner.InventoryScanResult;
 import com.episort.scanner.InventorySummary;
 import com.episort.scanner.MediaInventoryScanner;
-import com.episort.tvdb.CachedTvdbClient;
-import com.episort.tvdb.HttpTvdbClient;
-import com.episort.tvdb.HttpTvdbConnectionTester;
-import com.episort.tvdb.TvdbClient;
-import com.episort.tvdb.cache.TvdbResponseCache;
-import com.episort.tvdb.debug.TvdbRequestBus;
-import com.episort.tvdb.debug.TvdbRequestTrace;
-import com.episort.tvdb.guard.TvdbRateLimitGuard;
-import com.episort.tvdb.guard.TvdbRequestScheduler;
+import com.episort.tmdb.HttpTmdbClient;
+import com.episort.tmdb.HttpTmdbConnectionTester;
+import com.episort.tmdb.TmdbClient;
+import com.episort.tmdb.debug.TmdbRequestBus;
+import com.episort.tmdb.debug.TmdbRequestTrace;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.AppShell;
 import com.episort.ui.AppShellViewModel;
@@ -36,10 +30,10 @@ import com.episort.workflow.InventoryWorkflowService;
 import com.episort.workflow.ScanCancellation;
 import com.episort.workflow.ScanCancelledException;
 import com.episort.workflow.StartupWorkflow;
-import com.episort.workflow.TvdbBatchMatchResult;
-import com.episort.workflow.TvdbBatchMatchService;
-import com.episort.workflow.TvdbCredentialConfigurationResult;
-import com.episort.workflow.TvdbCredentialConfigurationService;
+import com.episort.workflow.TmdbBatchMatchResult;
+import com.episort.workflow.TmdbBatchMatchService;
+import com.episort.workflow.TmdbGatewayStatus;
+import com.episort.workflow.TmdbGatewayService;
 import com.episort.workflow.WorkspaceConfigurationService;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -78,35 +72,27 @@ public class EpisortApplication extends Application {
     private final AtomicReference<ScanCancellation> activeScan =
             new AtomicReference<>();
 
-    private final TvdbResponseCache tvdbCache = TvdbResponseCache.userProfileCache();
-    private final TvdbRateLimitGuard tvdbGuard = new TvdbRateLimitGuard();
-    private final TvdbRequestScheduler tvdbRequestScheduler = new TvdbRequestScheduler();
-    private final TvdbClient tvdbClient = new CachedTvdbClient(
-            new HttpTvdbClient(tvdbRequestScheduler), tvdbCache, tvdbGuard);
-    private final TvdbBatchMatchService tvdbBatchMatchService = new TvdbBatchMatchService(tvdbClient);
-    private Supplier<Optional<TvdbCredentials>> tvdbCredentialsSupplier = Optional::empty;
+    private final TmdbClient tmdbClient = new HttpTmdbClient();
+    private final TmdbBatchMatchService tmdbBatchMatchService = new TmdbBatchMatchService(tmdbClient);
+    private Supplier<Optional<JanusConfiguration>> tmdbCredentialsSupplier = Optional::empty;
 
     @Override
     public void start(Stage stage) {
         FileSettingsStore settingsStore = settingsStoreEarly;
-        FileTvdbCredentialStore tvdbCredentialStore = FileTvdbCredentialStore.userProfileStore();
-        SafeTvdbCredentialsProvider credentialsProvider = new SafeTvdbCredentialsProvider(
-                EmbeddedTvdbCredentialsProvider::load, tvdbCredentialStore::load);
-        tvdbCredentialsSupplier = credentialsProvider::load;
+        Optional<JanusConfiguration> janusConfiguration = JanusConfigurationProvider.load();
+        tmdbCredentialsSupplier = () -> janusConfiguration;
         StartupWorkflow startupWorkflow = new StartupWorkflow(
                 new WorkspaceConfigurationService(settingsStore),
-                new TvdbCredentialConfigurationService(
-                        tvdbCredentialStore,
-                        new HttpTvdbConnectionTester(tvdbRequestScheduler)));
-        TvdbCredentialConfigurationResult tvdbConfiguration = EmbeddedTvdbCredentialsProvider.load()
-                .map(startupWorkflow::configureAndTestTvdb)
-                .orElseGet(startupWorkflow::loadTvdbConfiguration);
+                janusConfiguration
+                        .map(configuration -> new TmdbGatewayService(configuration, new HttpTmdbConnectionTester()))
+                        .orElse(null));
+        TmdbGatewayStatus tmdbConfiguration = startupWorkflow.loadTmdbConfiguration();
         AppLanguage resolvedLanguage = settingsStore.loadLanguage()
                 .map(EpisortApplication::parseLanguage)
                 .orElseGet(AppLanguage::detectFromOs);
         AppShellViewModel viewModel = AppShellViewModel.fromStartupPrerequisites(
                         startupWorkflow.loadWorkspaceConfiguration(),
-                        tvdbConfiguration)
+                        tmdbConfiguration)
                 .withLanguage(resolvedLanguage);
         RunEventStore runEventStore = FileRunEventStore.userProfileStore();
         AppShell appShell = new AppShell(
@@ -114,12 +100,11 @@ public class EpisortApplication extends Application {
                 workspace -> AppShellViewModel.fromWorkspaceConfiguration(
                         startupWorkflow.configureWorkspace(workspace)),
                 inputFolder -> scanInputFolder(startupWorkflow, inputFolder, runEventStore),
-                tvdbConfiguration,
+                tmdbConfiguration,
                 () -> startupWorkflow.loadWorkspaceConfiguration().settings().workspaceDirectory(),
                 () -> startupWorkflow.loadWorkspaceConfiguration().success(),
                 () -> {},
                 runEventStore,
-                tvdbCache::clear,
                 getHostServices()::showDocument);
         this.appShellRef = appShell;
         appShell.setScanCancelHandler(this::cancelActiveScan);
@@ -147,7 +132,7 @@ public class EpisortApplication extends Application {
         stage.requestFocus();
         appShell.setLanguageChangeListener(language -> settingsStore.saveLanguage(language.name()));
         WindowsTitleBar.applyDarkMode(stage);
-        appShell.scanScreen().setTvdbLookup(tvdbClient, tvdbCredentialsSupplier);
+        appShell.scanScreen().setTmdbLookup(tmdbClient, tmdbCredentialsSupplier);
     }
 
     private static void installWindowShape(
@@ -192,7 +177,7 @@ public class EpisortApplication extends Application {
 
     /**
      * Opens a fresh cancellation scope for an analysis, cancelling whatever run
-     * was still in flight so a superseded pipeline stops burning TVDB calls.
+     * was still in flight so a superseded pipeline stops burning TMDB calls.
      */
     private ScanCancellation beginScan() {
         ScanCancellation cancellation = ScanCancellation.none();
@@ -226,7 +211,7 @@ public class EpisortApplication extends Application {
                     InventoryScanResult scanResult = new InventoryScanResult(result.items(), result.groups(), result.summary());
                     cancellation.throwIfCancelled();
                     setScanWorkflowPhase(WorkflowPhase.ANALYSIS, true);
-                    TvdbBatchMatchResult batchResult = runTvdbBatch(scanResult, cancellation);
+                    TmdbBatchMatchResult batchResult = runTmdbBatch(scanResult, cancellation);
                     cancellation.throwIfCancelled();
                     recordScanCompleted(runEventStore, workspace, selectedFolder, scanResult);
                     pushPostScanResultsAfterApply(batchResult);
@@ -262,7 +247,7 @@ public class EpisortApplication extends Application {
                             : workspace.orElse(selectedSources.getFirst().getParent());
                     cancellation.throwIfCancelled();
                     setScanWorkflowPhase(WorkflowPhase.ANALYSIS, true);
-                    TvdbBatchMatchResult batchResult = runTvdbBatch(scanResult, cancellation);
+                    TmdbBatchMatchResult batchResult = runTmdbBatch(scanResult, cancellation);
                     cancellation.throwIfCancelled();
                     recordScanCompleted(runEventStore, workspace, subject, scanResult);
                     pushPostScanResultsAfterApply(batchResult);
@@ -301,7 +286,7 @@ public class EpisortApplication extends Application {
                 base.language());
     }
 
-    private void pushPostScanResultsAfterApply(TvdbBatchMatchResult batchResult) {
+    private void pushPostScanResultsAfterApply(TmdbBatchMatchResult batchResult) {
         AppShell shell = appShellRef;
         if (shell == null) return;
         // Outer runLater ensures we are on the JFX thread; inner runLater
@@ -310,41 +295,41 @@ public class EpisortApplication extends Application {
         Platform.runLater(
                 () -> Platform.runLater(() -> {
                     if (batchResult != null) {
-                        shell.scanScreen().applyTvdbBatchResult(batchResult);
+                        shell.scanScreen().applyTmdbBatchResult(batchResult);
                     }
                     shell.scanScreen().setWorkflowPhase(
                             WorkflowPhase.PLAN_REVIEW, false);
                 }));
     }
 
-    private TvdbBatchMatchResult runTvdbBatch(
+    private TmdbBatchMatchResult runTmdbBatch(
             InventoryScanResult scanResult, ScanCancellation cancellation) {
         cancellation.throwIfCancelled();
-        Optional<TvdbCredentials> credentials = tvdbCredentialsSupplier.get();
+        Optional<JanusConfiguration> credentials = tmdbCredentialsSupplier.get();
         if (credentials.isEmpty()) {
-            publishBatchInfo("skipped: no TVDB credentials available");
-            return TvdbBatchMatchResult.empty();
+            publishBatchInfo("skipped: no TMDB credentials available");
+            return TmdbBatchMatchResult.empty();
         }
-        setScanWorkflowPhase(WorkflowPhase.TVDB_MATCHES, true);
-        updateLoadingTextForTvdb();
+        setScanWorkflowPhase(WorkflowPhase.TMDB_MATCHES, true);
+        updateLoadingTextForTmdb();
         try {
-            return tvdbBatchMatchService.run(scanResult, credentials.orElseThrow(),
+            return tmdbBatchMatchService.run(scanResult, credentials.orElseThrow(),
                     (done, total) -> {
                         cancellation.throwIfCancelled();
-                        updateLoadingForTvdbProgress(done, total);
+                        updateLoadingForTmdbProgress(done, total);
                     });
         } catch (ScanCancelledException cancelled) {
             throw cancelled;
         } catch (RuntimeException ex) {
             publishBatchInfo("aborted: " + ex.getClass().getSimpleName()
                     + (ex.getMessage() == null ? "" : " - " + ex.getMessage()));
-            return TvdbBatchMatchResult.empty();
+            return TmdbBatchMatchResult.empty();
         }
     }
 
     private static void publishBatchInfo(String message) {
         try {
-            TvdbRequestBus.get().publish(new TvdbRequestTrace(
+            TmdbRequestBus.get().publish(new TmdbRequestTrace(
                     Instant.now(), "BATCH", "pre-run", 0, 0L, message, null, false));
         } catch (RuntimeException ignored) {
             // ignore
@@ -357,23 +342,23 @@ public class EpisortApplication extends Application {
         Platform.runLater(() -> shell.scanScreen().setWorkflowPhase(phase, inProgress));
     }
 
-    private void updateLoadingTextForTvdb() {
+    private void updateLoadingTextForTmdb() {
         AppShell shell = appShellRef;
         if (shell == null) return;
         AppLanguage language = shell.currentLanguage();
         Platform.runLater(() -> {
-            shell.updateLoadingText(UiText.loadingScanTvdb(language));
+            shell.updateLoadingText(UiText.loadingScanTmdb(language));
             shell.setLoadingProgress(0.0);
         });
     }
 
-    private void updateLoadingForTvdbProgress(int done, int total) {
+    private void updateLoadingForTmdbProgress(int done, int total) {
         AppShell shell = appShellRef;
         if (shell == null || total <= 0) return;
         AppLanguage language = shell.currentLanguage();
         double progress = (double) done / (double) total;
         Platform.runLater(() -> {
-            shell.updateLoadingText(UiText.loadingScanTvdb(language));
+            shell.updateLoadingText(UiText.loadingScanTmdb(language));
             shell.setLoadingProgress(progress);
         });
     }

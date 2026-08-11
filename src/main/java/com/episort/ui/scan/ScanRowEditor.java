@@ -27,7 +27,7 @@ final class ScanRowEditor {
      * The value a role column displays.
      *
      * <p>Series/season/episode are meaningless for a movie, and the year is
-     * meaningless for an episode (series ordering is owned by TVDB downstream),
+     * meaningless for an episode (series ordering is owned by TMDB downstream),
      * so those combinations read blank rather than stale.
      */
     static String roleValue(ScanRow row, ScanInputRole role) {
@@ -75,7 +75,7 @@ final class ScanRowEditor {
      * derived state: a blank value removes the token, season/episode edits
      * recompute the normalized order, and the proposed name follows.
      *
-     * <p>The parse is re-sourced to {@code USER} so later TVDB metadata does not
+     * <p>The parse is re-sourced to {@code USER} so later TMDB metadata does not
      * silently overwrite what the user typed.
      */
     static void applyTokenEdit(ScanRow row, ScanInputRole role, String value) {
@@ -113,13 +113,13 @@ final class ScanRowEditor {
                 });
     }
 
-    /** Clears every value derived from a TVDB match for all targeted rows. */
-    static void resetTvdbMatches(List<ScanRow> rows) {
+    /** Clears every value derived from a TMDB match for all targeted rows. */
+    static void resetTmdbMatches(List<ScanRow> rows) {
         for (ScanRow row : rows) {
-            row.setTvdbMatch(Optional.empty());
-            row.setTvdbCandidate(Optional.empty());
-            row.setTvdbSelectedByUser(false);
-            row.setAppliedTvdbOrder(Optional.empty());
+            row.setTmdbMatch(Optional.empty());
+            row.setTmdbCandidate(Optional.empty());
+            row.setTmdbSelectedByUser(false);
+            row.setAppliedTmdbOrder(Optional.empty());
             row.setOrder(Optional.empty());
             row.setProposedFilename(Optional.empty());
             row.setDestination(Optional.empty());

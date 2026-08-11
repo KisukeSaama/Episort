@@ -3,10 +3,10 @@ package com.episort.ui.scan;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.episort.tvdb.OptionalDoubleScore;
-import com.episort.tvdb.TvdbCandidate;
-import com.episort.tvdb.TvdbIdentity;
-import com.episort.tvdb.TvdbMediaType;
+import com.episort.tmdb.OptionalDoubleScore;
+import com.episort.tmdb.TmdbCandidate;
+import com.episort.tmdb.TmdbIdentity;
+import com.episort.tmdb.TmdbMediaType;
 import java.nio.file.Path;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -16,19 +16,19 @@ class RowDetailPanelTest {
     @Test
     void existingAutomaticMatchIsReappliedInsteadOfTreatedAsFreshSearchSelection() {
         ScanRow row = row();
-        row.setTvdbMatch(Optional.of("Detective Conan [TVDB conan]"));
-        row.setTvdbCandidate(Optional.of(candidate()));
+        row.setTmdbMatch(Optional.of("Detective Conan [TMDB conan]"));
+        row.setTmdbCandidate(Optional.of(candidate()));
 
-        assertTrue(RowDetailPanel.isApplyingExistingMatch(row, "Detective Conan [TVDB conan]"));
+        assertTrue(RowDetailPanel.isApplyingExistingMatch(row, "Detective Conan [TMDB conan]"));
     }
 
     @Test
     void aDifferentSearchSelectionStillUsesFreshCandidateFlow() {
         ScanRow row = row();
-        row.setTvdbMatch(Optional.of("Detective Conan [TVDB conan]"));
-        row.setTvdbCandidate(Optional.of(candidate()));
+        row.setTmdbMatch(Optional.of("Detective Conan [TMDB conan]"));
+        row.setTmdbCandidate(Optional.of(candidate()));
 
-        assertFalse(RowDetailPanel.isApplyingExistingMatch(row, "Case Closed [TVDB other]"));
+        assertFalse(RowDetailPanel.isApplyingExistingMatch(row, "Case Closed [TMDB other]"));
     }
 
     private static ScanRow row() {
@@ -37,12 +37,12 @@ class RowDetailPanelTest {
                 "Detective.Conan.S01E01.mkv",
                 "MKV",
                 ScanMediaType.SERIES,
-                ScanRowStatus.TVDB);
+                ScanRowStatus.TMDB);
     }
 
-    private static TvdbCandidate candidate() {
-        return new TvdbCandidate(
-                new TvdbIdentity("conan", TvdbMediaType.SERIES, "Detective Conan"),
+    private static TmdbCandidate candidate() {
+        return new TmdbCandidate(
+                new TmdbIdentity("conan", TmdbMediaType.SERIES, "Detective Conan"),
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),

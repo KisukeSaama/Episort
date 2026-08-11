@@ -335,7 +335,7 @@ public final class FilenameParser {
      * an episode: "Le Flic de Hong Kong 2 (1985)" is a film whose title ends on
      * a 2. Reading it as episode 2 stripped the number from the title, so a film
      * and its sequel parsed to the same title, landed in one group, and the
-     * review screen offered a single TVDB identity for both.
+     * review screen offered a single TMDB identity for both.
      *
      * <p>Two shapes qualify, both deliberately narrow so that absolute anime
      * numbering keeps working: the number immediately precedes the year
@@ -510,7 +510,7 @@ public final class FilenameParser {
             } else if (!value.episodes().isEmpty()) {
                 // Season 1 is the least-surprising assumption, but it stays an
                 // assumption: the warning is what keeps it reviewable, and the
-                // absolute number is preserved for TVDB absolute ordering.
+                // absolute number is preserved for TMDB absolute ordering.
                 season = 1;
                 builder.warn(ParseWarning.ASSUMED_SEASON);
             }

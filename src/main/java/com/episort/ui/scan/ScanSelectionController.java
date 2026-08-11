@@ -31,7 +31,7 @@ final class ScanSelectionController {
     /**
      * What the controller needs from the screen. Deliberately granular: the
      * combination of calls differs per gesture (a de-selection repaints the
-     * detail panel but does not re-count TVDB targets), and collapsing them
+     * detail panel but does not re-count TMDB targets), and collapsing them
      * would quietly change behaviour.
      */
     interface Host {
@@ -39,13 +39,13 @@ final class ScanSelectionController {
 
         void showDetail(ScanRow row);
 
-        /** How many rows a TVDB action anchored on this row would touch. */
+        /** How many rows a TMDB action anchored on this row would touch. */
         int targetCount(ScanRow anchor);
 
         /** Publishes that count to the detail panel. */
         void setTargetCount(int count);
 
-        /** Fetches TVDB candidates for a row the user just clicked. */
+        /** Fetches TMDB candidates for a row the user just clicked. */
         void loadCandidates(ScanRow row);
 
         void onSelectAllStateChanged(boolean hasSelectableRows, boolean allSelected);

@@ -12,10 +12,10 @@ class SecretRedactorTest {
         SecretRedactor redactor = new SecretRedactor();
 
         String redacted = redactor.redact(
-                "apiKey=abc123 subscriberPin=9999 Authorization: Bearer ey.secret.token token=raw-token password=hidden");
+                "apiKey=abc123 readAccessToken=read-secret Authorization: Bearer ey.secret.token token=raw-token password=hidden");
 
         assertFalse(redacted.contains("abc123"));
-        assertFalse(redacted.contains("9999"));
+        assertFalse(redacted.contains("read-secret"));
         assertFalse(redacted.contains("ey.secret.token"));
         assertFalse(redacted.contains("raw-token"));
         assertFalse(redacted.contains("hidden"));
@@ -27,10 +27,10 @@ class SecretRedactorTest {
         SecretRedactor redactor = new SecretRedactor();
 
         String redacted = redactor.redact(
-                "{\"apiKey\":\"abc123\",\"subscriberPin\":\"9999\",\"token\":\"raw-token\",\"authorization\":\"Bearer ey.secret.token\"}");
+                "{\"apiKey\":\"abc123\",\"readAccessToken\":\"read-secret\",\"token\":\"raw-token\",\"authorization\":\"Bearer ey.secret.token\"}");
 
         assertFalse(redacted.contains("abc123"));
-        assertFalse(redacted.contains("9999"));
+        assertFalse(redacted.contains("read-secret"));
         assertFalse(redacted.contains("raw-token"));
         assertFalse(redacted.contains("ey.secret.token"));
         assertTrue(redacted.contains("[REDACTED]"));

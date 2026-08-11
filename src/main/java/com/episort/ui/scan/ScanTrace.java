@@ -1,12 +1,12 @@
 package com.episort.ui.scan;
 
-import com.episort.tvdb.debug.TvdbRequestBus;
-import com.episort.tvdb.debug.TvdbRequestTrace;
+import com.episort.tmdb.debug.TmdbRequestBus;
+import com.episort.tmdb.debug.TmdbRequestTrace;
 import java.time.Instant;
 
 /**
  * Developer-only diagnostics for the scan screen, published on the shared
- * {@link TvdbRequestBus} so the debug view shows business events next to the
+ * {@link TmdbRequestBus} so the debug view shows business events next to the
  * HTTP traffic that caused them.
  *
  * <p>Every publish is best-effort: a failing trace must never affect the scan
@@ -17,7 +17,7 @@ final class ScanTrace {
     private ScanTrace() {
     }
 
-    /** Why a batch TVDB apply touched the rows it did — or touched none. */
+    /** Why a batch TMDB apply touched the rows it did — or touched none. */
     static void publishApply(int totalRows, int rowsWithGroup, int matches, int rowsApplied, String detail) {
         publish("APPLY", "scan-table", "totalRows=" + totalRows
                 + "  rowsWithGroup=" + rowsWithGroup
@@ -64,8 +64,8 @@ final class ScanTrace {
 
     private static void publish(String method, String path, String body) {
         try {
-            TvdbRequestBus.get().publish(
-                    new TvdbRequestTrace(Instant.now(), method, path, 0, 0L, body, null, false));
+            TmdbRequestBus.get().publish(
+                    new TmdbRequestTrace(Instant.now(), method, path, 0, 0L, body, null, false));
         } catch (RuntimeException ignored) {
             // Developer-only diagnostics must never affect the scan workflow.
         }

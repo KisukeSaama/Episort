@@ -104,7 +104,7 @@ class UiTextTest {
                     UiText.sidebarSectionWorkspace(language),
                     UiText.detailSectionSource(language),
                     UiText.detailSectionDetection(language),
-                    UiText.detailSectionTvdb(language),
+                    UiText.detailSectionTmdb(language),
                     UiText.detailSectionDestination(language),
                     UiText.detailSectionNotes(language),
                     UiText.aboutSectionPipeline(language),

@@ -28,7 +28,7 @@ public final class ReleaseTagLexer {
     private static final List<Rule> RULES = List.of(
             // Checksums and site stamps first: they are unambiguous and often wrap other tokens.
             new Rule(TagKind.CHECKSUM, Pattern.compile("\\[[0-9A-Fa-f]{8}\\]")),
-            new Rule(TagKind.CHECKSUM, Pattern.compile("(?i)\\{(?:tmdb|imdb|tvdb)-[a-z0-9]+\\}")),
+            new Rule(TagKind.CHECKSUM, Pattern.compile("(?i)\\{(?:tmdb|imdb|tmdb)-[a-z0-9]+\\}")),
             new Rule(TagKind.WEBSITE, Pattern.compile(
                     "(?i)(?:\\[|\\()?www\\.[a-z0-9-]+\\.[a-z]{2,6}(?:\\]|\\))?(?:\\s*-\\s*)?")),
             new Rule(TagKind.WEBSITE, Pattern.compile(

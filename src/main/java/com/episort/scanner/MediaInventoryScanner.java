@@ -110,7 +110,7 @@ public final class MediaInventoryScanner {
                     title.isBlank() ? removeExtension(item.filename()) : title);
             // A numbered season-zero title can legitimately contain "Extra"
             // (for example Initial D's "Extra Stage"). Keep it in the series
-            // review flow so the user can choose its TVDB special; only
+            // review flow so the user can choose its TMDB special; only
             // unnumbered bonus material is implicitly ignored.
             case EXTRA -> parsed.hasEpisode() && hasAmbiguousExtraTitle(parsed)
                     ? new GroupSeed(InventoryGroupType.LIKELY_SERIES,

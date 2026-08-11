@@ -5,7 +5,7 @@ public enum AnalysisStatus {
     OK,
     REVIEW,
     LOW_CONFIDENCE,
-    TVDB,
+    TMDB,
     TYPE,
     EXT,
     PATTERN,

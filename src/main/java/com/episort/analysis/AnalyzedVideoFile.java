@@ -26,7 +26,7 @@ public final class AnalyzedVideoFile {
     private String releaseGroup;
     private String proposedName;
     private String proposedDestinationPath;
-    private TvdbOrder tvdbOrder = TvdbOrder.TO_DEFINE;
+    private TmdbOrder tmdbOrder = TmdbOrder.TO_DEFINE;
     private OptionalDouble confidence = OptionalDouble.empty();
     private AnalysisStatus status = AnalysisStatus.REVIEW;
     private boolean reviewRequired;
@@ -57,7 +57,7 @@ public final class AnalyzedVideoFile {
     public Optional<String> releaseGroup() { return optional(releaseGroup); }
     public Optional<String> proposedName() { return optional(proposedName); }
     public Optional<String> proposedDestinationPath() { return optional(proposedDestinationPath); }
-    public TvdbOrder tvdbOrder() { return tvdbOrder; }
+    public TmdbOrder tmdbOrder() { return tmdbOrder; }
     public OptionalDouble confidence() { return confidence; }
     public AnalysisStatus status() { return status; }
     public List<String> statusReasons() { return List.copyOf(statusReasons); }
@@ -90,7 +90,7 @@ public final class AnalyzedVideoFile {
             case RELEASE_GROUP -> releaseGroup = string(value);
             case PROPOSED_NAME -> proposedName = fileNameOnly(string(value));
             case PROPOSED_DESTINATION_PATH -> proposedDestinationPath = string(value);
-            case TVDB_ORDER -> tvdbOrder = value instanceof TvdbOrder order ? order : tvdbOrder;
+            case TMDB_ORDER -> tmdbOrder = value instanceof TmdbOrder order ? order : tmdbOrder;
             case CONFIDENCE -> confidence = value instanceof Number number
                     ? OptionalDouble.of(number.doubleValue())
                     : OptionalDouble.empty();
@@ -159,7 +159,7 @@ public final class AnalyzedVideoFile {
     private static int priority(FieldSource source) {
         return switch (source) {
             case USER -> 4;
-            case TVDB -> 3;
+            case TMDB -> 3;
             case HEURISTIC -> 1;
             case UNKNOWN -> 0;
         };

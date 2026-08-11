@@ -22,7 +22,7 @@ class ArchitectureBoundaryTest {
                 "scanner",
                 "matching",
                 "planning",
-                "tvdb",
+                "tmdb",
                 "analysis",
                 "persistence",
                 "logging",

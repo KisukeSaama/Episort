@@ -7,6 +7,7 @@ public final class SecretRedactor {
     private static final String REDACTED = "$1[REDACTED]";
     private final List<Pattern> patterns = List.of(
             Pattern.compile("(?i)(api[-_ ]?key\"?\\s*[=:]\\s*\"?)\\S+?(\")?(?=\\s|,|}|$)"),
+            Pattern.compile("(?i)((?:tmdb[-_ ]?api[-_ ]?)?read[-_ ]?access[-_ ]?token\"?\\s*[=:]\\s*\"?)\\S+?(\")?(?=\\s|,|}|$)"),
             Pattern.compile("(?i)(subscriber[-_ ]?pin\"?\\s*[=:]\\s*\"?)\\S+?(\")?(?=\\s|,|}|$)"),
             Pattern.compile("(?i)(password\"?\\s*[=:]\\s*\"?)\\S+?(\")?(?=\\s|,|}|$)"),
             Pattern.compile("(?i)(authorization\\s*:\\s*bearer\\s+)\\S+"),

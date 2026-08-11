@@ -5,7 +5,7 @@ public enum ScanRowStatus {
     OK,
     REVIEW,
     LOW_CONFIDENCE,
-    TVDB,
+    TMDB,
     TYPE,
     EXT,
     PATTERN,

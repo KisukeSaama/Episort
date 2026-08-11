@@ -159,7 +159,7 @@ public final class OperationPlanner {
      * Two files that are the same episode or the same movie are both blocked,
      * even when their names — and therefore their destinations — differ.
      *
-     * <p>Without this, a copy that TVDB matched to an episode title and a copy
+     * <p>Without this, a copy that TMDB matched to an episode title and a copy
      * that did not each get a valid destination of their own, and the library
      * quietly ends up storing the same episode twice.
      */

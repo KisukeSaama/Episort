@@ -3,7 +3,6 @@ package com.episort.ui;
 import com.episort.BuildInfo;
 import com.episort.persistence.FileExecutionJournal;
 import com.episort.persistence.FileRunEventStore;
-import com.episort.tvdb.cache.TvdbResponseCache;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -11,6 +10,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -60,7 +60,7 @@ public final class AboutPane {
     private final VBox root;
     private final VBox narrative;
     private final VBox factPanel;
-    private final Label attribution;
+    private final Region attribution;
     private final Label credits;
     private final VBox bodyHost;
     private final VBox footerNotesHost;
@@ -73,12 +73,12 @@ public final class AboutPane {
         back.setOnAction(event -> onBack.run());
 
         Label title = new Label(UiText.menuAbout(language));
-        title.getStyleClass().add("tvdb-dialog-title");
+        title.getStyleClass().add("tmdb-dialog-title");
 
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
         HBox header = new HBox(10, back, title, headerSpacer);
-        header.getStyleClass().add("tvdb-dialog-header");
+        header.getStyleClass().add("tmdb-dialog-header");
         header.setAlignment(Pos.CENTER_LEFT);
 
         narrative = narrativeColumn(language);
@@ -87,7 +87,7 @@ public final class AboutPane {
         bodyHost = new VBox();
         bodyHost.getStyleClass().add("about-body-host");
 
-        attribution = note(UiText.aboutTvdbAttribution(language));
+        attribution = tmdbAttribution(UiText.aboutTmdbAttribution(language));
         credits = note(UiText.aboutFonts(language));
         footerNotesHost = new VBox();
 
@@ -230,9 +230,7 @@ public final class AboutPane {
                 pathField(UiText.aboutPathRunHistory(language),
                         read(() -> FileRunEventStore.userProfileStore().logFilePath())),
                 pathField(UiText.aboutPathJournal(language),
-                        read(() -> FileExecutionJournal.userProfileJournal().location())),
-                pathField(UiText.aboutPathTvdbCache(language),
-                        read(() -> TvdbResponseCache.userProfileCache().cacheFile())));
+                        read(() -> FileExecutionJournal.userProfileJournal().location())));
         return new VBox(10, heading(UiText.aboutSectionData(language)), paths);
     }
 
@@ -248,6 +246,22 @@ public final class AboutPane {
         label.setWrapText(true);
         label.setMaxWidth(PROSE_WIDTH);
         return label;
+    }
+
+    private static Region tmdbAttribution(String text) {
+        ImageView logo = new ImageView(new Image(java.util.Objects.requireNonNull(
+                AboutPane.class.getResource("/assets/tmdb-logo-dark.png"),
+                "Missing TMDB attribution logo").toExternalForm()));
+        logo.setFitWidth(74);
+        logo.setFitHeight(54);
+        logo.setPreserveRatio(true);
+        logo.setAccessibleText("TMDB");
+        Label notice = note(text);
+        HBox row = new HBox(14, logo, notice);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("tmdb-attribution");
+        HBox.setHgrow(notice, Priority.ALWAYS);
+        return row;
     }
 
     /** Short known values: name in a fixed gutter, values aligned down the panel. */

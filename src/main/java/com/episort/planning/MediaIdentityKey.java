@@ -13,7 +13,7 @@ import java.util.OptionalInt;
  * they are named.
  *
  * <p>Comparing destination paths is not enough: the very same episode carries a
- * different file name depending on whether TVDB gave up an episode title, so two
+ * different file name depending on whether TMDB gave up an episode title, so two
  * copies of one episode can each get a valid, distinct destination and land side
  * by side — doubling the space the library takes. This key is what the planner
  * compares instead.

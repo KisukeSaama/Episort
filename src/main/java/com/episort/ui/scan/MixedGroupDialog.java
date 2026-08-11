@@ -19,7 +19,7 @@ import javafx.stage.StageStyle;
 import javafx.stage.Window;
 
 /**
- * Asked before a single TVDB identity is applied to a selection that spans more
+ * Asked before a single TMDB identity is applied to a selection that spans more
  * than one detected group.
  *
  * <p>Selecting the whole table and applying one match is the natural gesture
@@ -51,11 +51,11 @@ final class MixedGroupDialog {
         stage.setTitle(UiText.scanGroupMixedTitle(language));
 
         Label title = new Label(UiText.scanGroupMixedTitle(language));
-        title.getStyleClass().add("tvdb-dialog-title");
+        title.getStyleClass().add("tmdb-dialog-title");
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
         HBox header = new HBox(10, title, headerSpacer);
-        header.getStyleClass().add("tvdb-dialog-header");
+        header.getStyleClass().add("tmdb-dialog-header");
         header.setAlignment(Pos.CENTER_LEFT);
         header.setOnMousePressed(event -> {
             dragOffsetX = event.getSceneX();
@@ -67,7 +67,7 @@ final class MixedGroupDialog {
         });
 
         Label message = new Label(UiText.scanGroupMixedMessage(language));
-        message.getStyleClass().add("tvdb-dialog-message");
+        message.getStyleClass().add("tmdb-dialog-message");
         message.setWrapText(true);
 
         VBox groups = new VBox(4);
@@ -75,7 +75,7 @@ final class MixedGroupDialog {
             Label groupName = new Label(name);
             groupName.getStyleClass().setAll("group-name", "group-name-head");
             Label countLabel = new Label(count + " " + UiText.scanGroupFiles(language));
-            countLabel.getStyleClass().add("tvdb-dialog-message");
+            countLabel.getStyleClass().add("tmdb-dialog-message");
             HBox line = new HBox(10, groupName, countLabel);
             line.setAlignment(Pos.CENTER_LEFT);
             groups.getChildren().add(line);
@@ -100,10 +100,10 @@ final class MixedGroupDialog {
         javafx.scene.control.ScrollPane groupScroll = new javafx.scene.control.ScrollPane(groups);
         groupScroll.setFitToWidth(true);
         groupScroll.setMaxHeight(180);
-        groupScroll.getStyleClass().add("tvdb-search-results");
+        groupScroll.getStyleClass().add("tmdb-search-results");
 
         VBox body = new VBox(14, header, message, groupScroll, footer);
-        body.getStyleClass().add("tvdb-dialog");
+        body.getStyleClass().add("tmdb-dialog");
         body.setPadding(new Insets(18));
 
         Scene scene = new Scene(body, 620, 340);

@@ -74,7 +74,7 @@ class ScanMetricsTest {
     void resolvedRowsDropOutOfToProcess() {
         ScanMetrics metrics = ScanMetrics.from(List.of(
                 row("a.mkv", ScanMediaType.SERIES, ScanRowStatus.OK),
-                row("b.mkv", ScanMediaType.SERIES, ScanRowStatus.TVDB),
+                row("b.mkv", ScanMediaType.SERIES, ScanRowStatus.TMDB),
                 row("c.mkv", ScanMediaType.SERIES, ScanRowStatus.REVIEW)));
 
         assertEquals(1, metrics.toProcess());

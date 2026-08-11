@@ -75,7 +75,7 @@ final class ScanRowTableSupport {
             case OK -> 0;
             case REVIEW -> 1;
             case LOW_CONFIDENCE -> 2;
-            case TVDB -> 3;
+            case TMDB -> 3;
             case TYPE -> 4;
             case EXT -> 5;
             case PATTERN -> 6;
@@ -100,9 +100,9 @@ final class ScanRowTableSupport {
     static boolean matchesStatusFilter(ScanRow row, ScanRowStatusFilter filter) {
         return switch (filter) {
             case ALL -> true;
-            case TO_PROCESS -> !row.isIgnored() && row.status() != ScanRowStatus.OK && row.status() != ScanRowStatus.TVDB;
+            case TO_PROCESS -> !row.isIgnored() && row.status() != ScanRowStatus.OK && row.status() != ScanRowStatus.TMDB;
             case OK -> !row.isIgnored() && row.status() == ScanRowStatus.OK;
-            case TVDB -> !row.isIgnored() && row.status() == ScanRowStatus.TVDB;
+            case TMDB -> !row.isIgnored() && row.status() == ScanRowStatus.TMDB;
             case CONFLICTS -> !row.isIgnored()
                     && (row.status() == ScanRowStatus.CONFLICT || row.status() == ScanRowStatus.DUPLICATE);
             case IGNORED -> row.isIgnored();

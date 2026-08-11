@@ -15,7 +15,7 @@ public final class ScanPatternFormatter {
 
     /**
      * Neutralizes the path separators a metadata value may legitimately contain
-     * — TVDB episode titles like {@code Makoto/Truth} are common. Left in a name
+     * — TMDB episode titles like {@code Makoto/Truth} are common. Left in a name
      * they would be read as a directory boundary and the row would end up
      * showing only the last segment. Other Windows-forbidden characters are
      * handled downstream by {@code WindowsPathSafety} when the plan is built.

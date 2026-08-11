@@ -17,29 +17,29 @@ class AnalysisPipelineServiceTest {
     private final AnalysisValidationService validation = new AnalysisValidationService();
 
     @Test
-    void preTvdbSeriesCanBeOkWithoutTvdbMatch() {
+    void preTmdbSeriesCanBeOkWithoutTmdbMatch() {
         AnalyzedVideoFile file = heuristics.analyze(item("Show.S01E02.Title.mkv", ".mkv"), InventoryGroupType.LIKELY_SERIES);
 
         rename.generate(file);
-        validation.validatePreTvdb(List.of(file));
+        validation.validatePreTmdb(List.of(file));
 
         assertEquals(AnalysisStatus.OK, file.status());
-        assertEquals(TvdbOrder.TO_DEFINE, file.tvdbOrder());
+        assertEquals(TmdbOrder.TO_DEFINE, file.tmdbOrder());
         assertEquals("Show - S01E02 - Title.mkv", file.proposedName().orElseThrow());
         assertContainsNoPathSeparator(file.proposedName().orElseThrow());
         assertTrue(file.proposedName().orElseThrow().endsWith(".mkv"));
-        assertFalse(file.statusReasons().stream().anyMatch(reason -> reason.contains("TVDB")));
+        assertFalse(file.statusReasons().stream().anyMatch(reason -> reason.contains("TMDB")));
     }
 
     @Test
-    void preTvdbMovieUsesNotApplicableOrder() {
+    void preTmdbMovieUsesNotApplicableOrder() {
         AnalyzedVideoFile file = heuristics.analyze(item("Movie.2024.mkv", ".mkv"), InventoryGroupType.LIKELY_MOVIE);
 
         rename.generate(file);
-        validation.validatePreTvdb(List.of(file));
+        validation.validatePreTmdb(List.of(file));
 
         assertEquals(AnalysisStatus.OK, file.status());
-        assertEquals(TvdbOrder.NOT_APPLICABLE, file.tvdbOrder());
+        assertEquals(TmdbOrder.NOT_APPLICABLE, file.tmdbOrder());
         assertEquals("Movie (2024).mkv", file.proposedName().orElseThrow());
         assertFalse(file.proposedName().orElseThrow().contains("Movies"));
         assertContainsNoPathSeparator(file.proposedName().orElseThrow());
@@ -61,7 +61,7 @@ class AnalysisPipelineServiceTest {
         AnalyzedVideoFile file = heuristics.analyze(item("Show.S01E02.part", ".part"), InventoryGroupType.LIKELY_SERIES);
 
         rename.generate(file);
-        validation.validatePreTvdb(List.of(file));
+        validation.validatePreTmdb(List.of(file));
 
         assertEquals(AnalysisStatus.EXT, file.status());
         assertTrue(file.statusReasons().get(0).contains("extension"));
@@ -74,7 +74,7 @@ class AnalysisPipelineServiceTest {
 
         rename.generate(first);
         rename.generate(second);
-        validation.validatePreTvdb(List.of(first, second));
+        validation.validatePreTmdb(List.of(first, second));
 
         assertEquals(AnalysisStatus.DUPLICATE, first.status());
         assertEquals(AnalysisStatus.DUPLICATE, second.status());
@@ -86,7 +86,7 @@ class AnalysisPipelineServiceTest {
                 item("Show.S01E02.Title.1080p.BluRay.x264-GROUP.mkv", ".mkv"), InventoryGroupType.LIKELY_SERIES);
 
         rename.generate(file);
-        validation.validatePreTvdb(List.of(file));
+        validation.validatePreTmdb(List.of(file));
 
         assertEquals("Show - S01E02 - Title.mkv", file.proposedName().orElseThrow());
         assertEquals("1080p", file.quality().orElseThrow());
@@ -101,7 +101,7 @@ class AnalysisPipelineServiceTest {
                 item("Show - 002 - Title.mkv", ".mkv"), InventoryGroupType.LIKELY_SERIES);
 
         rename.generate(file);
-        validation.validatePreTvdb(List.of(file));
+        validation.validatePreTmdb(List.of(file));
 
         assertEquals(AnalysisStatus.LOW_CONFIDENCE, file.status());
         assertTrue(file.warnings().stream().anyMatch(warning -> warning.contains("bare number")));
@@ -113,7 +113,7 @@ class AnalysisPipelineServiceTest {
                 item("Show.S01E02E03.mkv", ".mkv"), InventoryGroupType.LIKELY_SERIES);
 
         rename.generate(file);
-        validation.validatePreTvdb(List.of(file));
+        validation.validatePreTmdb(List.of(file));
 
         assertEquals(AnalysisStatus.REVIEW, file.status());
         assertTrue(file.statusReasons().stream().anyMatch(reason -> reason.contains("several episodes")));
@@ -125,7 +125,7 @@ class AnalysisPipelineServiceTest {
                 item("Show.S01E02.sample.mkv", ".mkv"), InventoryGroupType.LIKELY_SERIES);
 
         rename.generate(file);
-        validation.validatePreTvdb(List.of(file));
+        validation.validatePreTmdb(List.of(file));
 
         assertEquals(VideoMediaType.IGNORED, file.mediaType());
         assertEquals(AnalysisStatus.IGNORED, file.status());
@@ -137,7 +137,7 @@ class AnalysisPipelineServiceTest {
                 item("Initial D - S00E01 - Extra Stage.mkv", ".mkv"), InventoryGroupType.LIKELY_SERIES);
 
         rename.generate(file);
-        validation.validatePreTvdb(List.of(file));
+        validation.validatePreTmdb(List.of(file));
 
         assertEquals(VideoMediaType.SPECIAL, file.mediaType());
         assertEquals(AnalysisStatus.LOW_CONFIDENCE, file.status());
@@ -150,7 +150,7 @@ class AnalysisPipelineServiceTest {
                 item("Movie.2160p.BluRay.mkv", ".mkv"), InventoryGroupType.LIKELY_MOVIE);
 
         rename.generate(file);
-        validation.validatePreTvdb(List.of(file));
+        validation.validatePreTmdb(List.of(file));
 
         assertTrue(file.year().isEmpty());
         assertEquals("Movie.mkv", file.proposedName().orElseThrow());

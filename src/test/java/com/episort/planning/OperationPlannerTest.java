@@ -230,7 +230,7 @@ class OperationPlannerTest {
 
     /**
      * The library case observed in the field: an episode already sorted under its
-     * TVDB title, with the older untitled copy still beside it. Only the copy in
+     * TMDB title, with the older untitled copy still beside it. Only the copy in
      * the wrong place is a question — asking twice about one pair is asking the
      * user to answer for a file that has nothing wrong with it.
      */

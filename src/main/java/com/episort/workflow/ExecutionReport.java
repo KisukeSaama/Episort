@@ -9,7 +9,7 @@ import java.util.UUID;
 /**
  * The post-execution recap (Story 7.5).
  *
- * <p>Holds per-file outcomes and paths only. TVDB credentials, tokens, and PINs
+ * <p>Holds per-file outcomes and paths only. TMDB API keys and read access tokens
  * never enter this object, and failure details go through
  * {@link ApplicationError#safeMessage()} before display.
  *

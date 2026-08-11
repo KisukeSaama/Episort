@@ -12,7 +12,7 @@ import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ErrorSeverity;
 import com.episort.workflow.InputFolderSelectionResult;
 import com.episort.workflow.StartupWorkflow;
-import com.episort.workflow.TvdbCredentialConfigurationResult;
+import com.episort.workflow.TmdbGatewayStatus;
 import com.episort.workflow.WorkspaceConfigurationResult;
 import java.nio.file.Path;
 import java.util.List;
@@ -68,24 +68,24 @@ class AppShellViewModelTest {
     }
 
     @Test
-    void showsTvdbConnectionTestSuccess() {
-        AppShellViewModel viewModel = AppShellViewModel.fromTvdbConfiguration(TvdbCredentialConfigurationResult.passed());
+    void showsTmdbConnectionTestSuccess() {
+        AppShellViewModel viewModel = AppShellViewModel.fromTmdbConfiguration(TmdbGatewayStatus.passed());
 
-        assertEquals("Connexion TVDB vérifiée", viewModel.primaryStatus());
+        assertEquals("Connexion TMDB vérifiée", viewModel.primaryStatus());
         assertTrue(viewModel.description().contains("métadonnées"));
     }
 
     @Test
-    void startupStateDoesNotBlockSettingsPageWhenTvdbIsMissing() {
+    void startupStateDoesNotBlockSettingsPageWhenTmdbIsMissing() {
         Path workspace = Path.of("C:", "Media").toAbsolutePath().normalize();
         WorkspaceConfigurationResult workspaceResult = WorkspaceConfigurationResult.success(new AppSettings(workspace));
-        TvdbCredentialConfigurationResult tvdbResult = TvdbCredentialConfigurationResult.failure(ApplicationError.recoverable(
-                "TVDB_CONFIGURATION_REQUIRED",
+        TmdbGatewayStatus tmdbResult = TmdbGatewayStatus.failure(ApplicationError.recoverable(
+                "TMDB_CONFIGURATION_REQUIRED",
                 ErrorSeverity.BLOCKING,
-                "Enter and test TVDB access before metadata-backed organization.",
-                "No TVDB credentials are configured."));
+                "Enter and test TMDB access before metadata-backed organization.",
+                "No TMDB credentials are configured."));
 
-        AppShellViewModel viewModel = AppShellViewModel.fromStartupPrerequisites(workspaceResult, tvdbResult);
+        AppShellViewModel viewModel = AppShellViewModel.fromStartupPrerequisites(workspaceResult, tmdbResult);
 
         assertTrue(viewModel.errorCode().isEmpty());
         assertEquals("Choisissez un workspace avant de scanner des fichiers.", viewModel.primaryStatus());
@@ -94,12 +94,12 @@ class AppShellViewModelTest {
     @Test
     void recoverableErrorDoesNotExposeCodeOrDetailsInUserCopy() {
         AppShellViewModel viewModel = AppShellViewModel.fromError(ApplicationError.recoverable(
-                "TVDB_CREDENTIALS_UNAVAILABLE",
+                "TMDB_CREDENTIALS_UNAVAILABLE",
                 ErrorSeverity.BLOCKING,
-                "TVDB credentials are unavailable.",
+                "TMDB credentials are unavailable.",
                 "apiKey=secret-key could not be read."));
 
-        assertFalse(viewModel.description().contains("TVDB_CREDENTIALS_UNAVAILABLE"));
+        assertFalse(viewModel.description().contains("TMDB_CREDENTIALS_UNAVAILABLE"));
         assertFalse(viewModel.description().contains("secret-key"));
         assertEquals("", viewModel.description());
     }

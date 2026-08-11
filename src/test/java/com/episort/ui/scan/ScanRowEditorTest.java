@@ -46,7 +46,7 @@ class ScanRowEditorTest {
     }
 
     @Test
-    void yearReadsBlankForAnEpisodeBecauseTvdbOwnsOrdering() {
+    void yearReadsBlankForAnEpisodeBecauseTmdbOwnsOrdering() {
         ScanRow episode = row("Show.S01E02.mkv", ScanMediaType.SERIES);
         episode.setInputParse(Optional.of(parse(token(ScanInputRole.YEAR, "2016"))));
 
@@ -197,12 +197,12 @@ class ScanRowEditorTest {
     }
 
     @Test
-    void resettingTvdbMatchesClearsEverySelectedRow() {
+    void resettingTmdbMatchesClearsEverySelectedRow() {
         ScanRow first = row("Show.S01E01.mkv", ScanMediaType.SERIES);
         ScanRow second = row("Show.S01E02.mkv", ScanMediaType.SERIES);
         for (ScanRow episode : List.of(first, second)) {
-            episode.setTvdbMatch(Optional.of("Show"));
-            episode.setTvdbSelectedByUser(true);
+            episode.setTmdbMatch(Optional.of("Show"));
+            episode.setTmdbSelectedByUser(true);
             episode.setOrder(Optional.of("S01E01"));
             episode.setProposedFilename(Optional.of("Show - S01E01.mkv"));
             episode.setDestination(Optional.of(Path.of("C:", "media", "Season 01")));
@@ -210,16 +210,16 @@ class ScanRowEditorTest {
             episode.setNoteText(Optional.of("note"));
         }
 
-        ScanRowEditor.resetTvdbMatches(List.of(first, second));
+        ScanRowEditor.resetTmdbMatches(List.of(first, second));
 
         for (ScanRow episode : List.of(first, second)) {
-            assertEquals(Optional.empty(), episode.tvdbMatch());
+            assertEquals(Optional.empty(), episode.tmdbMatch());
             assertEquals(Optional.empty(), episode.order());
             assertEquals(Optional.empty(), episode.proposedFilename());
             assertEquals(Optional.empty(), episode.destination());
             assertEquals(Optional.empty(), episode.alertText());
             assertEquals(Optional.empty(), episode.noteText());
-            assertTrue(!episode.tvdbSelectedByUser());
+            assertTrue(!episode.tmdbSelectedByUser());
         }
     }
 

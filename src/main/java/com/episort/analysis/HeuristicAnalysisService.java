@@ -58,7 +58,7 @@ public final class HeuristicAnalysisService {
         file.set(AnalysisField.EXTENSION, normalizeExtension(item.extension()), FieldSource.HEURISTIC);
         if (item.type() != InventoryItemType.SUPPORTED_VIDEO) {
             file.set(AnalysisField.MEDIA_TYPE, VideoMediaType.IGNORED, FieldSource.HEURISTIC);
-            file.set(AnalysisField.TVDB_ORDER, TvdbOrder.NOT_APPLICABLE, FieldSource.UNKNOWN);
+            file.set(AnalysisField.TMDB_ORDER, TmdbOrder.NOT_APPLICABLE, FieldSource.UNKNOWN);
             return file;
         }
 
@@ -94,8 +94,8 @@ public final class HeuristicAnalysisService {
                 }
             });
         }
-        file.set(AnalysisField.TVDB_ORDER,
-                mediaType == VideoMediaType.MOVIE ? TvdbOrder.NOT_APPLICABLE : TvdbOrder.TO_DEFINE,
+        file.set(AnalysisField.TMDB_ORDER,
+                mediaType == VideoMediaType.MOVIE ? TmdbOrder.NOT_APPLICABLE : TmdbOrder.TO_DEFINE,
                 FieldSource.UNKNOWN);
         return file;
     }

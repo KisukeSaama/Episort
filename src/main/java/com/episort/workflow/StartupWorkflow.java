@@ -1,20 +1,20 @@
 package com.episort.workflow;
 
 import com.episort.config.AppSettings;
-import com.episort.config.TvdbCredentials;
+import com.episort.config.JanusConfiguration;
 import java.nio.file.Path;
 import java.util.List;
 
 public final class StartupWorkflow {
     private final WorkspaceConfigurationService workspaceConfigurationService;
-    private final TvdbCredentialConfigurationService tvdbCredentialConfigurationService;
+    private final TmdbGatewayService tmdbCredentialConfigurationService;
     private final InputFolderSelectionService inputFolderSelectionService;
 
     public StartupWorkflow(
             WorkspaceConfigurationService workspaceConfigurationService,
-            TvdbCredentialConfigurationService tvdbCredentialConfigurationService) {
+            TmdbGatewayService tmdbCredentialConfigurationService) {
         this.workspaceConfigurationService = workspaceConfigurationService;
-        this.tvdbCredentialConfigurationService = tvdbCredentialConfigurationService;
+        this.tmdbCredentialConfigurationService = tmdbCredentialConfigurationService;
         this.inputFolderSelectionService = new InputFolderSelectionService();
     }
 
@@ -34,20 +34,12 @@ public final class StartupWorkflow {
         return workspaceConfigurationService.configureWorkspace(workspaceDirectory);
     }
 
-    public TvdbCredentialConfigurationResult loadTvdbConfiguration() {
-        if (tvdbCredentialConfigurationService == null) {
-            return TvdbCredentialConfigurationResult.failure(tvdbConfigurationRequired());
+    public TmdbGatewayStatus loadTmdbConfiguration() {
+        if (tmdbCredentialConfigurationService == null) {
+            return TmdbGatewayStatus.failure(tmdbConfigurationRequired());
         }
 
-        return tvdbCredentialConfigurationService.currentStatus();
-    }
-
-    public TvdbCredentialConfigurationResult configureAndTestTvdb(TvdbCredentials credentials) {
-        if (tvdbCredentialConfigurationService == null) {
-            return TvdbCredentialConfigurationResult.failure(tvdbConfigurationRequired());
-        }
-
-        return tvdbCredentialConfigurationService.configureAndTest(credentials);
+        return tmdbCredentialConfigurationService.currentStatus();
     }
 
     public OrganizationPrerequisitesResult organizationPrerequisites() {
@@ -56,9 +48,9 @@ public final class StartupWorkflow {
             return OrganizationPrerequisitesResult.blocked(workspaceResult.error().orElseThrow());
         }
 
-        TvdbCredentialConfigurationResult tvdbResult = loadTvdbConfiguration();
-        if (!tvdbResult.organizationAllowed()) {
-            return OrganizationPrerequisitesResult.blocked(tvdbResult.error().orElseThrow());
+        TmdbGatewayStatus tmdbResult = loadTmdbConfiguration();
+        if (!tmdbResult.organizationAllowed()) {
+            return OrganizationPrerequisitesResult.blocked(tmdbResult.error().orElseThrow());
         }
 
         return OrganizationPrerequisitesResult.allowed();
@@ -92,11 +84,11 @@ public final class StartupWorkflow {
                 "Workspace path has not been configured.");
     }
 
-    private ApplicationError tvdbConfigurationRequired() {
+    private ApplicationError tmdbConfigurationRequired() {
         return ApplicationError.recoverable(
-                "TVDB_CONFIGURATION_REQUIRED",
+                "TMDB_CONFIGURATION_REQUIRED",
                 ErrorSeverity.BLOCKING,
-                "Enter and test TVDB access before metadata-backed organization.",
-                "No TVDB credential service is configured.");
+                "TMDB through Janus is unavailable.",
+                "No Janus TMDB gateway is configured.");
     }
 }

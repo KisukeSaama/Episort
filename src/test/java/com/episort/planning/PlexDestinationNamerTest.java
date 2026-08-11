@@ -81,7 +81,7 @@ class PlexDestinationNamerTest {
     }
 
     @Test
-    void specialsKeepAnExplicitSeasonNumberWhenTvdbProvidesOne() {
+    void specialsKeepAnExplicitSeasonNumberWhenTmdbProvidesOne() {
         PlanSourceItem item = PlanSourceItem.forSource(
                         Path.of("C:/Media/ova.mkv"), ".mkv", PlanMediaKind.SPECIAL)
                 .special("Show", 2)

@@ -20,23 +20,15 @@ If needed, restore its executable permission first:
 
     chmod +x ./bin/Episort
 
-TVDB
+TMDB
 ----
-Episort does not contain an API key. Define TVDB_API_KEY in the environment
-before launching the application. Never place a private key in a media folder.
-
-Windows PowerShell:
-
-    $env:TVDB_API_KEY = "your-key"
-    .\Episort.exe
-
-Linux:
-
-    TVDB_API_KEY="your-key" ./bin/Episort
+TMDB access is provided through the Janus gateway and is configured in this
+official distribution. No TMDB or Janus account and no .env file are required.
 
 FRANCAIS
 --------
 Aucune installation de Java n'est necessaire. Conservez tout le dossier
 Episort extrait. Sous Windows, double-cliquez sur Episort.exe. Sous Linux,
-executez ./bin/Episort. La variable TVDB_API_KEY doit etre definie avant le
-lancement si vous souhaitez utiliser les metadonnees TVDB.
+executez ./bin/Episort. L'acces TMDB passe par Janus et est deja configure dans
+cette distribution officielle. Aucun compte TMDB ou Janus ni fichier .env
+n'est necessaire.

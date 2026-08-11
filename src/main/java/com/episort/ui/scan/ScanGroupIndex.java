@@ -27,7 +27,7 @@ import java.util.Map;
 final class ScanGroupIndex {
 
     private final Map<ScanRow, InventoryGroup> groupByRow = new HashMap<>();
-    private final Map<ScanRow, BatchTvdbMatch> matchByRow = new HashMap<>();
+    private final Map<ScanRow, BatchTmdbMatch> matchByRow = new HashMap<>();
     private final Map<ScanRow, List<ScanRow>> peersByRow = new HashMap<>();
     /** Scan order preserved: the identity screen lists groups as the table does. */
     private final Map<String, List<ScanRow>> rowsByGroupName = new LinkedHashMap<>();
@@ -55,7 +55,7 @@ final class ScanGroupIndex {
             byPath.putIfAbsent(pathKey(row.sourcePath()), row);
         }
         for (InventoryGroup group : knownGroups) {
-            BatchTvdbMatch match = directMatch(group);
+            BatchTmdbMatch match = directMatch(group);
             List<ScanRow> members = new ArrayList<>();
             for (InventoryItem item : group.items()) {
                 ScanRow row = byPath.get(pathKey(item.sourcePath()));
@@ -89,7 +89,7 @@ final class ScanGroupIndex {
         return groupByRow.get(row);
     }
 
-    BatchTvdbMatch matchOf(ScanRow row) {
+    BatchTmdbMatch matchOf(ScanRow row) {
         return matchByRow.get(row);
     }
 
@@ -125,7 +125,7 @@ final class ScanGroupIndex {
         return group.seedName();
     }
 
-    /** Whether the row's group is one that can carry a TVDB identity at all. */
+    /** Whether the row's group is one that can carry a TMDB identity at all. */
     boolean namesAMedia(ScanRow row) {
         InventoryGroup group = groupByRow.get(row);
         return group != null && namesAMedia(group.type());
@@ -138,11 +138,11 @@ final class ScanGroupIndex {
                 || type == InventoryGroupType.UNKNOWN;
     }
 
-    private static BatchTvdbMatch directMatch(InventoryGroup group) {
+    private static BatchTmdbMatch directMatch(InventoryGroup group) {
         String seed = group.seedName() == null || group.seedName().isBlank()
                 ? UiText.EMPTY
                 : group.seedName();
-        return new BatchTvdbMatch(seed, group.type(), group.items().size(), group.tvdbIdentityFinal());
+        return new BatchTmdbMatch(seed, group.type(), group.items().size(), group.tmdbIdentityFinal());
     }
 
     private static String pathKey(Path path) {

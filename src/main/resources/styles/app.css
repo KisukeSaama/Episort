@@ -795,14 +795,14 @@
 
 .episort-search-box:hover,
 .top-search:hover,
-.tvdb-search-box:hover {
+.tmdb-search-box:hover {
     -fx-background-color: rgba(23,27,35,0.92);
     -fx-border-color: rgba(249,115,22,0.48);
 }
 
 .episort-search-box:focus-within:hover,
 .top-search:focus-within:hover,
-.tvdb-search-box:focus-within:hover {
+.tmdb-search-box:focus-within:hover {
     -fx-border-color: rgba(249,115,22,1.0);
     -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.72), 20, 0, 0, 0);
 }
@@ -1068,7 +1068,7 @@
 
 /* Hierarchical episode picker: it reads like the adjacent input while its
    nested menus keep long series navigable by season or absolute range. */
-.menu-button.tvdb-episode-picker {
+.menu-button.tmdb-episode-picker {
     -fx-background-color: rgba(20,23,30,0.85);
     -fx-border-color: rgba(249,115,22,0.25);
     -fx-text-fill: #f5f7fb;
@@ -1076,18 +1076,18 @@
     -fx-alignment: center-left;
 }
 
-.menu-button.tvdb-episode-picker > .label {
+.menu-button.tmdb-episode-picker > .label {
     -fx-text-fill: #f5f7fb;
     -fx-alignment: center-left;
     -fx-max-width: infinity;
 }
 
-.menu-button.tvdb-episode-picker > .arrow-button > .arrow {
+.menu-button.tmdb-episode-picker > .arrow-button > .arrow {
     -fx-background-color: #f97316;
 }
 
-.menu-button.tvdb-episode-picker:hover,
-.menu-button.tvdb-episode-picker:showing {
+.menu-button.tmdb-episode-picker:hover,
+.menu-button.tmdb-episode-picker:showing {
     -fx-background-color: rgba(20,23,30,0.85);
     -fx-border-color: #f97316;
     -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 8, 0, 0, 0);
@@ -2011,19 +2011,19 @@
     -fx-background-color: rgba(255,255,255,0.04);
 }
 
-.tvdb-attribution {
+.tmdb-attribution {
     -fx-padding: 4 0 0 0;
     -fx-spacing: 16;
     -fx-alignment: center-left;
 }
 
-.tvdb-attribution-copy {
+.tmdb-attribution-copy {
     -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 13px;
     -fx-text-fill: #b8c0cc;
 }
 
-.tvdb-attribution-link {
+.tmdb-attribution-link {
     -fx-padding: 2 0 2 0;
     -fx-border-width: 0;
     -fx-background-color: transparent;
@@ -2034,11 +2034,11 @@
     -fx-underline: true;
 }
 
-.tvdb-attribution-link:hover {
+.tmdb-attribution-link:hover {
     -fx-text-fill: #f5f7fb;
 }
 
-.tvdb-attribution-link:focus-visible {
+.tmdb-attribution-link:focus-visible {
     -fx-border-color: #fb923c;
     -fx-border-width: 1;
     -fx-border-radius: 4;
@@ -2111,10 +2111,10 @@
     -fx-text-fill: #767e8d;
 }
 
-/* ---- TVDB manual match search ------------------------------------------ */
+/* ---- TMDB manual match search ------------------------------------------ */
 
-.tvdb-selected-card,
-.tvdb-result-card {
+.tmdb-selected-card,
+.tmdb-result-card {
     -fx-padding: 12 12 12 12;
     -fx-spacing: 10;
     -fx-background-color: rgba(20,23,30,0.88);
@@ -2124,17 +2124,17 @@
     -fx-border-width: 1;
 }
 
-.tvdb-search-results .tvdb-result-card {
+.tmdb-search-results .tmdb-result-card {
     -fx-min-width: 0;
     -fx-pref-width: 0;
     -fx-max-width: infinity;
 }
 
-.tvdb-result-action {
+.tmdb-result-action {
     -fx-alignment: center-right;
 }
 
-.tvdb-poster-frame {
+.tmdb-poster-frame {
     -fx-min-width: 78;
     -fx-pref-width: 78;
     -fx-max-width: 78;
@@ -2148,7 +2148,7 @@
     -fx-border-width: 1;
 }
 
-.tvdb-selected-card .tvdb-poster-frame {
+.tmdb-selected-card .tmdb-poster-frame {
     -fx-min-width: 122;
     -fx-pref-width: 122;
     -fx-max-width: 122;
@@ -2157,57 +2157,57 @@
     -fx-max-height: 180;
 }
 
-.tvdb-detail-poster-host {
+.tmdb-detail-poster-host {
     -fx-alignment: top-center;
 }
 
-.tvdb-poster-placeholder {
+.tmdb-poster-placeholder {
     -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
     -fx-font-size: 10px;
     -fx-text-fill: rgba(245,247,251,0.42);
 }
 
-.tvdb-match-title {
+.tmdb-match-title {
     -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 17px;
     -fx-font-weight: 700;
     -fx-text-fill: rgba(245,247,251,1.0);
 }
 
-.tvdb-match-meta {
+.tmdb-match-meta {
     -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
     -fx-font-size: 10px;
     -fx-font-weight: 700;
     -fx-text-fill: rgba(245,247,251,0.62);
 }
 
-.tvdb-match-overview {
+.tmdb-match-overview {
     -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 13px;
     -fx-text-fill: rgba(245,247,251,0.72);
     -fx-max-width: infinity;
 }
 
-.tvdb-empty-state {
+.tmdb-empty-state {
     -fx-padding: 24 18 24 18;
     -fx-alignment: center;
 }
 
-.tvdb-empty-title {
+.tmdb-empty-title {
     -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 17px;
     -fx-font-weight: 700;
     -fx-text-fill: rgba(245,247,251,0.86);
 }
 
-.tvdb-empty-hint {
+.tmdb-empty-hint {
     -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 13px;
     -fx-text-fill: rgba(138,147,163,1.0);
     -fx-text-alignment: center;
 }
 
-.tvdb-dialog {
+.tmdb-dialog {
     -fx-background-color: linear-gradient(to bottom, rgba(10,12,17,1.0), rgba(7,8,11,1.0));
     -fx-border-color: rgba(249,115,22,0.28);
     -fx-border-width: 1;
@@ -2311,20 +2311,20 @@
     -fx-text-fill: rgba(251,146,60,1.0);
 }
 
-.tvdb-dialog-header {
+.tmdb-dialog-header {
     -fx-padding: 0 0 8 0;
     -fx-border-color: transparent transparent rgba(249,115,22,0.16) transparent;
     -fx-border-width: 0 0 1 0;
 }
 
-.tvdb-dialog-title {
+.tmdb-dialog-title {
     -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 17px;
     -fx-font-weight: 700;
     -fx-text-fill: rgba(245,247,251,1.0);
 }
 
-.tvdb-dialog-close {
+.tmdb-dialog-close {
     -fx-min-width: 32;
     -fx-pref-width: 32;
     -fx-max-width: 32;
@@ -2333,99 +2333,99 @@
     -fx-max-height: 32;
 }
 
-.tvdb-dialog-message {
+.tmdb-dialog-message {
     -fx-text-fill: rgba(245,247,251,0.72);
     -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
     -fx-font-size: 13px;
 }
 
 /* The last line before execution, when that execution removes files. */
-.tvdb-dialog-message.notice-danger {
+.tmdb-dialog-message.notice-danger {
     -fx-text-fill: #fca5a5;
 }
 
-.tvdb-search-results {
+.tmdb-search-results {
     -fx-background-color: transparent;
     -fx-control-inner-background: transparent;
     -fx-fixed-cell-size: 152;
     -fx-padding: 8 8 8 8;
 }
 
-.tvdb-search-results .list-cell {
+.tmdb-search-results .list-cell {
     -fx-background-color: transparent;
     -fx-padding: 8 2 8 2;
     -fx-cell-size: 152;
 }
 
-.tvdb-search-results .list-cell .button {
+.tmdb-search-results .list-cell .button {
     -fx-min-width: 112;
     -fx-pref-width: 132;
     -fx-max-width: 132;
 }
 
-.tvdb-search-results .virtual-flow,
-.tvdb-search-results .virtual-flow > .corner,
-.tvdb-search-results .corner,
-.tvdb-search-results .scroll-bar,
-.tvdb-search-results .scroll-bar:vertical,
-.tvdb-search-results .scroll-bar:horizontal {
+.tmdb-search-results .virtual-flow,
+.tmdb-search-results .virtual-flow > .corner,
+.tmdb-search-results .corner,
+.tmdb-search-results .scroll-bar,
+.tmdb-search-results .scroll-bar:vertical,
+.tmdb-search-results .scroll-bar:horizontal {
     -fx-background-color: transparent;
 }
 
-.tvdb-search-results .scroll-bar .track,
-.tvdb-search-results .scroll-bar .track-background,
-.tvdb-search-results .scroll-bar .increment-button,
-.tvdb-search-results .scroll-bar .decrement-button {
+.tmdb-search-results .scroll-bar .track,
+.tmdb-search-results .scroll-bar .track-background,
+.tmdb-search-results .scroll-bar .increment-button,
+.tmdb-search-results .scroll-bar .decrement-button {
     -fx-background-color: transparent;
 }
 
-.tvdb-search-results .scroll-bar .thumb {
+.tmdb-search-results .scroll-bar .thumb {
     -fx-background-color: rgba(249,115,22,0.42);
     -fx-background-radius: 999;
 }
 
-.tvdb-search-results .scroll-bar .thumb:hover {
+.tmdb-search-results .scroll-bar .thumb:hover {
     -fx-background-color: rgba(249,115,22,0.68);
 }
 
-.tvdb-search-results .scroll-bar .increment-arrow,
-.tvdb-search-results .scroll-bar .decrement-arrow {
+.tmdb-search-results .scroll-bar .increment-arrow,
+.tmdb-search-results .scroll-bar .decrement-arrow {
     -fx-background-color: rgba(245,247,251,0.35);
 }
 
-.tvdb-search-results .list-cell:selected .tvdb-result-card,
-.tvdb-search-results .list-cell:hover .tvdb-result-card {
+.tmdb-search-results .list-cell:selected .tmdb-result-card,
+.tmdb-search-results .list-cell:hover .tmdb-result-card {
     -fx-border-color: rgba(249,115,22,0.42);
     -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.18), 10, 0, 0, 0);
 }
 
-.tvdb-search-loader {
+.tmdb-search-loader {
     -fx-progress-color: rgba(249,115,22,0.92);
 }
 
-.tvdb-search-text-field {
+.tmdb-search-text-field {
     -fx-prompt-text-fill: rgba(118,126,141,1.0);
 }
 
 /* Optional exact filters stay compact beside the elastic title field. They
    reuse the standard text-field states and introduce no parallel control. */
-.text-field.tvdb-search-year {
+.text-field.tmdb-search-year {
     -fx-min-width: 112;
     -fx-pref-width: 112;
     -fx-max-width: 112;
 }
 
-.text-field.tvdb-search-id {
+.text-field.tmdb-search-id {
     -fx-min-width: 156;
     -fx-pref-width: 156;
     -fx-max-width: 156;
 }
 
-.tvdb-detail-controls .button {
+.tmdb-detail-controls .button {
     -fx-text-overrun: clip;
 }
 
-.tvdb-detail-secondary-controls {
+.tmdb-detail-secondary-controls {
     -fx-spacing: 8;
 }
 
@@ -2509,7 +2509,7 @@
     -fx-border-width: 1 0 0 0;
 }
 
-/* ---- TVDB identity validation screen ------------------------------------ */
+/* ---- TMDB identity validation screen ------------------------------------ */
 
 /* Every identity row measures the same: the list reads as a table and the four
    columns line up from the first row to the last. */
@@ -2562,7 +2562,7 @@
     -fx-text-fill: #facc15;
 }
 
-/* The TVDB id is a system value: mono, faint, aligned under the title. */
+/* The TMDB id is a system value: mono, faint, aligned under the title. */
 .identity-id {
     -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
     -fx-font-size: 10px;

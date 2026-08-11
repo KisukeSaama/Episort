@@ -1,7 +1,7 @@
 package com.episort.ui.scan;
 
-import com.episort.tvdb.TvdbCandidate;
-import com.episort.tvdb.TvdbEpisodeOrder;
+import com.episort.tmdb.TmdbCandidate;
+import com.episort.tmdb.TmdbEpisodeOrder;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -26,10 +26,10 @@ public final class ScanRow {
     private Optional<ScanInputParse> inputParse;
     private Optional<String> inputPattern;
     private Optional<String> pattern;
-    private Optional<String> tvdbMatch;
-    private Optional<TvdbCandidate> tvdbCandidate;
-    private Optional<TvdbEpisodeOrder> appliedTvdbOrder;
-    private boolean tvdbSelectedByUser;
+    private Optional<String> tmdbMatch;
+    private Optional<TmdbCandidate> tmdbCandidate;
+    private Optional<TmdbEpisodeOrder> appliedTmdbOrder;
+    private boolean tmdbSelectedByUser;
     private Optional<String> order;
     private Optional<Path> destination;
     private OptionalDouble confidence;
@@ -55,10 +55,10 @@ public final class ScanRow {
         this.inputParse = Optional.empty();
         this.inputPattern = Optional.empty();
         this.pattern = Optional.empty();
-        this.tvdbMatch = Optional.empty();
-        this.tvdbCandidate = Optional.empty();
-        this.appliedTvdbOrder = Optional.empty();
-        this.tvdbSelectedByUser = false;
+        this.tmdbMatch = Optional.empty();
+        this.tmdbCandidate = Optional.empty();
+        this.appliedTmdbOrder = Optional.empty();
+        this.tmdbSelectedByUser = false;
         this.order = Optional.empty();
         this.destination = Optional.empty();
         this.confidence = OptionalDouble.empty();
@@ -103,8 +103,8 @@ public final class ScanRow {
         mediaType = mediaTypeBeforeIgnore.orElse(mediaType == ScanMediaType.IGNORED
                 ? ScanMediaType.UNKNOWN
                 : mediaType);
-        status = statusBeforeIgnore.orElse(tvdbMatch.isPresent()
-                ? ScanRowStatus.TVDB
+        status = statusBeforeIgnore.orElse(tmdbMatch.isPresent()
+                ? ScanRowStatus.TMDB
                 : ScanRowStatus.REVIEW);
         mediaTypeBeforeIgnore = Optional.empty();
         statusBeforeIgnore = Optional.empty();
@@ -171,36 +171,36 @@ public final class ScanRow {
         this.pattern = Objects.requireNonNull(pattern, "pattern");
     }
 
-    public Optional<String> tvdbMatch() {
-        return tvdbMatch;
+    public Optional<String> tmdbMatch() {
+        return tmdbMatch;
     }
 
-    public void setTvdbMatch(Optional<String> tvdbMatch) {
-        this.tvdbMatch = Objects.requireNonNull(tvdbMatch, "tvdbMatch");
+    public void setTmdbMatch(Optional<String> tmdbMatch) {
+        this.tmdbMatch = Objects.requireNonNull(tmdbMatch, "tmdbMatch");
     }
 
-    public Optional<TvdbCandidate> tvdbCandidate() {
-        return tvdbCandidate;
+    public Optional<TmdbCandidate> tmdbCandidate() {
+        return tmdbCandidate;
     }
 
-    public void setTvdbCandidate(Optional<TvdbCandidate> tvdbCandidate) {
-        this.tvdbCandidate = Objects.requireNonNull(tvdbCandidate, "tvdbCandidate");
+    public void setTmdbCandidate(Optional<TmdbCandidate> tmdbCandidate) {
+        this.tmdbCandidate = Objects.requireNonNull(tmdbCandidate, "tmdbCandidate");
     }
 
-    public Optional<TvdbEpisodeOrder> appliedTvdbOrder() {
-        return appliedTvdbOrder;
+    public Optional<TmdbEpisodeOrder> appliedTmdbOrder() {
+        return appliedTmdbOrder;
     }
 
-    public void setAppliedTvdbOrder(Optional<TvdbEpisodeOrder> appliedTvdbOrder) {
-        this.appliedTvdbOrder = Objects.requireNonNull(appliedTvdbOrder, "appliedTvdbOrder");
+    public void setAppliedTmdbOrder(Optional<TmdbEpisodeOrder> appliedTmdbOrder) {
+        this.appliedTmdbOrder = Objects.requireNonNull(appliedTmdbOrder, "appliedTmdbOrder");
     }
 
-    public boolean tvdbSelectedByUser() {
-        return tvdbSelectedByUser;
+    public boolean tmdbSelectedByUser() {
+        return tmdbSelectedByUser;
     }
 
-    public void setTvdbSelectedByUser(boolean tvdbSelectedByUser) {
-        this.tvdbSelectedByUser = tvdbSelectedByUser;
+    public void setTmdbSelectedByUser(boolean tmdbSelectedByUser) {
+        this.tmdbSelectedByUser = tmdbSelectedByUser;
     }
 
     public Optional<String> order() {

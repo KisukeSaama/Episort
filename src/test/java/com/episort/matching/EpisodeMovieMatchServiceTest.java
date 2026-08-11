@@ -16,37 +16,37 @@ class EpisodeMovieMatchServiceTest {
     @Test
     void proposesAtMostOneSeriesEpisodeMatchPerSupportedFile() {
         InventoryItem file = video("Show.S01E02.Title.mkv");
-        TvdbSeriesMetadata series = new TvdbSeriesMetadata("series-1", "Show", List.of(
-                new TvdbEpisodeMetadata("episode-1", 1, 1, Optional.of(1), "Pilot", false),
-                new TvdbEpisodeMetadata("episode-2", 1, 2, Optional.of(2), "Title", false)));
+        TmdbSeriesMetadata series = new TmdbSeriesMetadata("series-1", "Show", List.of(
+                new TmdbEpisodeMetadata("episode-1", 1, 1, Optional.of(1), "Pilot", false),
+                new TmdbEpisodeMetadata("episode-2", 1, 2, Optional.of(2), "Title", false)));
 
         List<MediaMatchProposal> proposals = service.proposeSeriesMatches(List.of(file), series);
 
         assertEquals(1, proposals.size());
         assertEquals(MediaMatchType.SERIES_EPISODE, proposals.get(0).type());
-        assertEquals(Optional.of("episode-2"), proposals.get(0).tvdbId());
+        assertEquals(Optional.of("episode-2"), proposals.get(0).tmdbId());
         assertEquals(Optional.of(1), proposals.get(0).seasonNumber());
         assertEquals(Optional.of(2), proposals.get(0).episodeNumber());
     }
 
     @Test
-    void proposesSpecialsWhenSeasonZeroEpisodeExistsInTvdb() {
+    void proposesSpecialsWhenSeasonZeroEpisodeExistsInTmdb() {
         InventoryItem file = video("Show.S00E03.OVA.mkv");
-        TvdbSeriesMetadata series = new TvdbSeriesMetadata("series-1", "Show", List.of(
-                new TvdbEpisodeMetadata("special-3", 0, 3, Optional.empty(), "OVA", true)));
+        TmdbSeriesMetadata series = new TmdbSeriesMetadata("series-1", "Show", List.of(
+                new TmdbEpisodeMetadata("special-3", 0, 3, Optional.empty(), "OVA", true)));
 
         List<MediaMatchProposal> proposals = service.proposeSeriesMatches(List.of(file), series);
 
         assertEquals(MediaMatchType.SERIES_SPECIAL, proposals.get(0).type());
-        assertEquals(Optional.of("special-3"), proposals.get(0).tvdbId());
+        assertEquals(Optional.of("special-3"), proposals.get(0).tmdbId());
     }
 
     @Test
     void duplicateFilesCannotClaimSameEpisodeTwice() {
         InventoryItem first = video("Show.S01E01.A.mkv");
         InventoryItem second = video("Show.1x01.B.mkv");
-        TvdbSeriesMetadata series = new TvdbSeriesMetadata("series-1", "Show", List.of(
-                new TvdbEpisodeMetadata("episode-1", 1, 1, Optional.of(1), "Pilot", false)));
+        TmdbSeriesMetadata series = new TmdbSeriesMetadata("series-1", "Show", List.of(
+                new TmdbEpisodeMetadata("episode-1", 1, 1, Optional.of(1), "Pilot", false)));
 
         List<MediaMatchProposal> proposals = service.proposeSeriesMatches(List.of(first, second), series);
 
@@ -57,9 +57,9 @@ class EpisodeMovieMatchServiceTest {
     @Test
     void multiEpisodeVideoRequiresManualSingleEpisodeAssignment() {
         InventoryItem file = video("Show.S01E01E02.mkv");
-        TvdbSeriesMetadata series = new TvdbSeriesMetadata("series-1", "Show", List.of(
-                new TvdbEpisodeMetadata("episode-1", 1, 1, Optional.of(1), "Pilot", false),
-                new TvdbEpisodeMetadata("episode-2", 1, 2, Optional.of(2), "Second", false)));
+        TmdbSeriesMetadata series = new TmdbSeriesMetadata("series-1", "Show", List.of(
+                new TmdbEpisodeMetadata("episode-1", 1, 1, Optional.of(1), "Pilot", false),
+                new TmdbEpisodeMetadata("episode-2", 1, 2, Optional.of(2), "Second", false)));
 
         List<MediaMatchProposal> proposals = service.proposeSeriesMatches(List.of(file), series);
 
@@ -67,14 +67,14 @@ class EpisodeMovieMatchServiceTest {
     }
 
     @Test
-    void absoluteEpisodeNumbersCanMatchWhenTvdbProvidesThem() {
+    void absoluteEpisodeNumbersCanMatchWhenTmdbProvidesThem() {
         InventoryItem file = video("Anime.042.mkv");
-        TvdbSeriesMetadata series = new TvdbSeriesMetadata("series-1", "Anime", List.of(
-                new TvdbEpisodeMetadata("episode-42", 2, 16, Optional.of(42), "Forty Two", false)));
+        TmdbSeriesMetadata series = new TmdbSeriesMetadata("series-1", "Anime", List.of(
+                new TmdbEpisodeMetadata("episode-42", 2, 16, Optional.of(42), "Forty Two", false)));
 
         List<MediaMatchProposal> proposals = service.proposeSeriesMatches(List.of(file), series);
 
-        assertEquals(Optional.of("episode-42"), proposals.get(0).tvdbId());
+        assertEquals(Optional.of("episode-42"), proposals.get(0).tmdbId());
         assertTrue(proposals.get(0).confidence().isPresent());
     }
 
@@ -82,7 +82,7 @@ class EpisodeMovieMatchServiceTest {
     void movieIdentityCanOnlyBeAssignedToOneFileInV1() {
         InventoryItem first = video("Movie.2024.mkv");
         InventoryItem second = video("Movie.2024.duplicate.mkv");
-        TvdbMovieMetadata movie = new TvdbMovieMetadata("movie-1", "Movie", Optional.of(2024));
+        TmdbMovieMetadata movie = new TmdbMovieMetadata("movie-1", "Movie", Optional.of(2024));
 
         List<MediaMatchProposal> proposals = service.proposeMovieMatches(List.of(first, second), movie);
 

@@ -20,7 +20,7 @@ l'utilisateur relit avant de valider.
 ## Product Purpose
 
 Episort transforme un dossier brut en plan d'opérations fichier inspectable, puis
-l'exécute. La chaîne est déterministe : scan → parsing par règles → résolution TVDB
+l'exécute. La chaîne est déterministe : scan → parsing par règles → résolution TMDB
 → revue d'identité → revue du plan exact → application journalisée.
 
 Le succès n'est pas « l'app a rangé les fichiers » mais « l'utilisateur a compris
@@ -46,7 +46,7 @@ sur presque-noir, un unique accent orange, mono pour tout ce qui est système
 
 - **Consumer media app (Plex, Netflix, Jellyfin).** Episort ne présente pas un
   catalogue. Pas de grandes affiches, pas de carrousels, pas de tuiles de jaquettes,
-  pas de fond flouté tiré d'un backdrop. Les visuels TVDB servent à *désambiguïser
+  pas de fond flouté tiré d'un backdrop. Les visuels TMDB servent à *désambiguïser
   un match*, jamais à décorer. C'est un outil de traitement par lot, pas une
   vitrine de bibliothèque.
 - Corollaires hérités des lois du design system : pas de dashboard SaaS générique

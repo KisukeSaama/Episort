@@ -5,7 +5,7 @@ enum ScanRowStatusFilter {
     ALL,
     TO_PROCESS,
     OK,
-    TVDB,
+    TMDB,
     CONFLICTS,
     IGNORED,
     ALERTS

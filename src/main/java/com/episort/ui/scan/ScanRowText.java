@@ -1,6 +1,6 @@
 package com.episort.ui.scan;
 
-import com.episort.tvdb.TvdbMediaType;
+import com.episort.tmdb.TmdbMediaType;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.UiText;
 
@@ -26,11 +26,11 @@ final class ScanRowText {
         };
     }
 
-    /** TVDB only distinguishes movies from series. */
-    static String mediaType(TvdbMediaType mediaType, AppLanguage language) {
-        return mediaType == TvdbMediaType.MOVIE
-                ? UiText.tvdbMovie(language)
-                : UiText.tvdbSeries(language);
+    /** TMDB only distinguishes movies from series. */
+    static String mediaType(TmdbMediaType mediaType, AppLanguage language) {
+        return mediaType == TmdbMediaType.MOVIE
+                ? UiText.tmdbMovie(language)
+                : UiText.tmdbSeries(language);
     }
 
     static String status(ScanRowStatus status, AppLanguage language) {
@@ -38,7 +38,7 @@ final class ScanRowText {
             case OK -> UiText.scanRowStatusOk(language);
             case REVIEW -> UiText.scanRowStatusReview(language);
             case LOW_CONFIDENCE -> UiText.scanRowStatusLowConfidence(language);
-            case TVDB -> UiText.scanRowStatusTvdb(language);
+            case TMDB -> UiText.scanRowStatusTmdb(language);
             case TYPE -> UiText.scanRowStatusType(language);
             case EXT -> UiText.scanRowStatusExt(language);
             case PATTERN -> UiText.scanRowStatusPattern(language);

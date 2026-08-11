@@ -110,7 +110,7 @@ public record FolderContext(String parentFolder, String grandParentFolder) {
      *
      * <p>But a folder holding two different series speaks for one of them only.
      * Letting it overwrite {@code My.Hero.Academia.Vigilantes.S01E01.mkv} with
-     * "Haikyu" merged both shows into a single group, sent a single TVDB query,
+     * "Haikyu" merged both shows into a single group, sent a single TMDB query,
      * and renamed one series after the other. When the file name states a title
      * the folder cannot plausibly abbreviate, the file name wins.
      */

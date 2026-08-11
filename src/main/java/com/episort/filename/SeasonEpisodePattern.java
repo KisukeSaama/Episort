@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 public final class SeasonEpisodePattern {
 
     /**
-     * The stricter form used when <em>matching</em> a file against TVDB
+     * The stricter form used when <em>matching</em> a file against TMDB
      * episodes: season up to two digits, episode up to three.
      */
     public static final Pattern STRICT =

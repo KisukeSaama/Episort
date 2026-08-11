@@ -119,12 +119,12 @@ class ScanRowTableSupportTest {
     void statusFiltersCanFindIgnoredRowsButExcludeThemFromActiveBuckets() {
         ScanRow ignored = row("Ignored.mkv", ScanMediaType.SERIES, ScanRowStatus.IGNORED);
         ScanRow review = row("Review.mkv", ScanMediaType.SERIES, ScanRowStatus.REVIEW);
-        ScanRow tvdb = row("Tvdb.mkv", ScanMediaType.SERIES, ScanRowStatus.TVDB);
+        ScanRow tmdb = row("Tmdb.mkv", ScanMediaType.SERIES, ScanRowStatus.TMDB);
 
         assertTrue(ScanRowTableSupport.matchesStatusFilter(ignored, ScanRowStatusFilter.IGNORED));
         assertFalse(ScanRowTableSupport.matchesStatusFilter(ignored, ScanRowStatusFilter.TO_PROCESS));
         assertTrue(ScanRowTableSupport.matchesStatusFilter(review, ScanRowStatusFilter.TO_PROCESS));
-        assertTrue(ScanRowTableSupport.matchesStatusFilter(tvdb, ScanRowStatusFilter.TVDB));
+        assertTrue(ScanRowTableSupport.matchesStatusFilter(tmdb, ScanRowStatusFilter.TMDB));
     }
 
     @Test
@@ -157,8 +157,8 @@ class ScanRowTableSupportTest {
 
     @Test
     void informativeNotesAreNotAlertsAndIgnoringRowsKeepsThemOutOfAlertBucket() {
-        ScanRow informative = row("Informative.mkv", ScanMediaType.SERIES, ScanRowStatus.TVDB);
-        informative.setNoteText(Optional.of("TVDB candidates loaded; select one to keep it for this session."));
+        ScanRow informative = row("Informative.mkv", ScanMediaType.SERIES, ScanRowStatus.TMDB);
+        informative.setNoteText(Optional.of("TMDB candidates loaded; select one to keep it for this session."));
 
         ScanRow ignored = row("Ignored.mkv", ScanMediaType.SERIES, ScanRowStatus.REVIEW);
         ignored.setAlertText(Optional.of("Needs attention"));
@@ -173,7 +173,7 @@ class ScanRowTableSupportTest {
     @Test
     void ignoreRoundTripRestoresActualPreviousStateWithoutDuplicatingAlerts() {
         ScanRow row = row("Suggested.mkv", ScanMediaType.SERIES, ScanRowStatus.REVIEW);
-        row.setAlertText(Optional.of("TVDB suggestion needs validation"));
+        row.setAlertText(Optional.of("TMDB suggestion needs validation"));
 
         row.markIgnored();
         row.markIgnored();
@@ -187,11 +187,11 @@ class ScanRowTableSupportTest {
         assertEquals(ScanMediaType.SERIES, row.mediaType());
         assertEquals(ScanRowStatus.REVIEW, row.status());
         assertTrue(ScanRowTableSupport.hasAlert(row));
-        assertEquals("TVDB suggestion needs validation", row.alertText().orElseThrow());
+        assertEquals("TMDB suggestion needs validation", row.alertText().orElseThrow());
     }
 
     @Test
-    void toProcessCounterPredicateExcludesIgnoredOkAndTvdbRows() {
+    void toProcessCounterPredicateExcludesIgnoredOkAndTmdbRows() {
         assertTrue(ScanRowTableSupport.matchesStatusFilter(
                 row("Review.mkv", ScanMediaType.SERIES, ScanRowStatus.REVIEW),
                 ScanRowStatusFilter.TO_PROCESS));
@@ -202,7 +202,7 @@ class ScanRowTableSupportTest {
                 row("Ready.mkv", ScanMediaType.SERIES, ScanRowStatus.OK),
                 ScanRowStatusFilter.TO_PROCESS));
         assertFalse(ScanRowTableSupport.matchesStatusFilter(
-                row("Tvdb.mkv", ScanMediaType.SERIES, ScanRowStatus.TVDB),
+                row("Tmdb.mkv", ScanMediaType.SERIES, ScanRowStatus.TMDB),
                 ScanRowStatusFilter.TO_PROCESS));
     }
 

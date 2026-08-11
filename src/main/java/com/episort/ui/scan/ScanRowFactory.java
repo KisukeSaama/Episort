@@ -5,7 +5,7 @@ import com.episort.analysis.AnalysisValidationService;
 import com.episort.analysis.AnalyzedVideoFile;
 import com.episort.analysis.HeuristicAnalysisService;
 import com.episort.analysis.RenameProposalService;
-import com.episort.analysis.TvdbOrder;
+import com.episort.analysis.TmdbOrder;
 import com.episort.analysis.VideoMediaType;
 import com.episort.scanner.InventoryGroup;
 import com.episort.scanner.InventoryGroupType;
@@ -41,7 +41,7 @@ public final class ScanRowFactory {
             RENAME.generate(analysis);
             analyses.add(analysis);
         }
-        VALIDATION.validatePreTvdb(analyses);
+        VALIDATION.validatePreTmdb(analyses);
         List<ScanRow> rows = new ArrayList<>(analyses.size());
         for (AnalyzedVideoFile analysis : analyses) {
             rows.add(toRow(analysis));
@@ -75,7 +75,7 @@ public final class ScanRowFactory {
             row.setInputPattern(analysis.inputPattern());
         }
         row.setProposedFilename(analysis.proposedName());
-        row.setOrder(Optional.of(orderText(analysis.tvdbOrder())));
+        row.setOrder(Optional.of(orderText(analysis.tmdbOrder())));
         row.setConfidence(analysis.confidence());
         row.setStatusReasons(analysis.statusReasons());
         if (row.status() != ScanRowStatus.IGNORED && !analysis.statusReasons().isEmpty()) {
@@ -131,7 +131,7 @@ public final class ScanRowFactory {
             case OK -> ScanRowStatus.OK;
             case REVIEW -> ScanRowStatus.REVIEW;
             case LOW_CONFIDENCE -> ScanRowStatus.LOW_CONFIDENCE;
-            case TVDB -> ScanRowStatus.TVDB;
+            case TMDB -> ScanRowStatus.TMDB;
             case TYPE -> ScanRowStatus.TYPE;
             case EXT -> ScanRowStatus.EXT;
             case PATTERN -> ScanRowStatus.PATTERN;
@@ -144,7 +144,7 @@ public final class ScanRowFactory {
         };
     }
 
-    private static String orderText(TvdbOrder order) {
+    private static String orderText(TmdbOrder order) {
         return switch (order) {
             case NOT_APPLICABLE -> "N/A";
             case TO_DEFINE -> "TO_DEFINE";

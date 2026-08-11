@@ -17,8 +17,8 @@ import org.junit.jupiter.api.Test;
 
 class ScanPlanMapperTest {
     @Test
-    void aTvdbMatchedEpisodeCarriesItsFullIdentity() {
-        ScanRow row = row("show.s02e05.mkv", ScanMediaType.SERIES, ScanRowStatus.TVDB);
+    void aTmdbMatchedEpisodeCarriesItsFullIdentity() {
+        ScanRow row = row("show.s02e05.mkv", ScanMediaType.SERIES, ScanRowStatus.TMDB);
         row.setInputParse(Optional.of(episodeParse("Firefly", "02", "05", "Out of Gas")));
 
         PlanSourceItem item = ScanPlanMapper.toPlanItem(row);
@@ -34,7 +34,7 @@ class ScanPlanMapperTest {
 
     @Test
     void seasonZeroIsPlannedAsASpecial() {
-        ScanRow row = row("show.ova.mkv", ScanMediaType.SERIES, ScanRowStatus.TVDB);
+        ScanRow row = row("show.ova.mkv", ScanMediaType.SERIES, ScanRowStatus.TMDB);
         row.setInputParse(Optional.of(episodeParse("Show", "00", "03", "Extra")));
 
         assertEquals(PlanMediaKind.SPECIAL, ScanPlanMapper.toPlanItem(row).kind());
@@ -70,7 +70,7 @@ class ScanPlanMapperTest {
 
     @Test
     void aMovieCarriesItsTitleAndYear() {
-        ScanRow row = row("blade.runner.1982.mkv", ScanMediaType.MOVIE, ScanRowStatus.TVDB);
+        ScanRow row = row("blade.runner.1982.mkv", ScanMediaType.MOVIE, ScanRowStatus.TMDB);
         row.setInputParse(Optional.of(movieParse("Blade Runner", "1982")));
 
         PlanSourceItem item = ScanPlanMapper.toPlanItem(row);
@@ -114,7 +114,7 @@ class ScanPlanMapperTest {
 
     @Test
     void anIgnoredRowIsExcludedWhateverItsPreviousStatusWas() {
-        ScanRow row = row("show.mkv", ScanMediaType.SERIES, ScanRowStatus.TVDB);
+        ScanRow row = row("show.mkv", ScanMediaType.SERIES, ScanRowStatus.TMDB);
         row.markIgnored();
 
         assertEquals(PlanExclusionReason.IGNORED, ScanPlanMapper.toPlanItem(row).exclusionReason());
@@ -138,7 +138,7 @@ class ScanPlanMapperTest {
 
     private static ScanInputParse episodeParse(String series, String season, String episode, String title) {
         return new ScanInputParse(
-                "TVDB",
+                "TMDB",
                 List.of(
                         new ScanInputToken(ScanInputRole.SERIES, series, series, 0, 0),
                         new ScanInputToken(ScanInputRole.SEASON, season, season, 0, 0),
@@ -146,17 +146,17 @@ class ScanPlanMapperTest {
                         new ScanInputToken(ScanInputRole.TITLE, title, title, 0, 0)),
                 Optional.of("S" + season + "E" + episode),
                 OptionalDouble.empty(),
-                ScanInputParseSource.TVDB);
+                ScanInputParseSource.TMDB);
     }
 
     private static ScanInputParse movieParse(String title, String year) {
         return new ScanInputParse(
-                "TVDB",
+                "TMDB",
                 List.of(
                         new ScanInputToken(ScanInputRole.TITLE, title, title, 0, 0),
                         new ScanInputToken(ScanInputRole.YEAR, year, year, 0, 0)),
                 Optional.empty(),
                 OptionalDouble.empty(),
-                ScanInputParseSource.TVDB);
+                ScanInputParseSource.TMDB);
     }
 }

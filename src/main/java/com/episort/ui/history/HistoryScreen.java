@@ -88,7 +88,7 @@ public final class HistoryScreen {
     private final TableColumn<RunEvent, String> timestampColumn = new TableColumn<>();
     private final TableColumn<RunEvent, RunEventType> eventColumn = new TableColumn<>();
     private final TableColumn<RunEvent, String> sourceColumn = new TableColumn<>();
-    private final TableColumn<RunEvent, String> tvdbColumn = new TableColumn<>();
+    private final TableColumn<RunEvent, String> tmdbColumn = new TableColumn<>();
     private final TableColumn<RunEvent, String> destinationColumn = new TableColumn<>();
     private final TableColumn<RunEvent, String> proposedColumn = new TableColumn<>();
     private final TableColumn<RunEvent, RunEventStatus> statusColumn = new TableColumn<>();
@@ -217,7 +217,7 @@ public final class HistoryScreen {
         timestampColumn.setText(UiText.historyColumnTimestamp(language));
         eventColumn.setText(UiText.historyColumnEventType(language));
         sourceColumn.setText(UiText.historyColumnSource(language));
-        tvdbColumn.setText(UiText.scanColumnTvdb(language));
+        tmdbColumn.setText(UiText.scanColumnTmdb(language));
         destinationColumn.setText(UiText.scanColumnDestination(language));
         proposedColumn.setText(UiText.scanColumnProposed(language));
         statusColumn.setText(UiText.historyColumnStatus(language));
@@ -513,7 +513,7 @@ public final class HistoryScreen {
         appendSearchText(text, event.subjectPath().map(Path::toString).orElse(""));
         appendSearchText(text, eventTypeText(event.type(), currentLanguage));
         appendSearchText(text, event.type().name());
-        appendSearchText(text, metric(event, "tvdbMatch", "tvdb_match"));
+        appendSearchText(text, metric(event, "tmdbMatch", "tmdb_match"));
         appendSearchText(text, metric(event, "destination", "targetPath", "target_path"));
         appendSearchText(text, metric(event, "proposedFilename", "proposed_filename", "newName", "new_name"));
         appendSearchText(text, statusText(event.status(), currentLanguage));
@@ -584,10 +584,10 @@ public final class HistoryScreen {
                 data.getValue().subjectPath().map(Path::toString).orElse(UiText.EMPTY)));
         sourceColumn.setCellFactory(monoCell());
 
-        tvdbColumn.setMinWidth(120);
-        tvdbColumn.setPrefWidth(150);
-        tvdbColumn.setCellValueFactory(data -> new SimpleStringProperty(metric(data.getValue(), "tvdbMatch", "tvdb_match")));
-        tvdbColumn.setCellFactory(proseCell());
+        tmdbColumn.setMinWidth(120);
+        tmdbColumn.setPrefWidth(150);
+        tmdbColumn.setCellValueFactory(data -> new SimpleStringProperty(metric(data.getValue(), "tmdbMatch", "tmdb_match")));
+        tmdbColumn.setCellFactory(proseCell());
 
         destinationColumn.setMinWidth(160);
         destinationColumn.setPrefWidth(220);
@@ -634,7 +634,7 @@ public final class HistoryScreen {
                 timestampColumn,
                 sourceColumn,
                 eventColumn,
-                tvdbColumn,
+                tmdbColumn,
                 destinationColumn,
                 proposedColumn,
                 statusColumn,

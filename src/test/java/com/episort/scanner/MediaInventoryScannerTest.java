@@ -74,7 +74,7 @@ class MediaInventoryScannerTest {
     }
 
     @Test
-    void seedsMultipleSeriesMoviesUnknownAndIgnoredGroupsWithoutFinalTvdbIdentity() throws Exception {
+    void seedsMultipleSeriesMoviesUnknownAndIgnoredGroupsWithoutFinalTmdbIdentity() throws Exception {
         Path input = Files.createDirectory(tempDir.resolve("input"));
         Files.createFile(input.resolve("Alpha.Show.S01E01.mkv"));
         Files.createFile(input.resolve("Alpha.Show.S01E02.mkv"));
@@ -89,7 +89,7 @@ class MediaInventoryScannerTest {
         assertEquals(2, result.summary().likelySeriesGroupCount());
         assertEquals(1, result.summary().likelyMovieGroupCount());
         assertEquals(1, result.summary().unknownItemCount());
-        assertTrue(result.groups().stream().allMatch(group -> group.tvdbIdentityFinal() == false));
+        assertTrue(result.groups().stream().allMatch(group -> group.tmdbIdentityFinal() == false));
         assertTrue(result.groups().stream().noneMatch(group -> group.type() == InventoryGroupType.UNSUPPORTED));
         assertTrue(result.groups().stream().noneMatch(group -> group.type() == InventoryGroupType.IGNORED));
     }

@@ -142,7 +142,7 @@ public final class PlanReviewPane {
                 .withZone(ZoneId.systemDefault());
 
         title.setText(UiText.planDialogTitle(language));
-        title.getStyleClass().add("tvdb-dialog-title");
+        title.getStyleClass().add("tmdb-dialog-title");
 
         // The way back, where a way back is looked for: leading the header, before
         // the plan itself. The footer keeps the same action under the table, so a
@@ -154,7 +154,7 @@ public final class PlanReviewPane {
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
         HBox headerRow = new HBox(10, backButton, title, headerSpacer);
-        headerRow.getStyleClass().add("tvdb-dialog-header");
+        headerRow.getStyleClass().add("tmdb-dialog-header");
         headerRow.setAlignment(Pos.CENTER_LEFT);
 
         // The same strip the scan screen shows, carried on where it left off: the
@@ -167,7 +167,7 @@ public final class PlanReviewPane {
         header = new VBox(12, headerRow, stepperBox);
 
         subtitle.setText(UiText.planDialogSubtitle(language));
-        subtitle.getStyleClass().add("tvdb-dialog-message");
+        subtitle.getStyleClass().add("tmdb-dialog-message");
         subtitle.setWrapText(true);
 
         datesColumn = new TableColumn<>(UiText.conflictColumnDates(language));
@@ -184,7 +184,7 @@ public final class PlanReviewPane {
         HBox.setHgrow(banner, Priority.ALWAYS);
 
         notice.setText(UiText.planNotice(language));
-        notice.getStyleClass().add("tvdb-dialog-message");
+        notice.getStyleClass().add("tmdb-dialog-message");
         notice.setWrapText(true);
 
         validateButton.getStyleClass().add("primary");
@@ -380,7 +380,7 @@ public final class PlanReviewPane {
      * taken by hand, on the ticked rows only, and leaves everything else alone.
      */
     private FlowPane buildConflictToolbar() {
-        selectionCount.getStyleClass().add("tvdb-dialog-message");
+        selectionCount.getStyleClass().add("tmdb-dialog-message");
 
         mostRecentButton.setText(UiText.conflictBatchMostRecent(language));
         mostRecentButton.getStyleClass().add("ghost");
@@ -814,7 +814,7 @@ public final class PlanReviewPane {
 
     private static Label metric(String label, int value) {
         Label chip = new Label(label + ": " + value);
-        chip.getStyleClass().add("tvdb-match-meta");
+        chip.getStyleClass().add("tmdb-match-meta");
         return chip;
     }
 

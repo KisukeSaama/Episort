@@ -35,7 +35,7 @@ final class WindowsDpapiCredentialProtector implements CredentialProtector {
             boolean success = protect
                     ? Crypt32.INSTANCE.CryptProtectData(
                             inputBlob,
-                            new WString("Episort TVDB credentials"),
+                            new WString("Episort TMDB credentials"),
                             null,
                             null,
                             null,
@@ -51,7 +51,7 @@ final class WindowsDpapiCredentialProtector implements CredentialProtector {
                             outputBlob);
             if (!success) {
                 throw new SettingsStoreException(
-                        "Windows could not protect the TVDB credentials (error " + Native.getLastError() + ").",
+                        "Windows could not protect the TMDB credentials (error " + Native.getLastError() + ").",
                         null);
             }
             outputBlob.read();

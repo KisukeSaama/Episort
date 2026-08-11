@@ -7,7 +7,7 @@ public record InventoryGroup(
         InventoryGroupType type,
         String seedName,
         List<InventoryItem> items,
-        boolean tvdbIdentityFinal) {
+        boolean tmdbIdentityFinal) {
     public InventoryGroup {
         Objects.requireNonNull(type, "type");
         Objects.requireNonNull(seedName, "seedName");

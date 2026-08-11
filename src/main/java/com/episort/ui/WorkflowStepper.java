@@ -10,7 +10,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 
 /**
- * The numbered workflow strip — folder, analysis, TVDB, plan review, apply.
+ * The numbered workflow strip — folder, analysis, TMDB, plan review, apply.
  *
  * <p>Lives outside the scan screen because the exact-plan review shows the very
  * same strip: the plan replaces the scan screen in the content area, and without

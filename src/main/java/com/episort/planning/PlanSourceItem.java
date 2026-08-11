@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 
 /**
- * One reviewed file handed to the planner, carrying the TVDB-backed identity the
+ * One reviewed file handed to the planner, carrying the TMDB-backed identity the
  * user validated.
  *
  * @param sourcePath      absolute source file, inside the workspace

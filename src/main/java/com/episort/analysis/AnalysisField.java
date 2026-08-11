@@ -17,6 +17,6 @@ public enum AnalysisField {
     RELEASE_GROUP,
     PROPOSED_NAME,
     PROPOSED_DESTINATION_PATH,
-    TVDB_ORDER,
+    TMDB_ORDER,
     CONFIDENCE
 }

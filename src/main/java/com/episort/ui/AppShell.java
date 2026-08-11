@@ -20,7 +20,7 @@ import com.episort.workflow.ExecutionRecap;
 import com.episort.workflow.ExecutionService;
 import com.episort.workflow.LastPlanRollbackService;
 import com.episort.workflow.PlanApprovalService;
-import com.episort.workflow.TvdbCredentialConfigurationResult;
+import com.episort.workflow.TmdbGatewayStatus;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -102,12 +102,11 @@ public final class AppShell {
             AppShellViewModel viewModel,
             Function<Path, AppShellViewModel> configureWorkspace,
             Function<Path, CompletableFuture<AppShellViewModel>> selectInputFolder,
-            TvdbCredentialConfigurationResult tvdbConfiguration,
+            TmdbGatewayStatus tmdbConfiguration,
             Supplier<Optional<Path>> currentWorkspace,
             BooleanSupplier canContinue,
             Runnable onContinue,
             RunEventStore runEventStore,
-            Supplier<Integer> resetTvdbCache,
             Consumer<String> openExternalLink) {
         Fonts.loadAll();
         this.currentViewModel = viewModel;
@@ -126,8 +125,7 @@ public final class AppShell {
                     configureWorkspace,
                     this.currentWorkspace,
                     this::applyLanguage,
-                    tvdbConfiguration,
-                    resetTvdbCache,
+                    tmdbConfiguration,
                     openExternalLink,
                     this::onSettingsClose,
                     this::apply);

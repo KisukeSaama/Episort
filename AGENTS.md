@@ -1,8 +1,8 @@
 # Repository Guidelines
 
-Episort is a JavaFX desktop app that sorts TV series episodes (`.avi`, `.mp4`, `.mkv`) using TVDB references — aired, DVD, and absolute orders — from a user-selected working directory that may mix several series.
+Episort is a JavaFX desktop app that sorts TV series episodes (`.avi`, `.mp4`, `.mkv`) using TMDB references — aired, DVD, and absolute orders — from a user-selected working directory that may mix several series.
 
-Stack: Java 21, JavaFX, Gradle, JUnit 5. Layout: `src/main/`, `src/test/`, `docs/`, `assets/`. Keep TVDB access, episode matching, filesystem ops, and UI in separate packages.
+Stack: Java 21, JavaFX, Gradle, JUnit 5. Layout: `src/main/`, `src/test/`, `docs/`, `assets/`. Keep TMDB access, episode matching, filesystem ops, and UI in separate packages.
 
 ## Commands
 
@@ -14,13 +14,13 @@ Stack: Java 21, JavaFX, Gradle, JUnit 5. Layout: `src/main/`, `src/test/`, `docs
 
 ## Coding & Tests
 
-Standard Java conventions (4-space indent, `PascalCase`/`camelCase`, lowercase packages). Prefer explicit domain names (`EpisodeOrder`, `SeasonFolderPlanner`, `TvdbClient`).
+Standard Java conventions (4-space indent, `PascalCase`/`camelCase`, lowercase packages). Prefer explicit domain names (`EpisodeOrder`, `SeasonFolderPlanner`, `TmdbClient`).
 
 JUnit 5, test files end with `Test`. Filesystem tests must use temporary directories — never real media folders. Default to TDD: failing test → minimal implementation → refactor. For UI-only changes, document manual verification and add lower-level tests for any extracted logic.
 
 ## Security
 
-TVDB API keys live outside source control (env var or ignored config file). Never commit keys, tokens, real media paths, or private library metadata.
+TMDB API keys and read access tokens live exclusively in the Janus vault and must never be committed or distributed. The Janus URL, Episort application ID, and Janus caller key are intentionally embedded in official Episort builds so end users need no credentials; the operator accepts exposure and manages restrictions, monitoring, rotation, and revocation in Janus. Never commit other keys or tokens, real media paths, or private library metadata.
 
 All scans, folder creation, renaming, and moving operations must stay inside the configured working directory. Never touch files outside it.
 
@@ -51,7 +51,7 @@ Do not rename, move, or delete media files without explicit user confirmation. T
 1. Validate the detected pattern (series grouping, season assignment, ordering, ignored/ambiguous files).
 2. Validate the exact file operation plan (every source and destination path).
 
-Never assume all files in a working directory belong to the same show — surface the proposed series groups for validation before producing the TVDB-backed rename/move plan. Target layout:
+Never assume all files in a working directory belong to the same show — surface the proposed series groups for validation before producing the TMDB-backed rename/move plan. Target layout:
 
 ```text
 Series Name in English/

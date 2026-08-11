@@ -4,8 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.episort.config.AppSettings;
-import com.episort.config.InMemoryTvdbCredentialStore;
-import com.episort.config.TvdbCredentials;
+import com.episort.config.JanusConfiguration;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -17,27 +16,24 @@ class StartupWorkflowTest {
     Path tempDir;
 
     @Test
-    void organizationPrerequisitesRequireWorkspaceAndVerifiedTvdb() throws Exception {
+    void organizationPrerequisitesRequireWorkspaceAndVerifiedTmdb() throws Exception {
         Path workspace = Files.createDirectory(tempDir.resolve("media"));
         WorkspaceConfigurationService workspaceService = new WorkspaceConfigurationService(new StubSettingsStore(
                 new AppSettings(workspace)));
-        InMemoryTvdbCredentialStore credentialStore = new InMemoryTvdbCredentialStore();
-        credentialStore.save(new TvdbCredentials("key", Optional.empty()));
-        TvdbCredentialConfigurationService tvdbService = new TvdbCredentialConfigurationService(
-                credentialStore, credentials -> TvdbConnectionTestResult.passed());
-        StartupWorkflow workflow = new StartupWorkflow(workspaceService, tvdbService);
+        TmdbGatewayService tmdbService = new TmdbGatewayService(
+                new JanusConfiguration("key", Optional.empty()),
+                configuration -> TmdbConnectionTestResult.passed());
+        StartupWorkflow workflow = new StartupWorkflow(workspaceService, tmdbService);
 
         assertTrue(workflow.organizationPrerequisites().organizationAllowed());
     }
 
     @Test
-    void organizationPrerequisitesBlockMissingTvdb() throws Exception {
+    void organizationPrerequisitesBlockMissingTmdb() throws Exception {
         Path workspace = Files.createDirectory(tempDir.resolve("media"));
         WorkspaceConfigurationService workspaceService = new WorkspaceConfigurationService(new StubSettingsStore(
                 new AppSettings(workspace)));
-        TvdbCredentialConfigurationService tvdbService = new TvdbCredentialConfigurationService(
-                new InMemoryTvdbCredentialStore(), credentials -> TvdbConnectionTestResult.passed());
-        StartupWorkflow workflow = new StartupWorkflow(workspaceService, tvdbService);
+        StartupWorkflow workflow = new StartupWorkflow(workspaceService, null);
 
         assertFalse(workflow.organizationPrerequisites().organizationAllowed());
     }

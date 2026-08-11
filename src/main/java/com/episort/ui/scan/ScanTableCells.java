@@ -116,7 +116,7 @@ final class ScanTableCells {
     static String statusStyle(ScanRowStatus status) {
         return switch (status) {
             case OK -> "quiet";
-            case REVIEW, LOW_CONFIDENCE, TVDB, TYPE, EXT, PATTERN, META, PATH, ERROR -> "warning";
+            case REVIEW, LOW_CONFIDENCE, TMDB, TYPE, EXT, PATTERN, META, PATH, ERROR -> "warning";
             case CONFLICT, DUPLICATE -> "conflict";
             case IGNORED -> "quiet-muted";
         };

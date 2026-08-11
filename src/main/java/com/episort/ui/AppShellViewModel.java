@@ -4,7 +4,7 @@ import com.episort.scanner.InventoryScanResult;
 import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ErrorSeverity;
 import com.episort.workflow.InputFolderSelectionResult;
-import com.episort.workflow.TvdbCredentialConfigurationResult;
+import com.episort.workflow.TmdbGatewayStatus;
 import com.episort.workflow.WorkspaceConfigurationResult;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -129,12 +129,12 @@ public record AppShellViewModel(
                 .orElseGet(() -> AppShellViewModel.fromError(result.error().orElseThrow()));
     }
 
-    public static AppShellViewModel fromTvdbConfiguration(TvdbCredentialConfigurationResult result) {
+    public static AppShellViewModel fromTmdbConfiguration(TmdbGatewayStatus result) {
         if (result.success()) {
             return of(
                 "Episort",
-                "Connexion TVDB vérifiée",
-                "L'accès TVDB est prêt pour l'organisation basée sur les métadonnées.",
+                "Connexion TMDB vérifiée",
+                "L'accès TMDB est prêt pour l'organisation basée sur les métadonnées.",
                 Optional.empty(),
                 Optional.empty());
         }
@@ -144,7 +144,7 @@ public record AppShellViewModel(
 
     public static AppShellViewModel fromStartupPrerequisites(
             WorkspaceConfigurationResult workspaceResult,
-            TvdbCredentialConfigurationResult tvdbResult) {
+            TmdbGatewayStatus tmdbResult) {
         if (!workspaceResult.success()) {
             return fromWorkspaceConfiguration(workspaceResult);
         }

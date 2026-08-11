@@ -3,7 +3,7 @@ package com.episort.ui.settings;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.AppShellViewModel;
 import com.episort.ui.UiText;
-import com.episort.workflow.TvdbCredentialConfigurationResult;
+import com.episort.workflow.TmdbGatewayStatus;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -29,8 +29,8 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Window;
 
 public final class SettingsPane {
-    static final String TVDB_ATTRIBUTION_URL = "https://thetvdb.com/subscribe";
-    private static final String TVDB_LOGO_RESOURCE = "/assets/thetvdb-logo-dark.png";
+    static final String TMDB_ATTRIBUTION_URL = "https://www.themoviedb.org";
+    private static final String TMDB_LOGO_RESOURCE = "/assets/tmdb-logo-dark.png";
 
     private final VBox root;
     private final Label pageEyebrow;
@@ -41,18 +41,16 @@ public final class SettingsPane {
     private final Label workspaceValue;
     private final Label preferencesTitle;
     private final Label preferencesDescription;
-    private final Label tvdbTitle;
-    private final Label tvdbDescription;
-    private final Label tvdbStatus;
-    private final Label tvdbCacheFeedback;
-    private final Label tvdbAttribution;
-    private final Hyperlink tvdbAttributionLink;
-    private final Region tvdbStatusDot;
+    private final Label tmdbTitle;
+    private final Label tmdbDescription;
+    private final Label tmdbStatus;
+    private final Label tmdbAttribution;
+    private final Hyperlink tmdbAttributionLink;
+    private final Region tmdbStatusDot;
     private final Button chooseWorkspace;
-    private final Button tvdbResetCache;
     private final ComboBox<AppLanguage> languageCombo;
     private final Supplier<Optional<Path>> currentWorkspace;
-    private final TvdbCredentialConfigurationResult tvdbConfiguration;
+    private final TmdbGatewayStatus tmdbConfiguration;
     @SuppressWarnings("unused")
     private final Runnable onClose;
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
@@ -62,13 +60,12 @@ public final class SettingsPane {
             Function<Path, AppShellViewModel> configureWorkspace,
             Supplier<Optional<Path>> currentWorkspace,
             Consumer<AppLanguage> onLanguageChange,
-            TvdbCredentialConfigurationResult tvdbConfiguration,
-            Supplier<Integer> resetTvdbCache,
+            TmdbGatewayStatus tmdbConfiguration,
             Consumer<String> openExternalLink,
             Runnable onClose,
             Consumer<AppShellViewModel> onConfigured) {
         this.currentWorkspace = currentWorkspace;
-        this.tvdbConfiguration = tvdbConfiguration;
+        this.tmdbConfiguration = tmdbConfiguration;
         this.onClose = onClose;
 
         pageEyebrow = new Label();
@@ -160,80 +157,63 @@ public final class SettingsPane {
         VBox preferencesSection = new VBox(10, preferencesTitle, preferencesDescription, divider(), preferencesRow);
         preferencesSection.getStyleClass().add("settings-section");
 
-        // ---- TVDB section ------------------------------------------
-        tvdbTitle = new Label();
-        tvdbTitle.getStyleClass().add("settings-section-title");
+        // ---- TMDB section ------------------------------------------
+        tmdbTitle = new Label();
+        tmdbTitle.getStyleClass().add("settings-section-title");
 
-        tvdbDescription = new Label();
-        tvdbDescription.getStyleClass().add("settings-section-description");
-        tvdbDescription.setWrapText(true);
+        tmdbDescription = new Label();
+        tmdbDescription.getStyleClass().add("settings-section-description");
+        tmdbDescription.setWrapText(true);
 
-        tvdbStatusDot = new Region();
-        tvdbStatusDot.getStyleClass().addAll("dot", "dot-idle");
-        tvdbStatus = new Label();
-        tvdbStatus.getStyleClass().add("settings-section-description");
-        tvdbStatus.setWrapText(true);
-        tvdbCacheFeedback = new Label();
-        tvdbCacheFeedback.getStyleClass().add("settings-section-description");
-        tvdbCacheFeedback.setWrapText(true);
+        tmdbStatusDot = new Region();
+        tmdbStatusDot.getStyleClass().addAll("dot", "dot-idle");
+        tmdbStatus = new Label();
+        tmdbStatus.getStyleClass().add("settings-section-description");
+        tmdbStatus.setWrapText(true);
+        HBox tmdbInputs = new HBox(12, tmdbStatusDot, tmdbStatus);
+        HBox.setHgrow(tmdbStatus, Priority.ALWAYS);
+        tmdbInputs.setAlignment(Pos.CENTER_LEFT);
+        tmdbInputs.getStyleClass().add("settings-row");
 
-        tvdbResetCache = new Button();
-        tvdbResetCache.getStyleClass().add("ghost");
-        tvdbResetCache.setOnAction(event -> {
-            if (resetTvdbCache == null) {
-                tvdbCacheFeedback.setText(UiText.tvdbSettingsUnavailable(currentLanguage));
-                return;
-            }
-            int cleared = resetTvdbCache.get();
-            tvdbCacheFeedback.setText(cleared > 0
-                    ? UiText.tvdbSettingsCacheCleared(currentLanguage, cleared)
-                    : UiText.tvdbSettingsCacheAlreadyEmpty(currentLanguage));
-        });
+        ImageView tmdbLogo = new ImageView(new Image(Objects.requireNonNull(
+                SettingsPane.class.getResource(TMDB_LOGO_RESOURCE),
+                "Missing TMDB attribution logo").toExternalForm()));
+        tmdbLogo.setFitWidth(84);
+        tmdbLogo.setFitHeight(46);
+        tmdbLogo.setPreserveRatio(true);
+        tmdbLogo.setAccessibleText("TMDB");
 
-        HBox tvdbInputs = new HBox(12, tvdbStatusDot, tvdbStatus, tvdbResetCache, tvdbCacheFeedback);
-        HBox.setHgrow(tvdbStatus, Priority.ALWAYS);
-        tvdbInputs.setAlignment(Pos.CENTER_LEFT);
-        tvdbInputs.getStyleClass().add("settings-row");
+        tmdbAttribution = new Label();
+        tmdbAttribution.getStyleClass().add("tmdb-attribution-copy");
+        tmdbAttribution.setWrapText(true);
 
-        ImageView tvdbLogo = new ImageView(new Image(Objects.requireNonNull(
-                SettingsPane.class.getResource(TVDB_LOGO_RESOURCE),
-                "Missing TVDB attribution logo").toExternalForm()));
-        tvdbLogo.setFitWidth(84);
-        tvdbLogo.setFitHeight(46);
-        tvdbLogo.setPreserveRatio(true);
-        tvdbLogo.setAccessibleText("TheTVDB");
-
-        tvdbAttribution = new Label();
-        tvdbAttribution.getStyleClass().add("tvdb-attribution-copy");
-        tvdbAttribution.setWrapText(true);
-
-        tvdbAttributionLink = new Hyperlink();
-        tvdbAttributionLink.getStyleClass().add("tvdb-attribution-link");
-        tvdbAttributionLink.setDisable(openExternalLink == null);
+        tmdbAttributionLink = new Hyperlink();
+        tmdbAttributionLink.getStyleClass().add("tmdb-attribution-link");
+        tmdbAttributionLink.setDisable(openExternalLink == null);
         if (openExternalLink != null) {
-            tvdbAttributionLink.setOnAction(event -> openExternalLink.accept(TVDB_ATTRIBUTION_URL));
+            tmdbAttributionLink.setOnAction(event -> openExternalLink.accept(TMDB_ATTRIBUTION_URL));
         }
 
-        VBox tvdbAttributionText = new VBox(2, tvdbAttribution, tvdbAttributionLink);
-        HBox.setHgrow(tvdbAttributionText, Priority.ALWAYS);
-        HBox tvdbAttributionRow = new HBox(16, tvdbLogo, tvdbAttributionText);
-        tvdbAttributionRow.setAlignment(Pos.CENTER_LEFT);
-        tvdbAttributionRow.getStyleClass().add("tvdb-attribution");
+        VBox tmdbAttributionText = new VBox(2, tmdbAttribution, tmdbAttributionLink);
+        HBox.setHgrow(tmdbAttributionText, Priority.ALWAYS);
+        HBox tmdbAttributionRow = new HBox(16, tmdbLogo, tmdbAttributionText);
+        tmdbAttributionRow.setAlignment(Pos.CENTER_LEFT);
+        tmdbAttributionRow.getStyleClass().add("tmdb-attribution");
 
-        VBox tvdbSection = new VBox(
+        VBox tmdbSection = new VBox(
                 10,
-                tvdbTitle,
-                tvdbDescription,
+                tmdbTitle,
+                tmdbDescription,
                 divider(),
-                tvdbInputs,
+                tmdbInputs,
                 divider(),
-                tvdbAttributionRow);
-        tvdbSection.getStyleClass().add("settings-section");
+                tmdbAttributionRow);
+        tmdbSection.getStyleClass().add("settings-section");
 
         applyLanguage(AppLanguage.FRENCH);
         refreshWorkspaceValue(currentWorkspace.get());
 
-        root = new VBox(18, header, workspaceSection, tvdbSection, preferencesSection);
+        root = new VBox(18, header, workspaceSection, tmdbSection, preferencesSection);
         root.getStyleClass().add("settings-page");
         root.setMaxWidth(960);
     }
@@ -270,13 +250,12 @@ public final class SettingsPane {
         preferencesDescription.setText(UiText.preferencesSectionDescription(language));
         // The combo sits alone on its row, with no label of its own.
         languageCombo.setAccessibleText(UiText.languageLabel(language));
-        tvdbTitle.setText(UiText.tvdbSettingsSectionTitle(language));
-        tvdbDescription.setText(UiText.tvdbSettingsSectionDescription(language));
-        tvdbResetCache.setText(UiText.tvdbSettingsResetCache(language));
-        tvdbAttribution.setText(UiText.tvdbSettingsAttribution(language));
-        tvdbAttributionLink.setText(UiText.tvdbSettingsAttributionLink(language));
-        tvdbAttributionLink.setAccessibleText(UiText.tvdbSettingsAttributionLinkAccessible(language));
-        applyTvdbStatus(language);
+        tmdbTitle.setText(UiText.tmdbSettingsSectionTitle(language));
+        tmdbDescription.setText(UiText.tmdbSettingsSectionDescription(language));
+        tmdbAttribution.setText(UiText.tmdbSettingsAttribution(language));
+        tmdbAttributionLink.setText(UiText.tmdbSettingsAttributionLink(language));
+        tmdbAttributionLink.setAccessibleText(UiText.tmdbSettingsAttributionLinkAccessible(language));
+        applyTmdbStatus(language);
 
         languageCombo.setValue(language);
         refreshWorkspaceValue(currentWorkspace.get());
@@ -290,10 +269,10 @@ public final class SettingsPane {
         workspaceValue.setText(UiText.workspaceValue(currentLanguage, workspace));
     }
 
-    private void applyTvdbStatus(AppLanguage language) {
-        TvdbStatusPresentation presentation = TvdbStatusPresentation.from(tvdbConfiguration, language);
-        tvdbStatus.setText(presentation.text());
-        tvdbStatusDot.getStyleClass().setAll("dot", presentation.dotStyleClass());
+    private void applyTmdbStatus(AppLanguage language) {
+        TmdbStatusPresentation presentation = TmdbStatusPresentation.from(tmdbConfiguration, language);
+        tmdbStatus.setText(presentation.text());
+        tmdbStatusDot.getStyleClass().setAll("dot", presentation.dotStyleClass());
     }
 
     private static Region divider() {

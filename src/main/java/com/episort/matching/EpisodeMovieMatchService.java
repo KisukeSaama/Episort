@@ -17,7 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Deterministic advisory matcher. It proposes at most one TVDB-backed match per
+ * Deterministic advisory matcher. It proposes at most one TMDB-backed match per
  * supported file and never creates, moves, renames, or validates anything.
  */
 public final class EpisodeMovieMatchService {
@@ -26,7 +26,7 @@ public final class EpisodeMovieMatchService {
 
     public List<MediaMatchProposal> proposeSeriesMatches(
             List<InventoryItem> items,
-            TvdbSeriesMetadata metadata) {
+            TmdbSeriesMetadata metadata) {
         Objects.requireNonNull(metadata, "metadata");
         List<MediaMatchProposal> proposals = new ArrayList<>();
         Set<String> assignedEpisodeIds = new HashSet<>();
@@ -36,17 +36,17 @@ public final class EpisodeMovieMatchService {
                 proposals.add(MediaMatchProposal.unmatched(item.sourcePath(), "No deterministic episode marker found."));
                 continue;
             }
-            Optional<TvdbEpisodeMetadata> matched = findEpisode(metadata, parsed.orElseThrow(), assignedEpisodeIds);
+            Optional<TmdbEpisodeMetadata> matched = findEpisode(metadata, parsed.orElseThrow(), assignedEpisodeIds);
             if (matched.isEmpty()) {
-                proposals.add(MediaMatchProposal.unmatched(item.sourcePath(), "No matching TVDB episode found."));
+                proposals.add(MediaMatchProposal.unmatched(item.sourcePath(), "No matching TMDB episode found."));
                 continue;
             }
-            TvdbEpisodeMetadata episode = matched.orElseThrow();
-            assignedEpisodeIds.add(episode.tvdbId());
+            TmdbEpisodeMetadata episode = matched.orElseThrow();
+            assignedEpisodeIds.add(episode.tmdbId());
             proposals.add(new MediaMatchProposal(
                     item.sourcePath(),
                     episode.special() ? MediaMatchType.SERIES_SPECIAL : MediaMatchType.SERIES_EPISODE,
-                    Optional.of(episode.tvdbId()),
+                    Optional.of(episode.tmdbId()),
                     Optional.of(episode.title()),
                     Optional.of(episode.seasonNumber()),
                     Optional.of(episode.episodeNumber()),
@@ -59,7 +59,7 @@ public final class EpisodeMovieMatchService {
 
     public List<MediaMatchProposal> proposeMovieMatches(
             List<InventoryItem> items,
-            TvdbMovieMetadata metadata) {
+            TmdbMovieMetadata metadata) {
         Objects.requireNonNull(metadata, "metadata");
         List<MediaMatchProposal> proposals = new ArrayList<>();
         boolean assigned = false;
@@ -69,36 +69,36 @@ public final class EpisodeMovieMatchService {
                 continue;
             }
             if (!movieLooksCompatible(item.filename(), metadata)) {
-                proposals.add(MediaMatchProposal.unmatched(item.sourcePath(), "Filename does not resemble selected TVDB movie."));
+                proposals.add(MediaMatchProposal.unmatched(item.sourcePath(), "Filename does not resemble selected TMDB movie."));
                 continue;
             }
             assigned = true;
             proposals.add(new MediaMatchProposal(
                     item.sourcePath(),
                     MediaMatchType.MOVIE,
-                    Optional.of(metadata.tvdbId()),
+                    Optional.of(metadata.tmdbId()),
                     Optional.of(metadata.title()),
                     Optional.empty(),
                     Optional.empty(),
                     Optional.empty(),
                     OptionalDouble.of(0.86),
-                    "Matched by selected TVDB movie identity."));
+                    "Matched by selected TMDB movie identity."));
         }
         return List.copyOf(proposals);
     }
 
-    private Optional<TvdbEpisodeMetadata> findEpisode(
-            TvdbSeriesMetadata metadata,
+    private Optional<TmdbEpisodeMetadata> findEpisode(
+            TmdbSeriesMetadata metadata,
             ParsedEpisodeKey key,
             Set<String> assignedEpisodeIds) {
         return metadata.episodes().stream()
-                .filter(episode -> !assignedEpisodeIds.contains(episode.tvdbId()))
+                .filter(episode -> !assignedEpisodeIds.contains(episode.tmdbId()))
                 .filter(episode -> matches(episode, key))
-                .sorted(Comparator.comparing(TvdbEpisodeMetadata::special))
+                .sorted(Comparator.comparing(TmdbEpisodeMetadata::special))
                 .findFirst();
     }
 
-    private boolean matches(TvdbEpisodeMetadata episode, ParsedEpisodeKey key) {
+    private boolean matches(TmdbEpisodeMetadata episode, ParsedEpisodeKey key) {
         if (key.absolute()) {
             return episode.absoluteNumber().filter(number -> number == key.episode()).isPresent();
         }
@@ -137,7 +137,7 @@ public final class EpisodeMovieMatchService {
         return Optional.of(new ParsedEpisodeKey(intValue(matcher.group(1)), intValue(matcher.group(2)), false));
     }
 
-    private boolean movieLooksCompatible(String filename, TvdbMovieMetadata metadata) {
+    private boolean movieLooksCompatible(String filename, TmdbMovieMetadata metadata) {
         String normalizedFilename = normalize(stripExtension(filename));
         String normalizedTitle = normalize(metadata.title());
         if (normalizedFilename.contains(normalizedTitle)) {

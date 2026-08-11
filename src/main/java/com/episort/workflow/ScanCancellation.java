@@ -4,12 +4,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Cooperative cancellation token covering one analysis run (inventory scan →
- * AI refinement → TVDB batch matching).
+ * AI refinement → TMDB batch matching).
  *
  * <p>The UI thread flips the token via {@link #cancel()}; the background
  * pipeline observes it at its progress checkpoints and unwinds by throwing
  * {@link ScanCancelledException}. Nothing here interrupts threads: the long
- * running steps (llama-server prompts, TVDB requests) run to the end of the
+ * running steps (llama-server prompts, TMDB requests) run to the end of the
  * current unit of work, then the run is abandoned and its results discarded.
  */
 public final class ScanCancellation {

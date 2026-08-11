@@ -8,7 +8,7 @@ import java.util.OptionalDouble;
 public record MediaMatchProposal(
         Path sourcePath,
         MediaMatchType type,
-        Optional<String> tvdbId,
+        Optional<String> tmdbId,
         Optional<String> title,
         Optional<Integer> seasonNumber,
         Optional<Integer> episodeNumber,
@@ -18,7 +18,7 @@ public record MediaMatchProposal(
     public MediaMatchProposal {
         sourcePath = Objects.requireNonNull(sourcePath, "sourcePath");
         type = Objects.requireNonNull(type, "type");
-        tvdbId = tvdbId == null ? Optional.empty() : tvdbId;
+        tmdbId = tmdbId == null ? Optional.empty() : tmdbId;
         title = title == null ? Optional.empty() : title;
         seasonNumber = seasonNumber == null ? Optional.empty() : seasonNumber;
         episodeNumber = episodeNumber == null ? Optional.empty() : episodeNumber;

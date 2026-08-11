@@ -71,13 +71,13 @@ final class RollbackReviewPane {
         this.onFailure = onFailure;
         this.onExecutingChanged = onExecutingChanged;
 
-        title.getStyleClass().add("tvdb-dialog-title");
+        title.getStyleClass().add("tmdb-dialog-title");
         backButton.getStyleClass().addAll("header-action", "ghost");
         backButton.setOnAction(event -> close());
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
         HBox headerRow = new HBox(10, backButton, title, headerSpacer);
-        headerRow.getStyleClass().add("tvdb-dialog-header");
+        headerRow.getStyleClass().add("tmdb-dialog-header");
         headerRow.setAlignment(Pos.CENTER_LEFT);
 
         stepper = new WorkflowStepper(language);
@@ -104,7 +104,7 @@ final class RollbackReviewPane {
         stepper.setPhase(WorkflowPhase.PLAN_REVIEW, false);
 
         Label subtitle = new Label(UiText.historyRollbackConfirmation(language));
-        subtitle.getStyleClass().add("tvdb-dialog-message");
+        subtitle.getStyleClass().add("tmdb-dialog-message");
         subtitle.setWrapText(true);
 
         FlowPane summary = new FlowPane(12, 6);
@@ -120,7 +120,7 @@ final class RollbackReviewPane {
         TableView<RollbackMove> table = buildTable();
 
         Label notice = new Label(UiText.rollbackNotice(language));
-        notice.getStyleClass().add("tvdb-dialog-message");
+        notice.getStyleClass().add("tmdb-dialog-message");
         notice.setWrapText(true);
 
         Button cancel = new Button(UiText.rollbackBack(language));
@@ -340,7 +340,7 @@ final class RollbackReviewPane {
 
     private static Label metric(String label, int value) {
         Label chip = new Label(label + ": " + value);
-        chip.getStyleClass().add("tvdb-match-meta");
+        chip.getStyleClass().add("tmdb-match-meta");
         return chip;
     }
 

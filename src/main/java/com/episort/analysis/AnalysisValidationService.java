@@ -8,7 +8,7 @@ import java.util.Locale;
 import java.util.Set;
 
 /**
- * Decides, before any TVDB call, whether a file is safe to organize.
+ * Decides, before any TMDB call, whether a file is safe to organize.
  *
  * <p>The checks run cheapest-and-most-decisive first, and every one of them
  * fails closed: anything that cannot be proven correct ends up in a review
@@ -24,7 +24,7 @@ public final class AnalysisValidationService {
     private static final int MAX_SEASON = 99;
     private static final int MAX_EPISODE = 9999;
 
-    public void validatePreTvdb(List<AnalyzedVideoFile> files) {
+    public void validatePreTmdb(List<AnalyzedVideoFile> files) {
         Set<String> proposed = new HashSet<>();
         Set<String> duplicates = new HashSet<>();
         for (AnalyzedVideoFile file : files) {
