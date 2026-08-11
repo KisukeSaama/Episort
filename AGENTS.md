@@ -2,7 +2,7 @@
 
 Episort is a JavaFX desktop app that sorts TV series episodes (`.avi`, `.mp4`, `.mkv`) using TMDB references — aired, DVD, and absolute orders — from a user-selected working directory that may mix several series.
 
-Stack: Java 21, JavaFX, Gradle, JUnit 5. Layout: `src/main/`, `src/test/`, `docs/`, `assets/`. Keep TMDB access, episode matching, filesystem ops, and UI in separate packages.
+Stack: Java 21, JavaFX, Gradle, JUnit 5, plus Go 1.26 only for the native single-file launcher under `tools/portable-launcher/`. Layout: `src/main/`, `src/test/`, `docs/`, `assets/`. Keep TMDB access, episode matching, filesystem ops, and UI in separate packages.
 
 ## Commands
 
@@ -10,6 +10,7 @@ Stack: Java 21, JavaFX, Gradle, JUnit 5. Layout: `src/main/`, `src/test/`, `docs
 ./gradlew run     # launch the app
 ./gradlew test    # run unit tests
 ./gradlew build   # compile, test, package
+./gradlew portableArchive # one native executable; requires Go 1.26
 ```
 
 ## Coding & Tests
@@ -17,6 +18,10 @@ Stack: Java 21, JavaFX, Gradle, JUnit 5. Layout: `src/main/`, `src/test/`, `docs
 Standard Java conventions (4-space indent, `PascalCase`/`camelCase`, lowercase packages). Prefer explicit domain names (`EpisodeOrder`, `SeasonFolderPlanner`, `TmdbClient`).
 
 JUnit 5, test files end with `Test`. Filesystem tests must use temporary directories — never real media folders. Default to TDD: failing test → minimal implementation → refactor. For UI-only changes, document manual verification and add lower-level tests for any extracted logic.
+
+The Go launcher uses `gofmt`, standard-library-only code, and `go test .` from
+`tools/portable-launcher`. Its extraction tests must use temporary directories
+and reject absolute paths, traversal, and unsafe archive links.
 
 ## Security
 

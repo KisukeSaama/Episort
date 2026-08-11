@@ -86,9 +86,20 @@ val portableRoot = layout.buildDirectory.dir("portable")
 val portableImageRoot = portableRoot.map { it.dir("image") }
 val portableImage = portableImageRoot.map { it.dir("Episort") }
 val portableDistributions = portableRoot.map { it.dir("distributions") }
-val portableWindowsArchive = portableDistributions.map { it.file("$portableBaseName.zip") }
-val portableLinuxArchive = portableDistributions.map { it.file("$portableBaseName.tar.gz") }
+val portablePayloads = portableRoot.map { it.dir("payloads") }
+val portableWindowsArchive = portablePayloads.map { it.file("$portableBaseName.zip") }
+val portableLinuxArchive = portablePayloads.map { it.file("$portableBaseName.tar.gz") }
+val singleFilePortable = portableDistributions.map {
+    it.file("$portableBaseName${if (portableOs == "windows") ".exe" else ""}")
+}
 val portableReadme = layout.projectDirectory.file("docs/portable-readme.txt")
+val portableLauncherSource = layout.projectDirectory.dir("tools/portable-launcher")
+val portableLauncherSources = fileTree(portableLauncherSource) {
+    include("*.go", "go.mod", "payload.bin")
+}
+val portableLauncherWork = portableRoot.map { it.dir("launcher-work") }
+val portableSmokeData = portableRoot.map { it.dir("smoke-data") }
+val goExecutable = providers.gradleProperty("goExecutable").orElse("go")
 val packagingLauncher = javaToolchains.launcherFor {
     languageVersion = JavaLanguageVersion.of(21)
 }
@@ -187,7 +198,7 @@ val portableZip by tasks.registering(Zip::class) {
     dependsOn(verifyPortableApp)
     onlyIf { portableOs == "windows" }
     archiveFileName.set(portableWindowsArchive.map { it.asFile.name })
-    destinationDirectory.set(portableDistributions)
+    destinationDirectory.set(portablePayloads)
     from(portableImage) {
         into("Episort")
     }
@@ -215,18 +226,43 @@ val portableTar by tasks.registering(Exec::class) {
 
 val portablePackagingTask = if (portableOs == "windows") portableZip else portableTar
 val portableArchiveFile = if (portableOs == "windows") portableWindowsArchive else portableLinuxArchive
-val portableChecksum by tasks.registering {
-    group = "distribution"
-    description = "Writes the SHA-256 checksum for the current portable archive."
-    dependsOn(portablePackagingTask)
-    val checksumFile = portableArchiveFile.map { archive ->
-        archive.asFile.resolveSibling(archive.asFile.name + ".sha256")
-    }
-    inputs.file(portableArchiveFile)
-    outputs.file(checksumFile)
+val testPortableLauncher by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Runs the native single-file launcher tests."
+    inputs.files(portableLauncherSources)
+    workingDir(portableLauncherSource)
+    commandLine(goExecutable.get(), "test", ".")
+}
 
-    doLast {
+val buildSingleFilePortable by tasks.registering(Exec::class) {
+    group = "distribution"
+    description = "Embeds the complete application image in one native executable."
+    dependsOn(portablePackagingTask, testPortableLauncher)
+    inputs.files(portableLauncherSources)
+    inputs.file(portableArchiveFile)
+    outputs.file(singleFilePortable)
+
+    doFirst {
+        if (portableOs == "unsupported") {
+            throw GradleException("Single-file bundles are supported on Windows and Linux hosts only.")
+        }
         val archive = portableArchiveFile.get().asFile
+        val workDirectory = portableLauncherWork.get().asFile
+        val output = singleFilePortable.get().asFile
+        delete(workDirectory)
+        workDirectory.mkdirs()
+        output.parentFile.mkdirs()
+        delete(output)
+        copy {
+            from(portableLauncherSource)
+            include("*.go", "go.mod", "payload.bin")
+            into(workDirectory)
+        }
+        copy {
+            from(archive)
+            into(workDirectory)
+            rename { "payload.bin" }
+        }
         val digest = MessageDigest.getInstance("SHA-256")
         archive.inputStream().buffered().use { input ->
             val buffer = ByteArray(8192)
@@ -239,12 +275,101 @@ val portableChecksum by tasks.registering {
             }
         }
         val hash = digest.digest().joinToString("") { byte -> "%02x".format(byte) }
-        checksumFile.get().writeText("$hash  ${archive.name}\n")
+        val linkerFlags = buildList {
+            add("-s")
+            add("-w")
+            if (portableOs == "windows") add("-H=windowsgui")
+            add("-X")
+            add("main.version=${project.version}")
+            add("-X")
+            add("main.payloadFormat=${if (portableOs == "windows") "zip" else "tar.gz"}")
+            add("-X")
+            add("main.payloadDigest=$hash")
+        }.joinToString(" ")
+        workingDir(workDirectory)
+        environment("CGO_ENABLED", "0")
+        commandLine(
+            goExecutable.get(),
+            "build",
+            "-trimpath",
+            "-ldflags", linkerFlags,
+            "-o", output.absolutePath,
+            "."
+        )
+    }
+}
+
+val verifySingleFilePortable by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Verifies that the one-file launcher safely extracts into user application data."
+    dependsOn(buildSingleFilePortable)
+    inputs.file(singleFilePortable)
+    outputs.dir(portableSmokeData)
+
+    doFirst {
+        val executable = singleFilePortable.get().asFile
+        val smokeData = portableSmokeData.get().asFile
+        if (!executable.isFile || executable.length() <= portableArchiveFile.get().asFile.length()) {
+            throw GradleException("Single-file portable executable is missing or incomplete: $executable")
+        }
+        val signature = executable.inputStream().use { input -> ByteArray(4).also { input.read(it) } }
+        val signatureIsValid = if (portableOs == "windows") {
+            signature[0] == 'M'.code.toByte() && signature[1] == 'Z'.code.toByte()
+        } else {
+            signature.contentEquals(byteArrayOf(0x7f, 'E'.code.toByte(), 'L'.code.toByte(), 'F'.code.toByte()))
+        }
+        if (!signatureIsValid) {
+            throw GradleException("Single-file portable executable has an invalid native signature")
+        }
+        delete(smokeData)
+        smokeData.mkdirs()
+        if (portableOs == "windows") {
+            environment("LOCALAPPDATA", smokeData.absolutePath)
+        } else {
+            environment("XDG_DATA_HOME", smokeData.absolutePath)
+        }
+        commandLine(executable.absolutePath, "--episort-portable-extract-only")
+    }
+
+    doLast {
+        val expectedLauncher = if (portableOs == "windows") "Episort.exe" else "Episort"
+        val extractedLaunchers = portableSmokeData.get().asFile.walkTopDown()
+            .filter { it.isFile && it.name == expectedLauncher }
+            .toList()
+        if (extractedLaunchers.none()) {
+            throw GradleException("Single-file launcher did not extract Episort into application data")
+        }
+    }
+}
+
+val singleFileChecksum by tasks.registering {
+    group = "distribution"
+    description = "Writes the SHA-256 checksum for the single-file portable executable."
+    dependsOn(verifySingleFilePortable)
+    val checksumFile = singleFilePortable.map { executable ->
+        executable.asFile.resolveSibling(executable.asFile.name + ".sha256")
+    }
+    inputs.file(singleFilePortable)
+    outputs.file(checksumFile)
+
+    doLast {
+        val executable = singleFilePortable.get().asFile
+        val digest = MessageDigest.getInstance("SHA-256")
+        executable.inputStream().buffered().use { input ->
+            val buffer = ByteArray(8192)
+            var count = input.read(buffer)
+            while (count >= 0) {
+                if (count > 0) digest.update(buffer, 0, count)
+                count = input.read(buffer)
+            }
+        }
+        val hash = digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+        checksumFile.get().writeText("$hash  ${executable.name}\n")
     }
 }
 
 tasks.register("portableArchive") {
     group = "distribution"
-    description = "Builds and archives the portable app for the current Windows or Linux host."
-    dependsOn(portableChecksum)
+    description = "Builds the one-file portable executable for the current Windows or Linux host."
+    dependsOn(singleFileChecksum)
 }

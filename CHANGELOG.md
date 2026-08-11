@@ -19,7 +19,9 @@ First public release.
   folders and filenames.
 - Journal completed operations and provide a reviewed rollback workflow.
 - Use the complete French or English desktop interface.
-- Distribute self-contained Windows and Linux portable archives with Java 21.
+- Distribute one self-contained executable per operating system. It embeds Java
+  21 and extracts its verified runtime only into the user application-data
+  directory.
 
 ### Safety
 
@@ -31,6 +33,7 @@ First public release.
 
 ### Validation
 
-- Windows x64 portable archive manually launched and validated.
+- Windows x64 single-file executable built, extraction-smoke-tested, and
+  launched successfully without creating files beside itself.
 - Janus/TMDB connectivity validated from the embedded release configuration.
 - 472 automated tests completed with no failures or errors (10 skipped).
