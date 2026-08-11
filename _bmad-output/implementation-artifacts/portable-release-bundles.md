@@ -19,18 +19,22 @@ Date: 2026-08-06
   it by the CI workflow.
 - Icons reuse the existing ICO and PNG assets.
 - Every archive includes a short `README.txt` beside the launcher with direct
-  Windows/Linux launch and TVDB environment instructions.
+  Windows/Linux launch instructions and zero-configuration Janus/TMDB access.
 - `.github/workflows/portable-build.yml` builds and tests on native Windows and
   Linux runners for release pull requests, release branches, manual runs and
   version tags, then uploads both archives.
+- A successful version-tag matrix downloads the Windows and Linux artifacts and
+  publishes a GitHub Release with both archives, both SHA-256 files, and the
+  matching versioned release notes.
 - Linux uses an Ubuntu 22.04 x64 runner for a conservative glibc baseline and is
   documented as requiring the ordinary GTK 3 desktop libraries.
 - README instructions cover extraction, direct launch, local packaging, and the
-  external `TVDB_API_KEY` requirement.
+  Janus-backed TMDB integration.
 
 ## Security boundary
 
-- No TVDB key is embedded in either portable image.
+- No upstream TMDB key or read token is embedded in either portable image. The
+  revocable Janus caller configuration is intentionally bundled for end users.
 - Portable bundles use the same workspace containment, validation gates, and
   credential resolution as development runs.
 - Generated images and archives remain under the ignored `build/` directory.

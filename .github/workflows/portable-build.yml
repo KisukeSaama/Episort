@@ -54,9 +54,37 @@ jobs:
         run: ${{ matrix.command }}
 
       - name: Upload portable archive
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.path }}
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    name: Publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: portable
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Download portable archives
+        uses: actions/download-artifact@v8
+        with:
+          pattern: Episort-0.1.0-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" release-assets/*
+          --verify-tag
+          --title "Episort 0.1.0"
+          --notes-file docs/releases/v0.1.0.md
