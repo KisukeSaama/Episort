@@ -1,0 +1,2770 @@
+/* ===========================================================================
+ * Episort — design tokens & component classes.
+ * Source of truth: docs/design-system.md.
+ * Hyprland-rice inspired: dark glass over near-black, single orange accent.
+ * =========================================================================== */
+
+/* ---- 1. Root shell ------------------------------------------------------- */
+
+.app-shell {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
+    -fx-font-size: 13px;
+}
+
+.app-shell.theme-dark {
+    -fx-background-color:
+        radial-gradient(center 12% 10%, radius 55%, rgba(249,115,22,0.10), transparent),
+        radial-gradient(center 88% 92%, radius 60%, rgba(56,189,248,0.06), transparent),
+        linear-gradient(to bottom, #07080b, #0a0c11);
+}
+
+.app-shell.window-restored {
+    -fx-background-radius: 10;
+}
+
+/* Dark is the only theme. There is no .theme-light rule set: a half-styled
+   light skin renders dark glass panels on a white page, which is worse than
+   not offering one. */
+
+.mono,
+.card-value-mono,
+.status-pill,
+.workspace-value,
+.workspace-chip-prefix {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+}
+
+/* ---- 2. Top bar ---------------------------------------------------------- */
+
+/* The row doubles as the title bar, so it carries no horizontal padding of its
+   own: the window buttons have to reach the top-right corner the way Windows
+   would have drawn them. The content group re-adds the inset. */
+.top-bar {
+    -fx-padding: 0;
+    -fx-spacing: 0;
+    -fx-min-height: 59;
+    -fx-pref-height: 59;
+    -fx-background-color: rgba(11,13,18,0.85);
+    -fx-border-color: transparent transparent rgba(249,115,22,0.10) transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-alignment: center-left;
+}
+
+.window-restored .top-bar {
+    -fx-background-radius: 10 10 0 0;
+}
+
+.top-bar-content {
+    -fx-padding: 12 12 12 14;
+    -fx-spacing: 12;
+    -fx-alignment: center-left;
+}
+
+/* ---- 2b. Application menus ------------------------------------------- */
+
+/* A menu bar, not a row of buttons: the generic .menu-button rule would give
+   each title a border and a rounded chip, which reads as a toolbar. Everything
+   it sets has to be unset here. */
+.app-menu-bar {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-spacing: 0;
+}
+
+.app-menu-bar > .container > .menu-button {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-border-radius: 0;
+    -fx-effect: null;
+    -fx-padding: 6 10 6 10;
+    -fx-min-height: 0;
+    -fx-pref-height: 30;
+}
+
+.app-menu-bar > .container > .menu-button > .label {
+    -fx-text-fill: #b8c0cc;
+    -fx-font-size: 13px;
+    -fx-font-weight: 400;
+    -fx-padding: 0;
+}
+
+.app-menu-bar > .container > .menu-button:hover,
+.app-menu-bar > .container > .menu-button:focused {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-border-color: transparent;
+    -fx-effect: null;
+}
+
+.app-menu-bar > .container > .menu-button:hover > .label,
+.app-menu-bar > .container > .menu-button:focused > .label {
+    -fx-text-fill: #f5f7fb;
+}
+
+.app-menu-bar > .container > .menu-button:showing {
+    -fx-background-color: rgba(249,115,22,0.16);
+    -fx-border-color: transparent;
+}
+
+.app-menu-bar > .container > .menu-button:showing > .label {
+    -fx-text-fill: #fb923c;
+}
+
+/* ---- 2c. Window buttons ----------------------------------------------- */
+
+.window-controls {
+    -fx-spacing: 0;
+    -fx-alignment: top-right;
+    -fx-fill-height: true;
+}
+
+/* 58, not 59: the last row of the bar is its bottom border, and a button that
+   painted over it would cut the accent line every time the pointer passed. */
+.window-button {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
+    -fx-border-width: 0;
+    -fx-min-width: 46;
+    -fx-pref-width: 46;
+    -fx-max-width: 46;
+    -fx-min-height: 58;
+    -fx-pref-height: 58;
+    -fx-max-height: 58;
+    -fx-cursor: default;
+    -fx-padding: 0;
+    -fx-effect: null;
+}
+
+/* One symbol face for the three glyphs: left to the text font they come out at
+   three different weights and optical sizes. */
+.window-button {
+    -fx-font-family: "Segoe UI Symbol", "Segoe UI", "Inter", sans-serif;
+    -fx-text-fill: #a8b0bd;
+    -fx-font-size: 12px;
+    -fx-font-weight: 400;
+    -fx-alignment: center;
+    -fx-content-display: text-only;
+    -fx-graphic-text-gap: 0;
+}
+
+/* Neutral grey, the way Windows does it — an orange wash at this size read as a
+   beige slab. Opaque values, not a white overlay: the bar's own background is
+   translucent, and a low-alpha tint on top of it barely registers. */
+.window-button:hover {
+    -fx-background-color: #23262e;
+    -fx-text-fill: #f5f7fb;
+}
+
+.window-button:pressed {
+    -fx-background-color: #2e323c;
+    -fx-text-fill: #f5f7fb;
+}
+
+.window-button.danger:hover {
+    -fx-background-color: #c42b1c;
+    -fx-text-fill: #ffffff;
+}
+
+.window-button.danger:pressed {
+    -fx-background-color: #b12419;
+    -fx-text-fill: #ffffff;
+}
+
+.episort-search-box,
+.top-search {
+    -fx-spacing: 8;
+    -fx-padding: 6 12 6 12;
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(249,115,22,0.30);
+    -fx-border-width: 1;
+    -fx-alignment: center-left;
+    -fx-min-height: 34;
+    -fx-pref-height: 34;
+}
+
+/* JavaFX spells this pseudo-class :focus-within, not :focused-within. The
+   inner text field is deliberately flat, so this wrapper carries the only
+   focus signal the search boxes have. */
+.episort-search-box:focus-within,
+.top-search:focus-within {
+    -fx-border-color: rgba(249,115,22,1.0);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.68), 18, 0, 0, 0);
+}
+
+.episort-search-field,
+.top-search .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-insets: 0;
+    -fx-border-insets: 0;
+    -fx-effect: null;
+    -fx-padding: 2 4 2 4;
+    -fx-prompt-text-fill: #767e8d;
+    -fx-text-fill: #f5f7fb;
+    -fx-font-size: 13px;
+    -fx-font-weight: 400;
+}
+
+/* The top bar only shows this when an error code exists, so it is already the
+   exception on its row. It states the code in mono, like every other system
+   value in the app; the capsule around it added nothing the colour did not. */
+.status-pill {
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+    -fx-padding: 4 0 4 0;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-text-fill: #b8c0cc;
+}
+
+.status-pill.warn {
+    -fx-text-fill: #d0904f;
+}
+
+.status-pill.error {
+    -fx-text-fill: #f87171;
+}
+
+/* ---- 3. Sidebar ---------------------------------------------------------- */
+
+.sidebar {
+    -fx-padding: 20 14 18 14;
+    -fx-spacing: 4;
+    -fx-background-color: rgba(11,13,18,0.85);
+    -fx-border-color: transparent rgba(249,115,22,0.10) transparent transparent;
+    -fx-border-width: 0 1 0 0;
+}
+
+.window-restored .sidebar {
+    -fx-background-radius: 0 0 0 10;
+}
+
+.window-snap-preview {
+    -fx-background-color: rgba(249,115,22,0.10);
+    -fx-border-color: rgba(249,115,22,0.70);
+    -fx-border-width: 1;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+}
+
+.sidebar-brand {
+    -fx-spacing: 12;
+    -fx-alignment: center-left;
+    -fx-padding: 0 6 16 6;
+}
+
+.sidebar-brand-name {
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #f5f7fb;
+}
+
+.sidebar-section-label {
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #8a93a3;
+    -fx-padding: 0;
+}
+
+.sidebar-section-heading {
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+    -fx-padding: 0 8 0 8;
+    -fx-alignment: center-left;
+}
+
+.sidebar-section-marker {
+    -fx-min-width: 1;
+    -fx-pref-width: 1;
+    -fx-max-width: 1;
+    -fx-min-height: 14;
+    -fx-pref-height: 14;
+    -fx-max-height: 14;
+    -fx-background-color: rgba(249,115,22,0.72);
+}
+
+.nav-item {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+    -fx-padding: 0 14 0 14;
+    -fx-alignment: center-left;
+    -fx-text-fill: #b8c0cc;
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: transparent;
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+
+.nav-item-icon {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #8a93a3;
+}
+
+.nav-item-label {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #b8c0cc;
+}
+
+.nav-item:hover {
+    -fx-background-color: rgba(255,255,255,0.04);
+    -fx-text-fill: #f5f7fb;
+}
+
+.nav-item.active {
+    -fx-background-color: rgba(249,115,22,0.14);
+    -fx-text-fill: #fb923c;
+    -fx-border-color: rgba(249,115,22,0.32);
+}
+
+.nav-item.active:hover {
+    -fx-background-color: rgba(249,115,22,0.18);
+}
+
+.nav-item:hover .nav-item-icon,
+.nav-item:hover .nav-item-label {
+    -fx-text-fill: #f5f7fb;
+}
+
+.nav-item.active .nav-item-icon,
+.nav-item.active .nav-item-label {
+    -fx-text-fill: #fb923c;
+}
+
+/* ---- Sidebar workspace explorer ----------------------------------------- */
+
+.workspace-explorer {
+    -fx-min-height: 0;
+}
+
+.workspace-explorer-header {
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+    -fx-padding: 0 8 0 8;
+    -fx-alignment: center-left;
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-border-color: transparent;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+
+.workspace-explorer-header:hover {
+    -fx-background-color: rgba(255,255,255,0.04);
+}
+
+.workspace-explorer-header:focused {
+    -fx-border-color: rgba(249,115,22,0.68);
+}
+
+.workspace-explorer-header .sidebar-section-label {
+    -fx-padding: 0;
+}
+
+/* ---- Sidebar storage readout ------------------------------------------- */
+
+.storage-usage {
+    -fx-padding: 14 6 0 6;
+    -fx-spacing: 6;
+    -fx-border-color: rgba(255,255,255,0.08) transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+.storage-heading {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #8a93a3;
+}
+
+.storage-percentage {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #f5f7fb;
+}
+
+.storage-capacity {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: #b8c0cc;
+}
+
+.storage-available {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 400;
+    -fx-text-fill: #8a93a3;
+}
+
+.storage-progress {
+    -fx-pref-height: 4;
+    -fx-min-height: 4;
+    -fx-max-height: 4;
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+}
+
+.storage-progress > .track {
+    -fx-background-color: rgba(255,255,255,0.08);
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
+}
+
+.storage-progress > .bar {
+    -fx-background-color: #f97316;
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
+    -fx-padding: 0;
+}
+
+.workspace-explorer-chevron {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #8a93a3;
+}
+
+.workspace-explorer-body {
+    -fx-min-height: 120;
+    -fx-alignment: top-left;
+    -fx-background-color: transparent;
+}
+
+.workspace-explorer-empty {
+    -fx-padding: 10;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #8a93a3;
+}
+
+.workspace-tree,
+.workspace-tree > .virtual-flow,
+.workspace-tree .corner {
+    -fx-background-color: transparent;
+}
+
+.workspace-tree {
+    -fx-padding: 0;
+    -fx-border-color: transparent;
+}
+
+.workspace-tree .tree-cell {
+    -fx-min-height: 28;
+    -fx-pref-height: 28;
+    -fx-padding: 0 4 0 2;
+    -fx-background-color: transparent;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: #b8c0cc;
+}
+
+.workspace-tree .tree-cell:filled:hover {
+    -fx-background-color: rgba(255,255,255,0.04);
+    -fx-background-radius: 6;
+    -fx-text-fill: #f5f7fb;
+}
+
+.workspace-tree .tree-cell:filled:selected {
+    -fx-background-color: rgba(249,115,22,0.14);
+    -fx-background-radius: 6;
+    -fx-text-fill: #fb923c;
+}
+
+.workspace-tree .tree-cell.workspace-node-directory {
+    -fx-font-weight: 400;
+    -fx-text-fill: #b8c0cc;
+}
+
+.workspace-tree .tree-cell.workspace-node-root {
+    -fx-font-weight: 700;
+    -fx-text-fill: #fb923c;
+}
+
+.workspace-tree .tree-cell.workspace-node-media {
+    -fx-text-fill: #b8c0cc;
+}
+
+.workspace-tree .tree-cell.workspace-node-file,
+.workspace-tree .tree-cell.workspace-node-link,
+.workspace-tree .tree-cell.workspace-node-transient {
+    -fx-text-fill: #767e8d;
+}
+
+.workspace-tree .tree-cell.workspace-node-error {
+    -fx-text-fill: #f87171;
+}
+
+.workspace-tree .tree-cell > .tree-disclosure-node > .arrow {
+    -fx-background-color: #8a93a3;
+}
+
+.workspace-tree .scroll-bar:horizontal {
+    -fx-opacity: 0;
+    -fx-pref-height: 0;
+    -fx-max-height: 0;
+}
+
+.workspace-tree .scroll-bar:vertical {
+    -fx-pref-width: 8;
+    -fx-max-width: 8;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+}
+
+.workspace-tree .scroll-bar:vertical .track,
+.workspace-tree .scroll-bar:vertical .track-background,
+.workspace-tree .scroll-bar:vertical .increment-button,
+.workspace-tree .scroll-bar:vertical .decrement-button {
+    -fx-background-color: transparent;
+    -fx-pref-height: 0;
+    -fx-max-height: 0;
+}
+
+.workspace-tree .scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(138,147,163,0.52);
+    -fx-background-radius: 999;
+}
+
+.workspace-tree .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: rgba(249,115,22,0.52);
+}
+
+.workspace-tree .scroll-bar:vertical .increment-arrow,
+.workspace-tree .scroll-bar:vertical .decrement-arrow {
+    -fx-shape: "";
+    -fx-padding: 0;
+}
+
+/* ---- 4. Content & dashboard --------------------------------------------- */
+
+.content-scroll {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.content-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.content-scroll .scroll-bar:vertical,
+.content-scroll .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+
+.content-scroll .scroll-bar .thumb {
+    -fx-background-color: rgba(249,115,22,0.25);
+    -fx-background-radius: 999;
+}
+
+.section-heading {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #a8b0bd;
+    -fx-padding: 2 0 2 8;
+    -fx-border-color: transparent transparent transparent rgba(249,115,22,0.38);
+    -fx-border-width: 0 0 0 1;
+}
+
+.section-heading-accent {
+    -fx-text-fill: #f5f7fb;
+    -fx-border-color: transparent transparent transparent #f97316;
+}
+
+/* ---- 5. Typography (page) ---------------------------------------------- */
+
+.label {
+    -fx-text-fill: #f5f7fb;
+}
+
+/* ---- 6. Card (metric) -------------------------------------------------- */
+
+.card {
+    -fx-padding: 14 16 14 16;
+    -fx-spacing: 8;
+    -fx-background-color: rgba(20,23,30,0.55);
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: rgba(249,115,22,0.16);
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.05, 0, 6);
+}
+
+.card-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 400;
+    -fx-text-fill: #8a93a3;
+}
+
+.card-value-mono {
+    -fx-font-size: 17px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #f5f7fb;
+}
+
+/* ---- 7. Widget --------------------------------------------------------- */
+
+.dot {
+    -fx-min-width: 8; -fx-min-height: 8;
+    -fx-pref-width: 8; -fx-pref-height: 8;
+    -fx-max-width: 8; -fx-max-height: 8;
+    -fx-background-radius: 999;
+}
+/* No halo. A glow around a status dot is a light-emitting object on a matte
+   surface: it reads as decoration, and it made a settled connection look like
+   it was still working. The colour alone says the state. */
+.dot-good  { -fx-background-color: #7fae8c; }
+.dot-warn  { -fx-background-color: #d0904f; }
+.dot-error { -fx-background-color: #f87171; }
+.dot-idle  { -fx-background-color: #5a6271; }
+
+/* ---- 8. Settings section ---------------------------------------------- */
+
+.settings-section {
+    -fx-padding: 18;
+    -fx-spacing: 10;
+    -fx-background-color: rgba(20,23,30,0.55);
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: rgba(249,115,22,0.16);
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.05, 0, 6);
+}
+
+.settings-section-title {
+    -fx-font-size: 17px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #f97316;
+}
+
+.settings-section-description {
+    -fx-font-size: 13px;
+    -fx-text-fill: #8a93a3;
+}
+
+.workspace-value {
+    -fx-font-size: 13px;
+    -fx-text-fill: #fb923c;
+}
+
+/* ---- 9. Activity table ------------------------------------------------ */
+
+/* The extension column is a plain mono value (`.cell-mono`). It carried a badge
+   with one hue per container: a legend to memorise for no information, and a
+   column of identical capsules on any folder holding one container. */
+
+.custom-dialog {
+    -fx-padding: 22;
+    -fx-spacing: 12;
+    -fx-min-width: 380;
+    -fx-background-radius: 16;
+    -fx-border-radius: 16;
+    -fx-border-color: rgba(249,115,22,0.28);
+    -fx-border-width: 1;
+    -fx-background-color:
+        radial-gradient(center 14% 10%, radius 60%, rgba(249,115,22,0.12), transparent),
+        linear-gradient(to bottom, #0b0d12, #07080b);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.72), 30, 0.12, 0, 10);
+}
+
+.custom-dialog-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f5f7fb;
+}
+
+.custom-dialog-message {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #b8c0cc;
+}
+
+.custom-dialog-actions {
+    -fx-padding: 10 0 0 0;
+}
+
+/* ---- 9b. App modal (overlay + glass card) ---------------------------- */
+
+/* ---- 10. Buttons ----------------------------------------------------- */
+
+.button,
+.menu-button {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 14 8 14;
+    -fx-min-height: 34;
+    -fx-alignment: center;
+    -fx-text-overrun: ellipsis;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-background-color: rgba(249,115,22,0.10);
+    -fx-border-color: rgba(249,115,22,0.45);
+    -fx-border-width: 1;
+    -fx-text-fill: #fb923c;
+    -fx-cursor: hand;
+}
+
+.button:hover,
+.menu-button:hover {
+    -fx-background-color: rgba(249,115,22,0.18);
+    -fx-text-fill: #fb923c;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.55), 16, 0, 0, 0);
+}
+
+.button:pressed,
+.menu-button:pressed {
+    -fx-translate-y: 1;
+    -fx-background-color: rgba(249,115,22,0.14);
+    -fx-border-color: rgba(249,115,22,0.70);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.24), 8, 0, 0, 0);
+}
+
+.button.primary,
+.menu-button.primary {
+    -fx-background-color: #f97316;
+    -fx-border-color: transparent;
+    -fx-text-fill: #111827;
+    -fx-padding: 8 16 8 16;
+}
+
+.button.primary:hover,
+.menu-button.primary:hover {
+    -fx-background-color: #fb923c;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.65), 18, 0, 0, 0);
+}
+
+.button.primary:pressed,
+.menu-button.primary:pressed {
+    -fx-translate-y: 1;
+    -fx-background-color: #ea580c;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.32), 8, 0, 0, 0);
+}
+
+.episort-search-icon {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(118,126,141,1.0);
+}
+
+.episort-search-clear {
+    -fx-min-width: 24;
+    -fx-pref-width: 24;
+    -fx-min-height: 24;
+    -fx-pref-height: 24;
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: rgba(138,147,163,1.0);
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-effect: null;
+}
+
+.episort-search-clear:hover {
+    -fx-background-color: rgba(249,115,22,0.12);
+    -fx-background-radius: 6;
+    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-effect: null;
+}
+
+.episort-search-field:focused {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-effect: null;
+}
+
+.episort-search-box:hover,
+.top-search:hover,
+.tmdb-search-box:hover {
+    -fx-background-color: rgba(23,27,35,0.92);
+    -fx-border-color: rgba(249,115,22,0.48);
+}
+
+.episort-search-box:focus-within:hover,
+.top-search:focus-within:hover,
+.tmdb-search-box:focus-within:hover {
+    -fx-border-color: rgba(249,115,22,1.0);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.72), 20, 0, 0, 0);
+}
+
+/* The top bar sits on one height: chip, search box and every action are 34,
+   which is what makes the row's 59 px (34 + 12 + 12 + 1 border) add up. */
+.header-action {
+    -fx-min-height: 34;
+    -fx-pref-height: 34;
+}
+
+/* Loading starts the workflow, but stays outlined so the validation action
+   remains the only solid primary control in the top bar. */
+.menu-button.load-primary {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(249,115,22,0.70);
+    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-padding: 8 14 8 16;
+    -fx-font-weight: 700;
+}
+
+.menu-button.load-primary > .label {
+    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-font-weight: 700;
+    -fx-padding: 0 6 0 0;
+}
+
+.menu-button.load-primary:hover {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(251,146,60,1.0);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 8, 0, 0, 0);
+}
+
+.menu-button.load-primary:pressed,
+.menu-button.load-primary:showing {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(249,115,22,1.0);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.32), 8, 0, 0, 0);
+}
+
+.menu-button.load-primary > .arrow-button > .arrow {
+    -fx-background-color: rgba(251,146,60,1.0);
+}
+
+.menu-button.load-primary:disabled {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(138,147,163,0.14);
+    -fx-opacity: 0.45;
+    -fx-effect: null;
+}
+
+.button.validate-action {
+    -fx-background-color: rgba(249,115,22,1.0);
+    -fx-border-color: transparent;
+    -fx-text-fill: rgba(17,24,39,1.0);
+    -fx-padding: 8 16 8 16;
+    -fx-font-weight: 700;
+}
+
+.button.validate-action:hover {
+    -fx-background-color: rgba(251,146,60,1.0);
+    -fx-border-color: transparent;
+    -fx-text-fill: rgba(17,24,39,1.0);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.65), 18, 0, 0, 0);
+}
+
+.button.validate-action:pressed {
+    -fx-translate-y: 1;
+    -fx-background-color: rgba(234,88,12,1.0);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.32), 8, 0, 0, 0);
+}
+
+.button.validate-action:disabled {
+    -fx-background-color: rgba(138,147,163,0.06);
+    -fx-border-color: rgba(138,147,163,0.14);
+    -fx-text-fill: rgba(184,192,204,0.52);
+    -fx-opacity: 0.45;
+    -fx-effect: null;
+}
+
+.scan-detail-stack {
+    -fx-alignment: top-center;
+}
+
+.button.ghost {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(249,115,22,0.25);
+    -fx-text-fill: #b8c0cc;
+}
+
+.button.ghost:hover {
+    -fx-background-color: rgba(249,115,22,0.06);
+    -fx-text-fill: #f5f7fb;
+}
+
+.button.ghost:pressed {
+    -fx-translate-y: 1;
+    -fx-background-color: rgba(249,115,22,0.10);
+    -fx-border-color: rgba(249,115,22,0.45);
+    -fx-effect: null;
+}
+
+/* The destructive action, kept visibly apart from its neighbours. */
+.button.ghost.danger {
+    -fx-border-color: rgba(248,113,113,0.45);
+    -fx-text-fill: #f87171;
+}
+
+.button.ghost.danger:hover {
+    -fx-background-color: rgba(248,113,113,0.10);
+    -fx-text-fill: #fecaca;
+}
+
+.button.ghost.danger:pressed {
+    -fx-background-color: rgba(248,113,113,0.16);
+    -fx-border-color: #f87171;
+}
+
+.button:disabled,
+.menu-button:disabled {
+    -fx-opacity: 0.45;
+    -fx-effect: null;
+    -fx-cursor: default;
+}
+
+/* ---- 10b. Keyboard focus --------------------------------------------- */
+
+/* Every control that can take focus shows the same orange ring. :focus-visible
+   rather than :focused so a mouse click does not light up the control the
+   pointer just pressed — only keyboard traversal does. Each rule reuses the
+   1px border the control already reserves, so nothing shifts on focus. */
+
+.button:focus-visible,
+.menu-button:focus-visible,
+.filter-chip:focus-visible,
+.nav-item:focus-visible {
+    -fx-border-color: #f97316;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.55), 14, 0, 0, 0);
+}
+
+/* Solid-orange actions cannot show an orange ring against their own fill. */
+.button.primary:focus-visible,
+.menu-button.primary:focus-visible,
+.button.validate-action:focus-visible {
+    -fx-border-color: #fff7ed;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.70), 18, 0, 0, 0);
+}
+
+.icon-button:focus-visible {
+    -fx-border-color: #f97316;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.55), 12, 0, 0, 0);
+}
+
+.row-checkbox:focus-visible .box {
+    -fx-border-color: #f97316;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.55), 10, 0, 0, 0);
+}
+
+.preview-table:focus-visible {
+    -fx-border-color: rgba(249,115,22,0.55);
+}
+
+/* ---- 11. Inputs ------------------------------------------------------- */
+
+.text-field,
+.password-field,
+.combo-box {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(249,115,22,0.25);
+    -fx-border-width: 1;
+    -fx-text-fill: #f5f7fb;
+    -fx-prompt-text-fill: #767e8d;
+    -fx-padding: 6 10 6 10;
+}
+
+.text-field:focused,
+.password-field:focused,
+.combo-box:focused {
+    -fx-border-color: #f97316;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 14, 0, 0, 0);
+}
+
+.top-search .text-field:focused,
+.episort-search-field:focused {
+    -fx-border-color: transparent;
+    -fx-effect: null;
+}
+
+/* Search wrappers own the visible border; their inner text field must stay
+   visually flat both before and after the generic input rules below apply. */
+.top-search .text-field,
+.episort-search-box .text-field,
+.episort-search-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-insets: 0;
+    -fx-border-insets: 0;
+    -fx-effect: null;
+}
+
+/* The input-pattern editor is the only multi-line field in the shell. Without
+   these rules a TextArea keeps its default light control background and reads
+   as a hole punched in the detail panel. */
+.pattern-editor {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: #f5f7fb;
+    -fx-prompt-text-fill: #767e8d;
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(249,115,22,0.25);
+    -fx-border-width: 1;
+    -fx-padding: 0;
+}
+
+.pattern-editor > .scroll-pane,
+.pattern-editor > .scroll-pane > .viewport,
+.pattern-editor .content {
+    -fx-background-color: transparent;
+}
+
+.pattern-editor .content {
+    -fx-padding: 8 10 8 10;
+}
+
+.pattern-editor:focused {
+    -fx-border-color: #f97316;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 14, 0, 0, 0);
+}
+
+.pattern-editor .scroll-bar .thumb {
+    -fx-background-color: rgba(249,115,22,0.36);
+    -fx-background-radius: 999;
+}
+
+.pattern-editor .scroll-bar,
+.pattern-editor .scroll-bar .track,
+.pattern-editor .scroll-bar .track-background,
+.pattern-editor .scroll-bar .increment-button,
+.pattern-editor .scroll-bar .decrement-button,
+.pattern-editor .scroll-bar .increment-arrow,
+.pattern-editor .scroll-bar .decrement-arrow {
+    -fx-background-color: transparent;
+}
+
+.combo-box .list-cell {
+    -fx-text-fill: #f5f7fb;
+    -fx-background-color: transparent;
+}
+
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.combo-box .arrow {
+    -fx-background-color: #f97316;
+}
+
+/* Hierarchical episode picker: it reads like the adjacent input while its
+   nested menus keep long series navigable by season or absolute range. */
+.menu-button.tmdb-episode-picker {
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-border-color: rgba(249,115,22,0.25);
+    -fx-text-fill: #f5f7fb;
+    -fx-font-weight: 400;
+    -fx-alignment: center-left;
+}
+
+.menu-button.tmdb-episode-picker > .label {
+    -fx-text-fill: #f5f7fb;
+    -fx-alignment: center-left;
+    -fx-max-width: infinity;
+}
+
+.menu-button.tmdb-episode-picker > .arrow-button > .arrow {
+    -fx-background-color: #f97316;
+}
+
+.menu-button.tmdb-episode-picker:hover,
+.menu-button.tmdb-episode-picker:showing {
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-border-color: #f97316;
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 8, 0, 0, 0);
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: rgba(13,15,20,0.97);
+    -fx-border-color: rgba(249,115,22,0.25);
+    -fx-border-width: 1;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+}
+
+.combo-box-popup .list-view .list-cell {
+    -fx-text-fill: #f5f7fb;
+    -fx-padding: 6 10 6 10;
+}
+
+.combo-box-popup .list-view .list-cell:hover,
+.combo-box-popup .list-view .list-cell:filled:selected {
+    -fx-background-color: rgba(249,115,22,0.18);
+    -fx-text-fill: #fb923c;
+}
+
+/* ---- 12. Light theme overrides --------------------------------------- */
+
+/* ---- 13. Banner -------------------------------------------------------- */
+
+.banner {
+    -fx-padding: 10 16 10 16;
+    -fx-spacing: 10;
+    -fx-background-color: rgba(20,23,30,0.55);
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: rgba(249,115,22,0.16);
+    -fx-border-width: 1;
+    -fx-alignment: center-left;
+}
+
+.banner.banner-info  { -fx-border-color: rgba(249,115,22,0.45); }
+.banner.banner-good  { -fx-border-color: rgba(74,222,128,0.55); }
+.banner.banner-warn  { -fx-border-color: rgba(251,146,60,0.55); }
+.banner.banner-error { -fx-border-color: rgba(248,113,113,0.55); }
+
+.banner-icon {
+    -fx-text-fill: #f97316;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+}
+
+.banner-text {
+    -fx-text-fill: #b8c0cc;
+    -fx-font-size: 13px;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+
+/* ---- 13b. Workflow progress ------------------------------------------ */
+
+.workflow-progress {
+    -fx-padding: 12 16 12 16;
+    -fx-spacing: 8;
+    -fx-background-color: rgba(20,23,30,0.55);
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: rgba(249,115,22,0.18);
+    -fx-border-width: 1;
+}
+
+.workflow-steps {
+    -fx-alignment: center-left;
+}
+
+.workflow-step {
+    -fx-padding: 4 8 4 8;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-border-color: transparent;
+    -fx-border-width: 1;
+    -fx-min-height: 32;
+}
+
+.workflow-step-number {
+    -fx-min-width: 22;
+    -fx-pref-width: 22;
+    -fx-min-height: 22;
+    -fx-pref-height: 22;
+    -fx-alignment: center;
+    -fx-background-radius: 999;
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+}
+
+.workflow-step-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+}
+
+.workflow-step.active {
+    -fx-background-color: rgba(249,115,22,0.16);
+    -fx-border-color: rgba(249,115,22,0.45);
+}
+
+.workflow-step.active .workflow-step-number {
+    -fx-background-color: #f97316;
+    -fx-text-fill: #111827;
+}
+
+.workflow-step.active .workflow-step-label {
+    -fx-text-fill: #fb923c;
+}
+
+.workflow-step.loading .workflow-step-loader {
+    -fx-progress-color: rgba(249,115,22,0.92);
+}
+
+.workflow-step.complete .workflow-step-number {
+    -fx-background-color: rgba(74,222,128,0.16);
+    -fx-text-fill: #4ade80;
+}
+
+.workflow-step.complete .workflow-step-label {
+    -fx-text-fill: #b8c0cc;
+}
+
+.workflow-step.pending .workflow-step-number {
+    -fx-background-color: rgba(90,98,113,0.22);
+    -fx-text-fill: #8a93a3;
+}
+
+.workflow-step.pending .workflow-step-label,
+.workflow-help {
+    -fx-text-fill: #8a93a3;
+}
+
+.workflow-help {
+    -fx-font-size: 13px;
+}
+
+.workflow-step-connector {
+    -fx-min-width: 14;
+    -fx-pref-height: 1;
+    -fx-max-height: 1;
+    -fx-background-color: rgba(249,115,22,0.20);
+}
+
+/* ---- 14. Metric grid (responsive) ------------------------------------- */
+
+.metric-grid {
+    -fx-hgap: 14;
+    -fx-vgap: 14;
+    -fx-padding: 0;
+}
+
+.metric-grid .card {
+    -fx-padding: 14 18 14 18;
+    -fx-spacing: 6;
+    -fx-min-width: 130;
+    -fx-pref-width: 160;
+    -fx-min-height: 78;
+    -fx-pref-height: 78;
+}
+
+.metric-grid .card .card-title {
+    -fx-padding: 0;
+    -fx-font-size: 10px;
+    -fx-text-fill: #767e8d;
+}
+
+.metric-grid .card .card-value-mono {
+    -fx-font-size: 22px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f5f7fb;
+}
+
+/* ---- 15. Workspace chip (top bar) ------------------------------------- */
+
+.workspace-chip {
+    -fx-padding: 6 14 6 14;
+    -fx-spacing: 10;
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-width: 1;
+    -fx-alignment: center-left;
+    -fx-min-height: 34;
+    -fx-pref-height: 34;
+}
+
+/* The path is data, so it sits at body size; it is ambient rather than the
+   thing being read, so it stays a shade down from primary text. */
+.workspace-chip-label {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: #b8c0cc;
+}
+
+.workspace-chip-prefix {
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #767e8d;
+}
+
+/* ---- 16. Preview table (multi-column) --------------------------------- */
+
+.preview-table {
+    -fx-padding: 0;
+    -fx-background-color: rgba(15,17,23,0.65);
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.05, 0, 6);
+}
+
+.preview-table > .virtual-flow {
+    -fx-background-color: transparent;
+    -fx-background-radius: 0 0 14 14;
+}
+
+.preview-table .column-header-background {
+    -fx-background-color: rgba(11,13,18,0.85);
+    -fx-background-radius: 14 14 0 0;
+    -fx-border-color: transparent transparent rgba(255,255,255,0.06) transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.preview-table .column-header,
+.preview-table .nested-column-header,
+.preview-table .filler {
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-border-color: transparent;
+}
+
+.preview-table .column-header {
+    -fx-padding: 4 0 4 0;
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+    -fx-border-color: transparent rgba(255,255,255,0.16) rgba(255,255,255,0.06) transparent;
+    -fx-border-width: 0 1 1 0;
+}
+
+.preview-table .column-header:hover {
+    -fx-background-color: rgba(255,255,255,0.035);
+}
+
+.preview-table .column-resize-line {
+    -fx-background-color: #f97316;
+    -fx-pref-width: 2;
+}
+
+.preview-table .column-header .label {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #767e8d;
+    -fx-alignment: center-left;
+    -fx-padding: 0 12 0 12;
+}
+
+.preview-table .column-header > .arrow {
+    -fx-background-color: #5a6271;
+}
+
+.preview-table .table-row-cell {
+    -fx-background-color: transparent;
+    -fx-background-radius: 0;
+    -fx-border-color: transparent;
+    -fx-cell-size: 36;
+}
+
+.preview-table .table-row-cell:odd {
+    -fx-background-color: rgba(255,255,255,0.015);
+}
+
+.preview-table .table-row-cell:filled:hover {
+    -fx-background-color: rgba(255,255,255,0.05);
+}
+
+.preview-table .table-row-cell:filled:selected,
+.preview-table .table-row-cell:filled:selected:hover {
+    -fx-background-color: rgba(249,115,22,0.16);
+}
+
+.preview-table .table-row-cell.ignored-row,
+.preview-table .table-row-cell.ignored-row:odd,
+.preview-table .table-row-cell.ignored-row:filled:hover {
+    -fx-background-color: rgba(255,255,255,0.012);
+    -fx-opacity: 0.62;
+}
+
+.preview-table .table-row-cell.ignored-row:selected,
+.preview-table .table-row-cell.ignored-row:filled:selected {
+    -fx-background-color: rgba(255,255,255,0.025);
+}
+
+.preview-table .table-cell {
+    -fx-text-fill: #d2d8e0;
+    -fx-font-size: 13px;
+    -fx-padding: 6 12 6 12;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent rgba(255,255,255,0.045) transparent transparent;
+    -fx-border-width: 0 1 0 0;
+    -fx-alignment: center-left;
+}
+
+.preview-table .table-cell.cell-mono {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+}
+
+.preview-table .table-cell.cell-muted { -fx-text-fill: #767e8d; }
+.preview-table .table-cell.cell-good  { -fx-text-fill: #4ade80; }
+.preview-table .table-cell.cell-warn  { -fx-text-fill: #fb923c; }
+.preview-table .table-cell.cell-error { -fx-text-fill: #f87171; }
+
+.preview-table .placeholder {
+    -fx-padding: 0;
+}
+
+/* Direct child only. A screen that hands the table a bare Label gets this;
+   a screen that builds a .table-empty-state keeps its own typography, which a
+   descendant selector here would silently outrank. */
+.preview-table > .placeholder > .label {
+    -fx-text-fill: #767e8d;
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-size: 13px;
+}
+
+/* The table body shows through: the bar is the thumb and nothing else. */
+.preview-table .virtual-flow,
+.preview-table .virtual-flow > .corner,
+.preview-table .corner,
+.preview-table .scroll-bar,
+.preview-table .scroll-bar:vertical,
+.preview-table .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+
+.preview-table .scroll-bar .track,
+.preview-table .scroll-bar .track-background,
+.preview-table .scroll-bar .increment-button,
+.preview-table .scroll-bar .decrement-button,
+.preview-table .scroll-bar .increment-arrow,
+.preview-table .scroll-bar .decrement-arrow {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+/* Explicit sizing: the arrow buttons are hidden, so the bar needs its own
+   height/width or it collapses to a few invisible pixels. */
+.preview-table .scroll-bar:horizontal {
+    -fx-padding: 0;
+    -fx-min-height: 12;
+    -fx-pref-height: 12;
+    -fx-max-height: 12;
+}
+
+.preview-table .scroll-bar:vertical {
+    -fx-padding: 0;
+    -fx-min-width: 12;
+    -fx-pref-width: 12;
+    -fx-max-width: 12;
+}
+
+.preview-table .scroll-bar > .increment-button,
+.preview-table .scroll-bar > .decrement-button {
+    -fx-padding: 0;
+}
+
+.preview-table .scroll-bar > .increment-button > .increment-arrow,
+.preview-table .scroll-bar > .decrement-button > .decrement-arrow {
+    -fx-padding: 0;
+    -fx-shape: null;
+}
+
+.preview-table .scroll-bar .thumb {
+    -fx-background-color: rgba(249,115,22,0.45);
+    -fx-background-insets: 3;
+    -fx-background-radius: 999;
+}
+
+.preview-table .scroll-bar .thumb:hover,
+.preview-table .scroll-bar .thumb:pressed {
+    -fx-background-color: rgba(249,115,22,0.75);
+}
+
+.row-checkbox {
+    -fx-padding: 0;
+    -fx-min-width: 16;
+    -fx-min-height: 16;
+    -fx-pref-width: 16;
+    -fx-pref-height: 16;
+    -fx-max-width: 16;
+    -fx-max-height: 16;
+}
+
+.row-checkbox .box {
+    -fx-min-width: 16;
+    -fx-min-height: 16;
+    -fx-pref-width: 16;
+    -fx-pref-height: 16;
+    -fx-max-width: 16;
+    -fx-max-height: 16;
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-border-color: rgba(249,115,22,0.45);
+    -fx-border-width: 1;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+}
+
+.row-checkbox:selected .mark {
+    -fx-background-color: #f97316;
+}
+
+.row-checkbox:selected .box {
+    -fx-border-color: #f97316;
+}
+
+.preview-table .table-cell.selection-cell {
+    -fx-alignment: center;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+}
+
+.preview-table .selection-column .label {
+    -fx-alignment: center;
+    -fx-padding: 0;
+}
+
+.selection-header {
+    -fx-alignment: center;
+    -fx-padding: 0;
+    -fx-min-width: 46;
+    -fx-pref-width: 46;
+    -fx-max-width: 46;
+}
+
+/* ---- 17. Row status pills --------------------------------------------- */
+
+/* A status is a word, not a badge.
+
+   A pill is a claim on the reader's attention, and it only works while it is
+   the exception in its column. Twenty rows all needing the same fix is the
+   normal state of a fresh scan, so a pill per row turns the column into
+   wallpaper. There is no exception to promote either: a conflict already stops
+   the run through the blocking banner, the row decision and the counters, and
+   in a column of muted greys a red word is found instantly. The level is
+   carried by the ink, and by nothing else. */
+
+.row-status {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-padding: 2 0 2 0;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-background-radius: 0;
+    -fx-border-radius: 0;
+    -fx-text-fill: #b8c0cc;
+}
+
+/* Nothing to act on. */
+.row-status.quiet {
+    -fx-text-fill: #b8c0cc;
+}
+
+/* Already in place, excluded, ignored: expected, and even less of an event. */
+.row-status.quiet-muted,
+.row-status.ignored {
+    -fx-text-fill: #767e8d;
+}
+
+/* Done, and done is not news: the history of a clean run is a whole column of
+   it. Desaturated from #4ade80, which read as a signal light. */
+.row-status.ready {
+    -fx-text-fill: #7fae8c;
+}
+
+.row-status.preview {
+    -fx-text-fill: #c58a52;
+}
+
+/* Needs a fix. Common enough on a fresh scan to stay text, dimmed from #fb923c
+   so a column of them is legible instead of vibrating. */
+.row-status.warning {
+    -fx-text-fill: #d0904f;
+}
+
+/* An approved overwrite: rare, and it destroys something. Full orange, one step
+   past the warning hue, because the user already decided it. */
+.row-status.replace {
+    -fx-text-fill: #fb923c;
+}
+
+/* Blocks the run and demands a decision. Red is the only hue in this column the
+   eye reads as an alarm, and it is the only thing it needs. */
+.row-status.conflict {
+    -fx-text-fill: #f87171;
+}
+
+/* The one row that destroys something must not read like the rows around it:
+   it takes the most saturated red in the app, worn by nothing else. */
+.row-status.danger {
+    -fx-text-fill: #ff4d4d;
+}
+
+/* ---- 18. Detail panel ------------------------------------------------- */
+
+.detail-panel {
+    -fx-padding: 18;
+    -fx-spacing: 14;
+    -fx-background-color: rgba(20,23,30,0.55);
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: rgba(249,115,22,0.16);
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.05, 0, 6);
+}
+
+.detail-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-padding: 0 -8 0 0;
+}
+
+.detail-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.detail-scroll .scroll-bar,
+.detail-scroll .scroll-bar:vertical,
+.detail-scroll .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+
+.detail-scroll .scroll-bar .track,
+.detail-scroll .scroll-bar .track-background,
+.detail-scroll .scroll-bar .increment-button,
+.detail-scroll .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+}
+
+.detail-scroll .scroll-bar .increment-arrow,
+.detail-scroll .scroll-bar .decrement-arrow {
+    -fx-background-color: rgba(90,98,113,1);
+}
+
+.detail-scroll .scroll-bar .thumb {
+    -fx-background-color: rgba(249,115,22,0.36);
+    -fx-background-radius: 999;
+}
+
+/* ---- 18b. Progress bar (shared) --------------------------------------- */
+
+/* One bar for every wait in the app: the loader overlay and the execution
+   readout. It carries both states itself — indeterminate while the work cannot
+   count itself, filling as soon as it can. */
+.episort-progress {
+    -fx-pref-height: 6;
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
+}
+
+.episort-progress > .track {
+    -fx-background-color: rgba(255,255,255,0.08);
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
+    -fx-border-color: transparent;
+}
+
+.episort-progress > .bar {
+    -fx-background-color: #f97316;
+    -fx-background-insets: 0;
+    -fx-background-radius: 999;
+    -fx-padding: 0;
+}
+
+/* ---- 18c. Loading overlay --------------------------------------------- */
+
+.app-loader-overlay {
+    -fx-background-color: rgba(7,8,11,0.58);
+}
+
+.app-loader-card {
+    -fx-padding: 24 28 24 28;
+    -fx-background-color: rgba(15,18,24,0.92);
+    -fx-background-radius: 14;
+    -fx-border-color: rgba(249,115,22,0.35);
+    -fx-border-radius: 14;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.05, 0, 6);
+}
+
+.app-loader-eyebrow {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f97316;
+}
+
+.app-loader-text {
+    -fx-text-fill: rgba(241,245,249,1);
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+}
+
+.app-loader-percent {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #fb923c;
+    -fx-min-width: 44;
+    -fx-alignment: center-right;
+}
+
+/* Size and weight come from .button; only the padding is wider here. */
+.app-loader-cancel {
+    -fx-padding: 8 18 8 18;
+}
+
+.app-loader-hint {
+    -fx-text-fill: rgba(148,163,184,0.85);
+    -fx-font-size: 10px;
+}
+
+.prereq-overlay {
+    -fx-background-color: rgba(7,8,11,0.55);
+}
+
+.prereq-card {
+    -fx-padding: 28;
+    -fx-background-color: rgba(15,18,24,0.92);
+    -fx-background-radius: 14;
+    -fx-border-color: rgba(249,115,22,0.35);
+    -fx-border-radius: 14;
+    -fx-border-width: 1;
+}
+
+.prereq-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #f1f5f9;
+}
+
+.prereq-subtitle,
+.prereq-bullet {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #cbd5e1;
+}
+
+.prereq-bullet {
+    -fx-text-fill: #f1f5f9;
+}
+
+.detail-panel-section {
+    -fx-spacing: 6;
+    -fx-padding: 0 0 6 0;
+}
+
+.detail-panel-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #767e8d;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-weight: 600;
+}
+
+.detail-panel-value {
+    -fx-font-size: 13px;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-text-fill: #f5f7fb;
+}
+
+.detail-panel-value-mono {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: #b8c0cc;
+}
+
+.detail-panel-empty {
+    -fx-font-size: 13px;
+    -fx-text-fill: #767e8d;
+    -fx-font-style: italic;
+}
+
+.detail-panel-empty-state {
+    -fx-padding: 36 18 36 18;
+    -fx-spacing: 10;
+    -fx-alignment: center;
+}
+
+.detail-panel-empty-icon {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 28px;
+    -fx-text-fill: rgba(249,115,22,0.40);
+}
+
+.detail-panel-empty-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #b8c0cc;
+}
+
+.detail-panel-empty-hint {
+    -fx-font-size: 13px;
+    -fx-text-fill: #767e8d;
+    -fx-text-alignment: center;
+    -fx-wrap-text: true;
+}
+
+/* ---- 19. Filter chips -------------------------------------------------- */
+
+.scan-filter-bar {
+    -fx-padding: 0 0 2 0;
+    -fx-spacing: 8;
+    -fx-alignment: center-left;
+}
+
+/* Table-scoped search stays visually attached to the predicates it combines
+   with, while retaining the shared search focus and clear-button treatment. */
+.table-search {
+    -fx-min-width: 220;
+    -fx-pref-width: 280;
+    -fx-max-width: 320;
+}
+
+.filter-chip {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-padding: 6 12 6 12;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(249,115,22,0.25);
+    -fx-border-width: 1;
+    -fx-text-fill: #b8c0cc;
+    -fx-cursor: hand;
+}
+
+.filter-chip:hover {
+    -fx-background-color: rgba(249,115,22,0.06);
+    -fx-text-fill: #f5f7fb;
+}
+
+.filter-chip:selected,
+.filter-chip.active {
+    -fx-background-color: rgba(249,115,22,0.18);
+    -fx-border-color: #f97316;
+    -fx-text-fill: #fb923c;
+}
+
+/* ---- 20. Compact sidebar (narrow widths) ------------------------------ */
+
+.nav-item-icon {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: inherit;
+}
+
+/* ---- 21. Context menu (preview-table rows) ---------------------------- */
+
+/* Popups get their own scene root, so the shell's font never reaches them:
+   without this line the menus fall back to the platform default and read as a
+   heavier, wider face than the rest of the app. */
+.context-menu {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: rgba(13,15,20,0.97);
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: rgba(249,115,22,0.22);
+    -fx-border-width: 1;
+    -fx-padding: 6;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.65), 18, 0.10, 0, 6);
+}
+
+.context-menu .menu-item {
+    -fx-padding: 7 16 7 16;
+    -fx-background-radius: 6;
+}
+
+.context-menu .menu-item .label {
+    -fx-text-fill: #d5dae2;
+    -fx-font-size: 13px;
+    -fx-font-weight: 400;
+}
+
+.context-menu .menu-item:focused,
+.context-menu .menu-item:hover {
+    -fx-background-color: rgba(249,115,22,0.14);
+}
+
+.context-menu .menu-item:focused .label,
+.context-menu .menu-item:hover .label {
+    -fx-text-fill: #fb923c;
+    -fx-font-weight: 400;
+}
+
+.context-menu .menu-item:disabled .label {
+    -fx-text-fill: #767e8d;
+}
+
+/* Accelerator hints and the check mark of the view menu, which the plain
+   .label rule above does not reach. The shortcut is a hint, not a second
+   label: it stays quiet and keeps its distance from the item name. */
+.context-menu .menu-item > .accelerator-text {
+    -fx-fill: #6f7787;
+    -fx-font-size: 10px;
+    -fx-font-weight: 400;
+    -fx-padding: 0 0 0 28;
+}
+
+.context-menu .menu-item:focused > .accelerator-text,
+.context-menu .menu-item:hover > .accelerator-text {
+    -fx-fill: #a9704a;
+}
+
+.context-menu .check-menu-item:selected .left-container .check,
+.context-menu .radio-menu-item:selected .left-container .radio {
+    -fx-background-color: #fb923c;
+}
+
+.context-menu .separator {
+    -fx-padding: 5 0 5 0;
+}
+
+.context-menu .separator .line {
+    -fx-border-color: rgba(255,255,255,0.09) transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ---- 22. View host ---------------------------------------------------- */
+
+.view-host {
+    -fx-background-color: transparent;
+}
+
+.screen-root {
+    -fx-padding: 26 30 26 30;
+    -fx-spacing: 14;
+}
+
+/* ---- 23. Table empty states ------------------------------------------- */
+
+.table-empty-state {
+    -fx-padding: 48 24 48 24;
+    -fx-spacing: 12;
+    -fx-alignment: center;
+}
+
+.table-empty-icon {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 36px;
+    -fx-text-fill: rgba(249,115,22,0.32);
+}
+
+.table-empty-title {
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #b8c0cc;
+}
+
+.table-empty-hint {
+    -fx-font-size: 13px;
+    -fx-text-fill: #767e8d;
+    -fx-text-alignment: center;
+    -fx-wrap-text: true;
+}
+
+/* ---- 24. Settings page ------------------------------------------------ */
+
+.settings-page {
+    -fx-padding: 26 30 26 30;
+    -fx-spacing: 18;
+}
+
+.page-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #d7dce5;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-padding: 1 0 1 8;
+    -fx-border-color: transparent transparent transparent #f97316;
+    -fx-border-width: 0 0 0 1;
+}
+
+.page-heading {
+    -fx-font-size: 22px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f5f7fb;
+}
+
+.page-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: #8a93a3;
+}
+
+.settings-section {
+    -fx-padding: 20 22 20 22;
+    -fx-spacing: 12;
+}
+
+.settings-row {
+    -fx-spacing: 12;
+    -fx-alignment: center-left;
+}
+
+.settings-section-divider {
+    -fx-pref-height: 1;
+    -fx-min-height: 1;
+    -fx-max-height: 1;
+    -fx-background-color: rgba(255,255,255,0.04);
+}
+
+.tmdb-attribution {
+    -fx-padding: 4 0 0 0;
+    -fx-spacing: 16;
+    -fx-alignment: center-left;
+}
+
+.tmdb-attribution-copy {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #b8c0cc;
+}
+
+.tmdb-attribution-link {
+    -fx-padding: 2 0 2 0;
+    -fx-border-width: 0;
+    -fx-background-color: transparent;
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #fb923c;
+    -fx-underline: true;
+}
+
+.tmdb-attribution-link:hover {
+    -fx-text-fill: #f5f7fb;
+}
+
+.tmdb-attribution-link:focus-visible {
+    -fx-border-color: #fb923c;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-padding: 1 3 1 3;
+}
+
+/* ---- 25. ScrollPane viewports (transparent backgrounds) --------------- */
+
+.scroll-pane,
+.scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.nav-item-label {
+    -fx-text-fill: inherit;
+}
+
+.preview-table .table-row-cell:selected,
+.preview-table .table-row-cell:filled:selected {
+    -fx-background-color: rgba(249,115,22,0.18);
+}
+
+.preview-table .table-row-cell:selected .table-cell,
+.preview-table .table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: rgba(245,247,251,1.0);
+}
+
+/* Selection and ticking are told apart by weight of tint, not by an accent bar:
+   the tick state already has a checked box in the first column, and a 3px
+   coloured stripe on a row is decoration once the tint carries the meaning. */
+.scan-table .table-row-cell:filled:selected,
+.scan-table .table-row-cell.ignored-row:filled:selected {
+    -fx-background-color: rgba(249,115,22,0.22);
+}
+
+/* Ticked conflict rows in the exact plan: the batch buttons act on exactly
+   these, so they read as one block at a glance. */
+.plan-table .table-row-cell.picked-row,
+.plan-table .table-row-cell.picked-row:odd {
+    -fx-background-color: rgba(249,115,22,0.13);
+}
+
+.plan-table .table-row-cell.picked-row:filled:hover {
+    -fx-background-color: rgba(249,115,22,0.19);
+}
+
+/* A row that is both ticked and selected must not read as lighter than a row
+   that is only selected. */
+.plan-table .table-row-cell.picked-row:filled:selected {
+    -fx-background-color: rgba(249,115,22,0.26);
+}
+
+.plan-table .table-row-cell.picked-row .table-cell {
+    -fx-text-fill: rgba(245,247,251,1.0);
+}
+
+.before-after-arrow-cell {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f97316;
+}
+
+.preview-table .table-cell.proposed-name-cell,
+.detail-panel-value-mono.proposed-name-value {
+    -fx-text-fill: #4ade80;
+}
+
+.preview-table .table-cell.proposed-name-cell.cell-muted {
+    -fx-text-fill: #767e8d;
+}
+
+/* ---- TMDB manual match search ------------------------------------------ */
+
+.tmdb-selected-card,
+.tmdb-result-card {
+    -fx-padding: 12 12 12 12;
+    -fx-spacing: 10;
+    -fx-background-color: rgba(20,23,30,0.88);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(255,255,255,0.08);
+    -fx-border-width: 1;
+}
+
+.tmdb-search-results .tmdb-result-card {
+    -fx-min-width: 0;
+    -fx-pref-width: 0;
+    -fx-max-width: infinity;
+}
+
+.tmdb-result-action {
+    -fx-alignment: center-right;
+}
+
+.tmdb-poster-frame {
+    -fx-min-width: 78;
+    -fx-pref-width: 78;
+    -fx-max-width: 78;
+    -fx-min-height: 112;
+    -fx-pref-height: 112;
+    -fx-max-height: 112;
+    -fx-background-color: rgba(7,8,11,0.72);
+    -fx-background-radius: 7;
+    -fx-border-radius: 7;
+    -fx-border-color: rgba(249,115,22,0.18);
+    -fx-border-width: 1;
+}
+
+.tmdb-selected-card .tmdb-poster-frame {
+    -fx-min-width: 122;
+    -fx-pref-width: 122;
+    -fx-max-width: 122;
+    -fx-min-height: 180;
+    -fx-pref-height: 180;
+    -fx-max-height: 180;
+}
+
+.tmdb-detail-poster-host {
+    -fx-alignment: top-center;
+}
+
+.tmdb-poster-placeholder {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 10px;
+    -fx-text-fill: rgba(245,247,251,0.42);
+}
+
+.tmdb-match-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(245,247,251,1.0);
+}
+
+.tmdb-match-meta {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(245,247,251,0.62);
+}
+
+.tmdb-match-overview {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: rgba(245,247,251,0.72);
+    -fx-max-width: infinity;
+}
+
+.tmdb-empty-state {
+    -fx-padding: 24 18 24 18;
+    -fx-alignment: center;
+}
+
+.tmdb-empty-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(245,247,251,0.86);
+}
+
+.tmdb-empty-hint {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: rgba(138,147,163,1.0);
+    -fx-text-alignment: center;
+}
+
+.tmdb-dialog {
+    -fx-background-color: linear-gradient(to bottom, rgba(10,12,17,1.0), rgba(7,8,11,1.0));
+    -fx-border-color: rgba(249,115,22,0.28);
+    -fx-border-width: 1;
+}
+
+/* ---- File properties dialog -------------------------------------------- */
+
+.file-properties-dialog {
+    -fx-background-color: linear-gradient(to bottom, rgba(10,12,17,1.0), rgba(7,8,11,1.0));
+    -fx-border-color: rgba(249,115,22,0.28);
+    -fx-border-width: 1;
+}
+
+.file-properties-header {
+    -fx-padding: 0 0 8 0;
+    -fx-border-color: transparent transparent rgba(249,115,22,0.16) transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.file-properties-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(245,247,251,1.0);
+}
+
+.file-properties-close-icon {
+    -fx-min-width: 32;
+    -fx-pref-width: 32;
+    -fx-max-width: 32;
+    -fx-min-height: 32;
+    -fx-pref-height: 32;
+    -fx-max-height: 32;
+}
+
+.file-properties-scroll,
+.file-properties-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.file-properties-content {
+    -fx-padding: 2 2 2 0;
+}
+
+.file-properties-section {
+    -fx-padding: 12 14 12 14;
+    -fx-background-color: rgba(20,23,30,0.55);
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-width: 1;
+}
+
+.file-properties-section-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-text-fill: rgba(249,115,22,1.0);
+}
+
+.file-properties-label {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-text-fill: rgba(118,126,141,1.0);
+}
+
+.file-properties-value {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: rgba(245,247,251,1.0);
+}
+
+.file-properties-empty {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: rgba(138,147,163,1.0);
+}
+
+.file-properties-path {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: rgba(251,146,60,1.0);
+    -fx-background-color: rgba(20,23,30,0.85);
+    -fx-background-radius: 8;
+    -fx-border-color: rgba(249,115,22,0.18);
+    -fx-border-radius: 8;
+}
+
+.file-properties-path .content {
+    -fx-background-color: transparent;
+}
+
+.file-properties-footer {
+    -fx-padding: 2 0 0 0;
+}
+
+.file-properties-feedback {
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 10px;
+    -fx-text-fill: rgba(251,146,60,1.0);
+}
+
+.tmdb-dialog-header {
+    -fx-padding: 0 0 8 0;
+    -fx-border-color: transparent transparent rgba(249,115,22,0.16) transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.tmdb-dialog-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(245,247,251,1.0);
+}
+
+.tmdb-dialog-close {
+    -fx-min-width: 32;
+    -fx-pref-width: 32;
+    -fx-max-width: 32;
+    -fx-min-height: 32;
+    -fx-pref-height: 32;
+    -fx-max-height: 32;
+}
+
+.tmdb-dialog-message {
+    -fx-text-fill: rgba(245,247,251,0.72);
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+}
+
+/* The last line before execution, when that execution removes files. */
+.tmdb-dialog-message.notice-danger {
+    -fx-text-fill: #fca5a5;
+}
+
+.tmdb-search-results {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: transparent;
+    -fx-fixed-cell-size: 152;
+    -fx-padding: 8 8 8 8;
+}
+
+.tmdb-search-results .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 8 2 8 2;
+    -fx-cell-size: 152;
+}
+
+.tmdb-search-results .list-cell .button {
+    -fx-min-width: 112;
+    -fx-pref-width: 132;
+    -fx-max-width: 132;
+}
+
+.tmdb-search-results .virtual-flow,
+.tmdb-search-results .virtual-flow > .corner,
+.tmdb-search-results .corner,
+.tmdb-search-results .scroll-bar,
+.tmdb-search-results .scroll-bar:vertical,
+.tmdb-search-results .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+
+.tmdb-search-results .scroll-bar .track,
+.tmdb-search-results .scroll-bar .track-background,
+.tmdb-search-results .scroll-bar .increment-button,
+.tmdb-search-results .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+}
+
+.tmdb-search-results .scroll-bar .thumb {
+    -fx-background-color: rgba(249,115,22,0.42);
+    -fx-background-radius: 999;
+}
+
+.tmdb-search-results .scroll-bar .thumb:hover {
+    -fx-background-color: rgba(249,115,22,0.68);
+}
+
+.tmdb-search-results .scroll-bar .increment-arrow,
+.tmdb-search-results .scroll-bar .decrement-arrow {
+    -fx-background-color: rgba(245,247,251,0.35);
+}
+
+.tmdb-search-results .list-cell:selected .tmdb-result-card,
+.tmdb-search-results .list-cell:hover .tmdb-result-card {
+    -fx-border-color: rgba(249,115,22,0.42);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.18), 10, 0, 0, 0);
+}
+
+.tmdb-search-loader {
+    -fx-progress-color: rgba(249,115,22,0.92);
+}
+
+.tmdb-search-text-field {
+    -fx-prompt-text-fill: rgba(118,126,141,1.0);
+}
+
+/* Optional exact filters stay compact beside the elastic title field. They
+   reuse the standard text-field states and introduce no parallel control. */
+.text-field.tmdb-search-year {
+    -fx-min-width: 112;
+    -fx-pref-width: 112;
+    -fx-max-width: 112;
+}
+
+.text-field.tmdb-search-id {
+    -fx-min-width: 156;
+    -fx-pref-width: 156;
+    -fx-max-width: 156;
+}
+
+.tmdb-detail-controls .button {
+    -fx-text-overrun: clip;
+}
+
+.tmdb-detail-secondary-controls {
+    -fx-spacing: 8;
+}
+
+/* ---- 22. Chips, icon buttons and dialog controls ---------------------- */
+
+/* Chips ---------------------------------------------------------------- */
+
+/* Icon button ---------------------------------------------------------- */
+
+.icon-button {
+    -fx-min-width: 32;
+    -fx-min-height: 32;
+    -fx-pref-width: 32;
+    -fx-pref-height: 32;
+    -fx-max-width: 32;
+    -fx-max-height: 32;
+    -fx-padding: 0;
+    /* Icon buttons carry a single glyph, so they take the heading step
+       rather than the body size they would inherit from .button. */
+    -fx-font-size: 17px;
+    -fx-background-color: rgba(255,255,255,0.04);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(255,255,255,0.06);
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+
+.icon-button:hover {
+    -fx-background-color: rgba(249,115,22,0.14);
+    -fx-border-color: rgba(249,115,22,0.40);
+    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.35), 10, 0, 0, 0);
+}
+
+.icon-button:disabled {
+    -fx-opacity: 0.45;
+    -fx-cursor: default;
+    -fx-effect: null;
+}
+
+/* ---- 22b. Inline spinners -------------------------------------------- */
+
+/* Destructive button (used by the custom delete dialog) ---------------- */
+
+/* Debug window (Ctrl+Shift+D) ------------------------------------------ */
+
+/* ---- Group name --------------------------------------------------------- */
+/* A folder holding two series has to read as two series, not as one long list.
+   The split is carried by the break in the column: the name is written on the
+   first row of a block and the rest of the block stays blank. No pill, no
+   marker, no per-group colour — twenty-five rows of one series would mean
+   twenty-five decorations for one piece of information, and colour in this
+   product means status, never identity. */
+
+/* The seed is derived from the filenames, so it is a system value and takes the
+   system face. Mono against the sans of the row text is what makes it read as a
+   header: a different voice, not a louder one. It matches the row text size
+   (13px) — a block header set smaller than the rows it heads reads as a caption
+   that was forgotten. */
+.group-name {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-max-width: 9999;
+}
+
+.group-name-head {
+    -fx-text-fill: #f5f7fb;
+}
+
+/* Ignored blocks carry no media identity: same shape, dimmer ink. */
+.group-name-ignored {
+    -fx-text-fill: rgba(245,247,251,0.40);
+}
+
+/* A hairline across the full row opens each block. One rule per group, against
+   twenty-five decorations per group: the eye finds the boundary, not a legend. */
+.preview-table .table-row-cell.group-block-start,
+.preview-table .table-row-cell.group-block-start:odd {
+    -fx-border-color: rgba(255,255,255,0.14) transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ---- TMDB identity validation screen ------------------------------------ */
+
+/* Every identity row measures the same: the list reads as a table and the four
+   columns line up from the first row to the last. */
+.identity-card {
+    -fx-padding: 10 14 10 14;
+    -fx-background-color: rgba(255,255,255,0.03);
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: rgba(249,115,22,0.16);
+    -fx-border-width: 1;
+    -fx-min-height: 64;
+    -fx-pref-height: 64;
+    -fx-max-height: 64;
+}
+
+/* Group seeds run long; the name stops at the column edge and crops. */
+.identity-group-name {
+    -fx-max-width: 200;
+}
+
+.identity-title {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(245,247,251,1.0);
+}
+
+.identity-title-missing {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: rgba(248,113,113,0.92);
+}
+
+.identity-meta {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-text-fill: rgba(245,247,251,0.58);
+}
+
+.identity-state-ok {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-text-fill: #4ade80;
+}
+
+.identity-state-pending {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-text-fill: #facc15;
+}
+
+/* The TMDB id is a system value: mono, faint, aligned under the title. */
+.identity-id {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 10px;
+    -fx-text-fill: rgba(245,247,251,0.45);
+}
+
+.identity-warning {
+    -fx-text-fill: #facc15;
+}
+
+/* ---- 26. Execution readout and recap (Epic 7) ------------------------- */
+
+/* The live half of the execution pane. One panel, because while the run is on
+   there is exactly one thing to look at: the operation being carried out. */
+.exec-readout {
+    -fx-padding: 18;
+    -fx-background-color: rgba(20,23,30,0.55);
+    -fx-background-radius: 14;
+    -fx-border-radius: 14;
+    -fx-border-color: rgba(249,115,22,0.16);
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 22, 0.05, 0, 6);
+}
+
+/* Done and total are one reading, so they share the step; the total is dimmer
+   because it is the one number that never changes. */
+.exec-count {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #f5f7fb;
+}
+
+.exec-count-total {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #767e8d;
+}
+
+.exec-percent {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #fb923c;
+}
+
+/* The pair of paths sits under a rule: it belongs to the counter above it,
+   but it is a different kind of fact. */
+.exec-flight {
+    -fx-padding: 14 0 0 0;
+    -fx-border-color: rgba(255,255,255,0.08) transparent transparent transparent;
+    -fx-border-width: 1 0 0 0;
+}
+
+.exec-label {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #767e8d;
+}
+
+.exec-path {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: #f5f7fb;
+}
+
+/* A deletion has no destination; the placeholder must not read as a path. */
+.exec-path-empty {
+    -fx-text-fill: #8a93a3;
+}
+
+.exec-failed-line {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 13px;
+    -fx-text-fill: #f87171;
+}
+
+/* The recap headline. Partial success never wears the good colour. */
+.exec-outcome {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f5f7fb;
+}
+
+.exec-outcome.good  { -fx-text-fill: #4ade80; }
+.exec-outcome.warn  { -fx-text-fill: #fb923c; }
+.exec-outcome.error { -fx-text-fill: #f87171; }
+
+.exec-stat-value {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 17px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f5f7fb;
+}
+
+/* A zero is a real answer, and it recedes; a non-zero failure count does not. */
+.exec-stat-value.zero     { -fx-text-fill: #767e8d; }
+.exec-stat-value.alarming { -fx-text-fill: #f87171; }
+
+.exec-stat-label {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #767e8d;
+}
+
+.exec-hint {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #b8c0cc;
+}
+
+/* ---- 27. About screen -------------------------------------------------- */
+
+/* Documentation, not a work surface: the three regions (header, body, footer)
+   sit 26 apart so they read as three thoughts, while the groups inside them
+   stay at 8 / 10 / 14. Uniform screen rhythm made every line a peer. */
+.about-pane {
+    -fx-spacing: 26;
+}
+
+/* A divider separates the two groups, so they need slightly more room than the
+   14 the detail panel gives its stacked sections. */
+.about-fact-panel {
+    -fx-spacing: 18;
+}
+
+.about-brand-name {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 22px;
+    -fx-font-weight: 800;
+    -fx-text-fill: #f5f7fb;
+}
+
+.about-tagline {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #8a93a3;
+}
+
+.about-version {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #fb923c;
+}
+
+.about-body {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #b8c0cc;
+    -fx-line-spacing: 3;
+}
+
+/* Same numbered mark as the workflow strip: the pipeline described here is the
+   trail the user walks, not a second story about it. */
+.about-step-index {
+    -fx-min-width: 22;
+    -fx-pref-width: 22;
+    -fx-min-height: 22;
+    -fx-pref-height: 22;
+    -fx-alignment: center;
+    -fx-background-color: rgba(249,115,22,0.16);
+    -fx-background-radius: 999;
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+    -fx-text-fill: #fb923c;
+}
+
+.about-step-label {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #b8c0cc;
+}
+
+.about-label {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #767e8d;
+}
+
+.about-value {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #f5f7fb;
+}
+
+/* Paths are system values wherever they appear, About included. */
+.about-value-path {
+    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-text-fill: #fb923c;
+}
+
+.about-note {
+    -fx-font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -fx-font-size: 13px;
+    -fx-text-fill: #8a93a3;
+    -fx-line-spacing: 3;
+}

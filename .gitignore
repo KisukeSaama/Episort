@@ -1,0 +1,17 @@
+.gradle/
+build/
+out/
+status/
+/bin/
+
+# Local metadata-provider credentials (legacy TVDB file retained defensively)
+tvdb.properties
+tmdb.properties
+tmdb-credentials.properties
+*.local.properties
+.env
+.env.*
+!.env.example
+
+# Machine-specific Gradle toolchain path
+/gradle.properties
