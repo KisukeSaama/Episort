@@ -4,6 +4,18 @@ All notable changes to Episort are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-12
+
+### Fixed
+
+- The Windows single-file portable launcher now embeds the Episort icon,
+  application metadata, version information, and a GUI manifest.
+
+### Known limitations
+
+- Release executables are not yet code-signed and may trigger a Microsoft
+  Defender SmartScreen warning on first launch.
+
 ## [0.1.1] - 2026-08-12
 
 ### Fixed
