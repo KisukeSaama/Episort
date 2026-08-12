@@ -296,6 +296,11 @@ Each component is documented as **Anatomy → Class → Rules**.
     menus, and fields retain their normal pointer behavior. Window placement
     previews use the restrained `.window-snap-preview` outline and disappear
     when the pointer leaves a snap edge or the drag finishes.
+  - The main stage is opaque and undecorated. On Windows 11, native DWM corner
+    preference supplies the rounded restored-window outline; maximized and
+    full-screen states remain square. The shell, top bar, and sidebar must not
+    add a window-level background radius, because it produces a fringe over the
+    native DWM cutout. Unsupported platforms keep an opaque square outline.
 
 ### 4.3 Card (metric)
 
