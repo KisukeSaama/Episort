@@ -14,6 +14,12 @@ import java.util.Properties;
 public final class FileSettingsStore implements SettingsStore {
     private static final String WORKSPACE_DIRECTORY = "workspaceDirectory";
     private static final String LANGUAGE = "language";
+    private static final String WINDOW_X = "window.x";
+    private static final String WINDOW_Y = "window.y";
+    private static final String WINDOW_WIDTH = "window.width";
+    private static final String WINDOW_HEIGHT = "window.height";
+    private static final String WINDOW_STATE = "window.state";
+    private static final String THEME_PREFERENCE = "theme.preference";
 
     private final Path settingsFile;
 
@@ -107,6 +113,53 @@ public final class FileSettingsStore implements SettingsStore {
         } else {
             properties.setProperty(LANGUAGE, language);
         }
+        writeProperties(properties);
+    }
+
+    public Optional<WindowPlacement> loadWindowPlacement() {
+        Properties properties = readExistingProperties();
+        try {
+            double x = Double.parseDouble(properties.getProperty(WINDOW_X));
+            double y = Double.parseDouble(properties.getProperty(WINDOW_Y));
+            double width = Double.parseDouble(properties.getProperty(WINDOW_WIDTH));
+            double height = Double.parseDouble(properties.getProperty(WINDOW_HEIGHT));
+            if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(width)
+                    || !Double.isFinite(height) || width <= 0 || height <= 0) {
+                return Optional.empty();
+            }
+            var bounds = new com.episort.ui.platform.WindowBounds(x, y, width, height);
+            var state = com.episort.ui.platform.WindowState.valueOf(
+                    properties.getProperty(WINDOW_STATE, "NORMAL"));
+            return Optional.of(new WindowPlacement(bounds, state));
+        } catch (IllegalArgumentException | NullPointerException ignored) {
+            return Optional.empty();
+        }
+    }
+
+    public void saveWindowPlacement(WindowPlacement placement) {
+        Properties properties = readExistingProperties();
+        var bounds = placement.normalBounds();
+        properties.setProperty(WINDOW_X, Double.toString(bounds.x()));
+        properties.setProperty(WINDOW_Y, Double.toString(bounds.y()));
+        properties.setProperty(WINDOW_WIDTH, Double.toString(bounds.width()));
+        properties.setProperty(WINDOW_HEIGHT, Double.toString(bounds.height()));
+        properties.setProperty(WINDOW_STATE, placement.state().name());
+        writeProperties(properties);
+    }
+
+    public Optional<com.episort.ui.ThemePreference> loadThemePreference() {
+        String value = readExistingProperties().getProperty(THEME_PREFERENCE);
+        if (value == null || value.isBlank()) return Optional.empty();
+        try {
+            return Optional.of(com.episort.ui.ThemePreference.valueOf(value));
+        } catch (IllegalArgumentException ignored) {
+            return Optional.empty();
+        }
+    }
+
+    public void saveThemePreference(com.episort.ui.ThemePreference preference) {
+        Properties properties = readExistingProperties();
+        properties.setProperty(THEME_PREFERENCE, preference.name());
         writeProperties(properties);
     }
 

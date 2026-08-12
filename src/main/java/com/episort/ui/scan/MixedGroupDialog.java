@@ -2,6 +2,7 @@ package com.episort.ui.scan;
 
 import com.episort.ui.AppLanguage;
 import com.episort.ui.UiText;
+import com.episort.ui.ThemeStyles;
 import java.util.Map;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -114,6 +115,7 @@ final class MixedGroupDialog {
         });
         scene.getStylesheets().add(
                 MixedGroupDialog.class.getResource("/styles/app.css").toExternalForm());
+        ThemeStyles.register(body);
         stage.setScene(scene);
     }
 

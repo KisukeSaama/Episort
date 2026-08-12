@@ -9,7 +9,7 @@ plugins {
     id("org.openjfx.javafxplugin") version "0.1.0"
 }
 
-version = "0.1.1"
+version = "0.1.3"
 
 java {
     toolchain {
@@ -60,6 +60,7 @@ tasks.withType<JavaCompile>().configureEach {
 
 dependencies {
     implementation("net.java.dev.jna:jna:5.18.1")
+    implementation("net.java.dev.jna:jna-platform:5.18.1")
     implementation("com.google.code.gson:gson:2.11.0")
     testImplementation(platform("org.junit:junit-bom:5.12.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -97,6 +98,7 @@ val portableLauncherSource = layout.projectDirectory.dir("tools/portable-launche
 val portableLauncherSources = fileTree(portableLauncherSource) {
     include("*.go", "go.mod", "payload.bin")
 }
+val portableWindowsIcon = layout.projectDirectory.file("src/main/resources/assets/episort-logo.ico")
 val portableLauncherWork = portableRoot.map { it.dir("launcher-work") }
 val portableSmokeData = portableRoot.map { it.dir("smoke-data") }
 val goExecutable = providers.gradleProperty("goExecutable").orElse("go")
@@ -240,6 +242,9 @@ val buildSingleFilePortable by tasks.registering(Exec::class) {
     dependsOn(portablePackagingTask, testPortableLauncher)
     inputs.files(portableLauncherSources)
     inputs.file(portableArchiveFile)
+    if (portableOs == "windows") {
+        inputs.file(portableWindowsIcon)
+    }
     outputs.file(singleFilePortable)
 
     doFirst {
@@ -262,6 +267,28 @@ val buildSingleFilePortable by tasks.registering(Exec::class) {
             from(archive)
             into(workDirectory)
             rename { "payload.bin" }
+        }
+        if (portableOs == "windows") {
+            // jpackage embeds the icon in the launcher inside the payload. The
+            // outer, single-file Go launcher is a separate executable and needs
+            // its own Windows resources or Explorer displays the generic icon.
+            project.exec {
+                workingDir(workDirectory)
+                commandLine(
+                    goExecutable.get(),
+                    "run", "github.com/tc-hib/go-winres@v0.3.3",
+                    "simply",
+                    "--arch", "${if (portableArchitecture == "x64") "amd64" else "arm64"}",
+                    "--out", "episort-resource",
+                    "--manifest", "gui",
+                    "--icon", portableWindowsIcon.asFile.absolutePath,
+                    "--file-version", project.version.toString(),
+                    "--product-version", project.version.toString(),
+                    "--file-description", "Episort portable launcher",
+                    "--product-name", "Episort",
+                    "--original-filename", output.name
+                )
+            }
         }
         val digest = MessageDigest.getInstance("SHA-256")
         archive.inputStream().buffered().use { input ->

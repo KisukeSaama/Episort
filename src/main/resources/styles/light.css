@@ -1,0 +1,689 @@
+/* Episort light theme.
+ * Loaded after app.css only while Theme.LIGHT is active. The base stylesheet
+ * owns component anatomy; this file owns the complete alternate color system. */
+
+.root,
+.app-shell {
+    -fx-background-color:
+        radial-gradient(center 12% 10%, radius 55%, rgba(249,115,22,0.09), transparent),
+        radial-gradient(center 88% 92%, radius 60%, rgba(120,92,72,0.05), transparent),
+        linear-gradient(to bottom, #f1ede7, #e9e4dd);
+    -fx-base: #faf8f5;
+    -fx-control-inner-background: #faf8f5;
+    -fx-accent: #f97316;
+    -fx-focus-color: #f97316;
+    -fx-faint-focus-color: rgba(249,115,22,0.18);
+}
+
+.top-bar {
+    -fx-background-color: #f8f5f1;
+    -fx-border-color: transparent transparent rgba(249,115,22,0.18) transparent;
+}
+
+.sidebar {
+    -fx-background-color: #f6f2ed;
+    -fx-border-color: transparent rgba(249,115,22,0.18) transparent transparent;
+}
+
+.view-host,
+.content-scroll,
+.content-scroll > .viewport,
+.settings-scroll,
+.settings-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.label,
+.page-heading,
+.section-heading,
+.card-title,
+.card-value-mono,
+.workspace-value,
+.settings-section-title,
+.identity-title,
+.exec-count,
+.exec-outcome,
+.exec-stat-value,
+.about-brand-name,
+.about-value,
+.group-name-head,
+.detail-panel-value,
+.detail-panel-empty-title,
+.table-empty-title,
+.tmdb-empty-title,
+.file-properties-title,
+.file-properties-value {
+    -fx-text-fill: #211d1a;
+}
+
+.page-subtitle,
+.settings-section-description,
+.nav-item-label,
+.about-body,
+.about-step-label,
+.exec-hint,
+.tmdb-match-overview,
+.banner-text,
+.detail-panel-value-mono,
+.detail-panel-empty-hint,
+.table-empty-hint,
+.file-properties-empty {
+    -fx-text-fill: #554d47;
+}
+
+.sidebar-section-label,
+.sidebar-section-heading,
+.page-title,
+.identity-meta,
+.identity-id,
+.exec-label,
+.exec-stat-label,
+.about-label,
+.about-note,
+.tmdb-match-meta,
+.detail-panel-label,
+.detail-panel-empty,
+.workspace-chip-prefix,
+.storage-capacity,
+.storage-available {
+    -fx-text-fill: #6b625b;
+}
+
+.top-bar .label,
+.app-menu-bar > .container > .menu-button > .label,
+.window-button,
+.status-pill {
+    -fx-text-fill: #403a35;
+}
+
+.app-menu-bar > .container > .menu-button:hover,
+.app-menu-bar > .container > .menu-button:focused,
+.window-button:hover {
+    -fx-background-color: #e9e2da;
+}
+
+.app-menu-bar > .container > .menu-button:hover > .label,
+.app-menu-bar > .container > .menu-button:focused > .label,
+.window-button:hover {
+    -fx-text-fill: #211d1a;
+}
+
+.nav-item {
+    -fx-text-fill: #554d47;
+}
+
+.nav-item:hover,
+.workspace-explorer-header:hover {
+    -fx-background-color: #ece4dc;
+}
+
+.nav-item.active,
+.nav-item.active:hover {
+    -fx-background-color: #fff0e6;
+    -fx-border-color: #fdba8c;
+}
+
+.nav-item.active .nav-item-label,
+.nav-item:hover .nav-item-label {
+    -fx-text-fill: #9a3e08;
+}
+
+.card,
+.settings-section,
+.widget,
+.banner,
+.identity-card,
+.exec-readout,
+.detail-panel,
+.file-properties-section,
+.tmdb-selected-card,
+.tmdb-result-card {
+    -fx-background-color: #faf8f5;
+    -fx-border-color: #e4bda2;
+    -fx-effect: dropshadow(gaussian, rgba(55,43,34,0.12), 8, 0, 0, 2);
+}
+
+.workflow-progress {
+    -fx-background-color: #faf8f5;
+    -fx-border-color: #e4bda2;
+}
+
+.workflow-step.active {
+    -fx-background-color: #fff0e6;
+    -fx-border-color: #fdba8c;
+}
+
+.workflow-step.active .workflow-step-label {
+    -fx-text-fill: #9a3e08;
+}
+
+.workflow-step.pending .workflow-step-number {
+    -fx-background-color: #e5ded6;
+    -fx-text-fill: #625950;
+}
+
+.workflow-step.pending .workflow-step-label,
+.workflow-help {
+    -fx-text-fill: #6b625b;
+}
+
+.workflow-step.complete .workflow-step-label {
+    -fx-text-fill: #403a35;
+}
+
+.workflow-step-connector {
+    -fx-background-color: #cec5bb;
+}
+
+.episort-search-box,
+.top-search,
+.text-field,
+.text-area,
+.combo-box,
+.combo-box-base,
+.file-properties-path {
+    -fx-background-color: #faf8f5;
+    -fx-text-fill: #211d1a;
+    -fx-prompt-text-fill: #6b625b;
+    -fx-border-color: #d1c8be;
+}
+
+.text-area .content,
+.text-input .content {
+    -fx-background-color: #faf8f5;
+}
+
+.episort-search-field,
+.top-search .text-field {
+    -fx-background-color: transparent;
+    -fx-text-fill: #211d1a;
+    -fx-prompt-text-fill: #6b625b;
+    -fx-border-color: transparent;
+}
+
+.episort-search-box:hover,
+.top-search:hover,
+.tmdb-search-box:hover {
+    -fx-background-color: #faf8f5;
+    -fx-border-color: #fb923c;
+}
+
+.button,
+.menu-button,
+.icon-button {
+    -fx-background-color: #f7ebe2;
+    -fx-text-fill: #8f3908;
+    -fx-border-color: #dea77f;
+}
+
+.button:hover,
+.menu-button:hover,
+.icon-button:hover {
+    -fx-background-color: #fbe1cf;
+    -fx-border-color: #fb923c;
+}
+
+.button:disabled,
+.menu-button:disabled,
+.icon-button:disabled {
+    -fx-background-color: #e9e4de;
+    -fx-border-color: #d8d0c7;
+    -fx-text-fill: #71675f;
+    -fx-opacity: 0.72;
+}
+
+.button.primary,
+.button.validate-action {
+    -fx-background-color: #f97316;
+    -fx-border-color: #f97316;
+    -fx-text-fill: #111827;
+}
+
+.menu-button.load-primary,
+.menu-button.load-primary > .label {
+    -fx-background-color: #faf8f5;
+    -fx-text-fill: #7c3108;
+}
+
+.menu-button.load-primary:disabled {
+    -fx-background-color: #e9e4de;
+    -fx-border-color: #d8d0c7;
+    -fx-opacity: 0.72;
+}
+
+.filter-chip {
+    -fx-background-color: #f8f1eb;
+    -fx-border-color: #d8c1b1;
+    -fx-text-fill: #554d47;
+}
+
+.filter-chip:hover {
+    -fx-background-color: #fff7ed;
+    -fx-border-color: #fb923c;
+    -fx-text-fill: #7c3108;
+}
+
+.filter-chip:selected,
+.filter-chip.active {
+    -fx-background-color: #fff0e6;
+    -fx-border-color: #f97316;
+    -fx-text-fill: #7c3108;
+}
+
+.preview-table {
+    -fx-background-color: #faf8f5;
+    -fx-border-color: #e4bda2;
+    -fx-effect: dropshadow(gaussian, rgba(55,43,34,0.12), 8, 0, 0, 2);
+}
+
+.preview-table .column-header-background {
+    -fx-background-color: #e9e2da;
+    -fx-border-color: transparent transparent #d1c8be transparent;
+}
+
+.preview-table .column-header,
+.preview-table .nested-column-header,
+.preview-table .filler {
+    -fx-background-color: transparent;
+}
+
+.preview-table .column-header {
+    -fx-border-color: transparent #d8d0c7 #d1c8be transparent;
+}
+
+.preview-table .column-header:hover {
+    -fx-background-color: #ddd5cc;
+}
+
+.preview-table .column-header .label {
+    -fx-text-fill: #5b524b;
+}
+
+.preview-table .table-row-cell,
+.preview-table .table-row-cell:odd {
+    -fx-background-color: #faf8f5;
+}
+
+.preview-table .table-row-cell:odd {
+    -fx-background-color: #f4f0eb;
+}
+
+.preview-table .table-row-cell:filled:hover {
+    -fx-background-color: #ece4dc;
+}
+
+.preview-table .table-row-cell:filled:selected,
+.preview-table .table-row-cell:filled:selected:hover {
+    -fx-background-color: #ffe5d3;
+}
+
+.preview-table .table-cell {
+    -fx-text-fill: #332d28;
+    -fx-border-color: transparent #e3dcd4 transparent transparent;
+}
+
+.preview-table .table-cell.cell-muted,
+.preview-table > .placeholder > .label {
+    -fx-text-fill: #6b625b;
+}
+
+.preview-table .virtual-flow,
+.preview-table .corner,
+.preview-table .scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.detail-panel-empty-icon {
+    -fx-text-fill: #c4520d;
+}
+
+.episort-progress > .track,
+.storage-progress > .track {
+    -fx-background-color: #d8d0c7;
+}
+
+.app-loader-overlay,
+.prereq-overlay {
+    -fx-background-color: rgba(238,234,228,0.82);
+}
+
+.app-loader-card,
+.prereq-card,
+.custom-dialog,
+.file-properties-dialog,
+.tmdb-dialog {
+    -fx-background-color: #faf8f5;
+    -fx-border-color: #fdba8c;
+    -fx-effect: dropshadow(gaussian, rgba(55,43,34,0.18), 8, 0, 0, 3);
+}
+
+.app-loader-text,
+.prereq-title,
+.prereq-bullet,
+.custom-dialog-title,
+.custom-dialog-message,
+.tmdb-dialog-title,
+.tmdb-dialog-message {
+    -fx-text-fill: #211d1a;
+}
+
+.app-loader-hint,
+.prereq-subtitle {
+    -fx-text-fill: #554d47;
+}
+
+.context-menu {
+    -fx-background-color: #faf8f5;
+    -fx-border-color: #c9bfb4;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(55,43,34,0.24), 8, 0.08, 0, 3);
+}
+
+.context-menu .menu-item {
+    -fx-background-color: transparent;
+    -fx-background-radius: 6;
+}
+
+.context-menu .menu-item > .label {
+    -fx-text-fill: #332d28;
+}
+
+.context-menu .menu-item:focused,
+.context-menu .menu-item:hover {
+    -fx-background-color: #f6dfcf;
+}
+
+.context-menu .menu-item:focused > .label,
+.context-menu .menu-item:hover > .label {
+    -fx-text-fill: #7c3108;
+}
+
+.context-menu .menu-item:disabled {
+    -fx-opacity: 1;
+}
+
+.context-menu .menu-item:disabled > .label,
+.context-menu .menu-item:disabled:focused > .label,
+.context-menu .menu-item:disabled:hover > .label {
+    -fx-text-fill: #8b8179;
+}
+
+.context-menu .menu-item:disabled:focused,
+.context-menu .menu-item:disabled:hover {
+    -fx-background-color: transparent;
+}
+
+.context-menu .menu-item > .accelerator-text {
+    -fx-fill: #776d65;
+}
+
+.context-menu .menu-item:focused > .accelerator-text,
+.context-menu .menu-item:hover > .accelerator-text {
+    -fx-fill: #a64209;
+}
+
+.context-menu .separator .line {
+    -fx-border-color: #ddd5cc transparent transparent transparent;
+}
+
+.context-menu .check-menu-item:selected .left-container .check,
+.context-menu .radio-menu-item:selected .left-container .radio {
+    -fx-background-color: #c4520d;
+}
+
+.combo-box-popup .list-view,
+.combo-box-popup .list-view .list-cell,
+.combo-box-popup .list-view .list-cell:filled {
+    -fx-background-color: #faf8f5;
+    -fx-text-fill: #332d28;
+}
+
+.combo-box-popup .list-view .list-cell:filled:selected {
+    -fx-background-color: #fff0e6;
+    -fx-text-fill: #7c3108;
+}
+
+.combo-box-popup .list-view .list-cell:filled:hover,
+.combo-box-popup .list-view .list-cell:filled:focused {
+    -fx-background-color: #f6dfcf;
+    -fx-text-fill: #7c3108;
+}
+
+/* Shell fidelity ---------------------------------------------------------
+ * Keep the dark theme's hierarchy: orange means current/interactive, neutral
+ * ink means inactive. These selectors intentionally outrank generic controls. */
+
+.workspace-chip {
+    -fx-background-color: #e5ded6;
+    -fx-border-color: #c9bfb4;
+}
+
+.workspace-chip-label {
+    -fx-text-fill: #211d1a;
+}
+
+.workspace-chip-prefix {
+    -fx-text-fill: #a64209;
+}
+
+.nav-item,
+.nav-item:hover {
+    -fx-border-color: transparent;
+}
+
+.nav-item .nav-item-icon {
+    -fx-text-fill: #685f57;
+}
+
+.nav-item:hover .nav-item-icon,
+.nav-item:hover .nav-item-label {
+    -fx-text-fill: #8f3908;
+}
+
+.nav-item.active,
+.nav-item.active:hover {
+    -fx-border-color: #fdba8c;
+}
+
+.nav-item.active .nav-item-icon,
+.nav-item.active .nav-item-label {
+    -fx-text-fill: #a64209;
+}
+
+/* Settings keeps the base screen's orange section hierarchy. A workspace path
+ * is ambient machine data, not an input, so it must not acquire input chrome. */
+.settings-section {
+    -fx-background-color: #faf8f5;
+    -fx-border-color: #e4bda2;
+    -fx-effect: dropshadow(gaussian, rgba(55,43,34,0.10), 8, 0, 0, 2);
+}
+
+.settings-section-title {
+    -fx-text-fill: #a64209;
+}
+
+.settings-section-divider {
+    -fx-background-color: #e3dcd4;
+}
+
+.settings-row {
+    -fx-background-color: transparent;
+}
+
+.workspace-value {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: #7c3108;
+    -fx-padding: 0;
+}
+
+.tmdb-attribution-copy {
+    -fx-text-fill: #554d47;
+}
+
+.tmdb-attribution-link {
+    -fx-text-fill: #a64209;
+}
+
+.settings-page .combo-box,
+.settings-page .button {
+    -fx-background-color: #f7ebe2;
+    -fx-border-color: #dea77f;
+    -fx-text-fill: #8f3908;
+}
+
+.settings-page .combo-box:hover,
+.settings-page .button:hover {
+    -fx-background-color: #fff7ed;
+    -fx-border-color: #f97316;
+}
+
+.settings-page .combo-box .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #332d28;
+}
+
+/* Specificity-safe light parity -----------------------------------------
+ * These selectors mirror the dark component anatomy exactly. The theme class
+ * makes them win wherever a dark component rule is more specific than the
+ * generic light token above. */
+
+.theme-light .metric-grid .card .card-value-mono {
+    -fx-text-fill: #211d1a;
+}
+
+.theme-light .workflow-step.complete .workflow-step-number {
+    -fx-background-color: #e5ded6;
+    -fx-text-fill: #2f6f44;
+}
+
+.theme-light .button.ghost {
+    -fx-background-color: transparent;
+    -fx-border-color: #dea77f;
+    -fx-text-fill: #7c3108;
+}
+
+.theme-light .button.ghost:hover {
+    -fx-background-color: #fbe1cf;
+    -fx-border-color: #fb923c;
+    -fx-text-fill: #7c3108;
+}
+
+.theme-light .button.ghost:pressed {
+    -fx-background-color: #f6dfcf;
+    -fx-border-color: #f97316;
+}
+
+.theme-light .button.ghost:disabled {
+    -fx-background-color: transparent;
+    -fx-border-color: #d8d0c7;
+    -fx-text-fill: #71675f;
+    -fx-opacity: 0.72;
+}
+
+.theme-light .row-checkbox .box {
+    -fx-background-color: #faf8f5;
+    -fx-border-color: #a64209;
+}
+
+.theme-light .row-checkbox:selected .box {
+    -fx-background-color: #fff0e6;
+    -fx-border-color: #f97316;
+}
+
+.theme-light .combo-box > .list-cell,
+.theme-light .combo-box:focused > .list-cell,
+.theme-light .combo-box:showing > .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #332d28;
+}
+
+.theme-light .preview-table .table-row-cell:filled:selected .table-cell,
+.theme-light .scan-table .table-row-cell:filled:selected .table-cell {
+    -fx-text-fill: #332d28;
+}
+
+.theme-light .preview-table .table-cell.proposed-name-cell,
+.theme-light .detail-panel-value-mono.proposed-name-value,
+.theme-light .preview-table .table-cell.cell-good,
+.theme-light .identity-state-ok {
+    -fx-text-fill: #2f6f44;
+}
+
+.theme-light .preview-table .table-row-cell:filled:selected .table-cell.proposed-name-cell {
+    -fx-text-fill: #2f6f44;
+}
+
+.theme-light .preview-table .table-cell.cell-warn,
+.theme-light .identity-state-pending,
+.theme-light .identity-warning {
+    -fx-text-fill: #8f3908;
+}
+
+.theme-light .preview-table .table-cell.cell-error {
+    -fx-text-fill: #a23b3b;
+}
+
+.theme-light .row-status.quiet {
+    -fx-text-fill: #554d47;
+}
+
+.theme-light .row-status.quiet-muted,
+.theme-light .row-status.ignored {
+    -fx-text-fill: #6b625b;
+}
+
+.theme-light .row-status.ready {
+    -fx-text-fill: #2f6f44;
+}
+
+.theme-light .row-status.preview,
+.theme-light .row-status.warning {
+    -fx-text-fill: #8f3908;
+}
+
+.theme-light .row-status.replace {
+    -fx-text-fill: #7c3108;
+}
+
+.theme-light .row-status.conflict,
+.theme-light .row-status.danger {
+    -fx-text-fill: #a23b3b;
+}
+
+.theme-light .preview-table .table-row-cell.group-block-start,
+.theme-light .preview-table .table-row-cell.group-block-start:odd {
+    -fx-border-color: #d1c8be transparent transparent transparent;
+}
+
+.theme-light .menu-button.tmdb-episode-picker {
+    -fx-background-color: #faf8f5;
+    -fx-border-color: #d1c8be;
+    -fx-text-fill: #332d28;
+}
+
+.theme-light .menu-button.tmdb-episode-picker > .label {
+    -fx-text-fill: #332d28;
+}
+
+.theme-light .menu-button.tmdb-episode-picker:hover,
+.theme-light .menu-button.tmdb-episode-picker:showing {
+    -fx-background-color: #fff0e6;
+    -fx-border-color: #f97316;
+    -fx-effect: null;
+}
+
+.theme-light .menu-button.tmdb-episode-picker > .arrow-button > .arrow {
+    -fx-background-color: #c4520d;
+}
+
+.theme-light .tmdb-selected-card .tmdb-poster-frame {
+    -fx-background-color: #e9e2da;
+    -fx-border-color: #e4bda2;
+}
+
+.theme-light .detail-scroll .scroll-bar .increment-arrow,
+.theme-light .detail-scroll .scroll-bar .decrement-arrow {
+    -fx-background-color: #8b8179;
+}

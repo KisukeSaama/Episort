@@ -63,14 +63,14 @@ an application folder beside the downloaded file.
 
 Windows:
 
-1. Download `Episort-0.1.1-windows-x64.exe`.
+1. Download `Episort-0.1.2-windows-x64.exe`.
 2. Double-click the downloaded executable.
 
 Linux:
 
 ```bash
-chmod +x Episort-0.1.1-linux-x64
-./Episort-0.1.1-linux-x64
+chmod +x Episort-0.1.2-linux-x64
+./Episort-0.1.2-linux-x64
 ```
 
 On first launch, the embedded runtime is verified and extracted to

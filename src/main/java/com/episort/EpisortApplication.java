@@ -3,6 +3,7 @@ package com.episort;
 import com.episort.config.JanusConfigurationProvider;
 import com.episort.config.FileSettingsStore;
 import com.episort.config.JanusConfiguration;
+import com.episort.config.WindowPlacement;
 import com.episort.persistence.FileExecutionJournal;
 import com.episort.persistence.FileRunEventStore;
 import com.episort.persistence.RunEvent;
@@ -20,9 +21,14 @@ import com.episort.tmdb.debug.TmdbRequestTrace;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.AppShell;
 import com.episort.ui.AppShellViewModel;
+import com.episort.ui.FxUpdateCoalescer;
 import com.episort.ui.UiText;
 import com.episort.ui.WorkflowPhase;
+import com.episort.ui.Theme;
+import com.episort.ui.ThemePreference;
+import com.episort.ui.platform.SystemTheme;
 import com.episort.ui.platform.WindowManager;
+import com.episort.ui.platform.WindowState;
 import com.episort.ui.platform.WindowsTitleBar;
 import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ErrorSeverity;
@@ -44,13 +50,13 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.scene.paint.Color;
 import javafx.scene.Scene;
-import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
@@ -64,6 +70,14 @@ public class EpisortApplication extends Application {
     private final FileSettingsStore settingsStoreEarly = FileSettingsStore.userProfileStore();
 
     private volatile AppShell appShellRef;
+    private volatile ThemePreference themePreference = ThemePreference.DARK;
+    private final ScheduledExecutorService themeWatcher = Executors.newSingleThreadScheduledExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "episort-system-theme");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private final FxUpdateCoalescer<TmdbProgress> tmdbProgressUpdates =
+            new FxUpdateCoalescer<>(Platform::runLater, this::applyTmdbProgress);
 
     /**
      * Token of the analysis currently running. Cancelling it (Esc or the loader
@@ -90,10 +104,14 @@ public class EpisortApplication extends Application {
         AppLanguage resolvedLanguage = settingsStore.loadLanguage()
                 .map(EpisortApplication::parseLanguage)
                 .orElseGet(AppLanguage::detectFromOs);
+        // An absent preference means a first launch and intentionally starts dark.
+        themePreference = settingsStore.loadThemePreference().orElse(ThemePreference.DARK);
+        Theme initialTheme = resolveTheme(themePreference);
         AppShellViewModel viewModel = AppShellViewModel.fromStartupPrerequisites(
                         startupWorkflow.loadWorkspaceConfiguration(),
                         tmdbConfiguration)
-                .withLanguage(resolvedLanguage);
+                .withLanguage(resolvedLanguage)
+                .withTheme(initialTheme);
         RunEventStore runEventStore = FileRunEventStore.userProfileStore();
         AppShell appShell = new AppShell(
                 viewModel,
@@ -105,7 +123,9 @@ public class EpisortApplication extends Application {
                 () -> startupWorkflow.loadWorkspaceConfiguration().success(),
                 () -> {},
                 runEventStore,
-                getHostServices()::showDocument);
+                getHostServices()::showDocument,
+                themePreference,
+                preference -> applyThemePreference(preference, settingsStore, stage));
         this.appShellRef = appShell;
         appShell.setScanCancelHandler(this::cancelActiveScan);
         appShell.setInputSourcesLoader(paths -> scanInputSources(startupWorkflow, paths, runEventStore));
@@ -113,16 +133,20 @@ public class EpisortApplication extends Application {
         stage.setTitle("Episort");
         // No native chrome: the top bar draws the window buttons itself, which
         // is what keeps them from costing a second row of height.
-        stage.initStyle(StageStyle.TRANSPARENT);
+        stage.initStyle(StageStyle.UNDECORATED);
         stage.getIcons().add(AppShell.logoImage());
         appShell.setLoading(true, UiText.loadingStartup(viewModel.language()));
-        Scene scene = new Scene(appShell.root(), 1180, 760, Color.TRANSPARENT);
+        Scene scene = new Scene(appShell.root(), 1180, 760);
         stage.setScene(scene);
         stage.setMinWidth(1180);
         stage.setMinHeight(760);
-        stage.show();
         WindowManager windowManager = appShell.installWindowDecorations(stage);
-        installWindowShape(stage, scene, appShell, windowManager);
+        settingsStore.loadWindowPlacement()
+                .ifPresent(placement -> windowManager.restorePlacement(
+                        placement.normalBounds(), placement.state()));
+        stage.setOnCloseRequest(event -> settingsStore.saveWindowPlacement(
+                new WindowPlacement(windowManager.normalBounds(), windowManager.state())));
+        stage.show();
         Platform.runLater(() -> {
             appShell.setLoading(false, "");
             // Story 7.4: an execution that never closed means the app stopped mid-run.
@@ -131,31 +155,15 @@ public class EpisortApplication extends Application {
         stage.toFront();
         stage.requestFocus();
         appShell.setLanguageChangeListener(language -> settingsStore.saveLanguage(language.name()));
-        WindowsTitleBar.applyDarkMode(stage);
+        windowManager.addStateListener(state -> WindowsTitleBar.applyCornerPreference(
+                stage, state == WindowState.NORMAL && !stage.isFullScreen()));
+        stage.fullScreenProperty().addListener((observable, wasFullScreen, isFullScreen) ->
+                WindowsTitleBar.applyCornerPreference(
+                        stage, windowManager.state() == WindowState.NORMAL && !isFullScreen));
+        WindowsTitleBar.applyTheme(stage, initialTheme);
         appShell.scanScreen().setTmdbLookup(tmdbClient, tmdbCredentialsSupplier);
-    }
-
-    private static void installWindowShape(
-            Stage stage, Scene scene, AppShell appShell, WindowManager windowManager) {
-        Rectangle clip = new Rectangle();
-        clip.widthProperty().bind(scene.widthProperty());
-        clip.heightProperty().bind(scene.heightProperty());
-        appShell.root().setClip(clip);
-
-        Runnable refresh = () -> {
-            boolean restored = windowManager.state() == com.episort.ui.platform.WindowState.NORMAL
-                    && !stage.isFullScreen();
-            double arc = restored ? 20 : 0;
-            clip.setArcWidth(arc);
-            clip.setArcHeight(arc);
-            appShell.root().getStyleClass().remove("window-restored");
-            if (restored) {
-                appShell.root().getStyleClass().add("window-restored");
-            }
-        };
-        windowManager.addStateListener(state -> refresh.run());
-        stage.fullScreenProperty().addListener((observable, wasFullScreen, isFullScreen) -> refresh.run());
-        refresh.run();
+        themeWatcher.scheduleWithFixedDelay(
+                () -> refreshSystemTheme(stage), 1, 1, TimeUnit.SECONDS);
     }
 
     private static AppLanguage parseLanguage(String stored) {
@@ -173,6 +181,37 @@ public class EpisortApplication extends Application {
     @Override
     public void stop() {
         scanExecutor.shutdownNow();
+        themeWatcher.shutdownNow();
+    }
+
+    private void applyThemePreference(
+            ThemePreference preference, FileSettingsStore settingsStore, Stage stage) {
+        themePreference = preference;
+        settingsStore.saveThemePreference(preference);
+        applyResolvedTheme(resolveTheme(preference), stage);
+    }
+
+    private void refreshSystemTheme(Stage stage) {
+        if (themePreference != ThemePreference.SYSTEM) return;
+        Theme detected = SystemTheme.current();
+        AppShell shell = appShellRef;
+        if (shell != null && shell.currentViewModel().theme() != detected) {
+            Platform.runLater(() -> applyResolvedTheme(detected, stage));
+        }
+    }
+
+    private void applyResolvedTheme(Theme theme, Stage stage) {
+        AppShell shell = appShellRef;
+        if (shell != null) shell.setTheme(theme);
+        WindowsTitleBar.applyTheme(stage, theme);
+    }
+
+    private static Theme resolveTheme(ThemePreference preference) {
+        return switch (preference) {
+            case SYSTEM -> SystemTheme.current();
+            case DARK -> Theme.DARK;
+            case LIGHT -> Theme.LIGHT;
+        };
     }
 
     /**
@@ -353,15 +392,19 @@ public class EpisortApplication extends Application {
     }
 
     private void updateLoadingForTmdbProgress(int done, int total) {
-        AppShell shell = appShellRef;
-        if (shell == null || total <= 0) return;
-        AppLanguage language = shell.currentLanguage();
-        double progress = (double) done / (double) total;
-        Platform.runLater(() -> {
-            shell.updateLoadingText(UiText.loadingScanTmdb(language));
-            shell.setLoadingProgress(progress);
-        });
+        if (total > 0) {
+            tmdbProgressUpdates.submit(new TmdbProgress(done, total));
+        }
     }
+
+    private void applyTmdbProgress(TmdbProgress update) {
+        AppShell shell = appShellRef;
+        if (shell == null) return;
+        shell.updateLoadingText(UiText.loadingScanTmdb(shell.currentLanguage()));
+        shell.setLoadingProgress((double) update.done() / update.total());
+    }
+
+    private record TmdbProgress(int done, int total) {}
 
     private static void recordScanCompleted(
             RunEventStore store,
