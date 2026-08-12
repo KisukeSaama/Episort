@@ -18,9 +18,9 @@ introduce parallel styles.
    colors (green / red) only appear on real status signals, never as decoration.
 3. **Tiling layout, no chrome.** Fixed sidebar + top bar + content area. No
    window-frame skeuomorphism, no gradients-as-decoration, no shadows on text.
-4. **Sans for interface, mono for machine values.** Sections, card titles,
-   column headers, statuses, buttons and prose use Inter. JetBrains Mono is
-   reserved for paths, identifiers, codes, measurements and numeric readouts.
+4. **One family, explicit roles.** Instrument Sans carries the complete UI.
+   Paths, identifiers, codes, measurements and numeric readouts retain their
+   semantic classes, but differ through weight, colour and tabular alignment.
 5. **No invented data.** Every label and value must come from a real
    view-model signal or display `—`. Placeholder text is allowed only when the
    feature is genuinely empty (e.g. table placeholder).
@@ -35,7 +35,7 @@ introduce parallel styles.
 
 | Token                  | Value                                | Usage                                       |
 | ---------------------- | ------------------------------------ | ------------------------------------------- |
-| `bg.base.start`        | `#07080b`                            | Top of the root gradient                    |
+| `bg.base.start`        | `#07080b`                            | Dark theme: top of the root gradient        |
 | `bg.base.end`          | `#0a0c11`                            | Bottom of the root gradient                 |
 | `bg.glow.orange`       | `rgba(249, 115, 22, 0.10)`           | Top-left ambient glow (radial)              |
 | `bg.glow.cyan`         | `rgba(56, 189, 248, 0.06)`           | Bottom-right ambient glow (radial)          |
@@ -58,6 +58,14 @@ introduce parallel styles.
 | `status.warn`          | `#fb923c`                            | Setup-required, blocking-but-recoverable    |
 | `status.error`         | `#f87171`                            | Failed / unrecoverable                      |
 
+Light theme equivalents are defined in `styles/light.css`, loaded after the
+base component stylesheet only while light mode is active: shell `#eeeae4`,
+panel `#faf8f5`, chrome `#f8f5f1`, primary text `#211d1a`, secondary text
+`#554d47`, muted text `#6b625b`, positive text `#2f6f44`, error text
+`#a23b3b`, and the same orange accent. Light status colors are darker inks,
+not the luminous dark-theme signals, so text keeps AA contrast on warm panels.
+These values form one complete alternate token set; component anatomy is shared.
+
 > **Rule.** Never reach for hex values in new CSS. Reuse the class names
 > (`.card`, `.banner`, `.status-pill`, `.button.primary`, etc.) which already
 > bind these tokens. Hex literals only belong inside `app.css`.
@@ -66,8 +74,7 @@ introduce parallel styles.
 
 | Token             | Family                                                            | Used by                                              |
 | ----------------- | ----------------------------------------------------------------- | ---------------------------------------------------- |
-| `font.sans`       | `"Inter", "Segoe UI", system-ui, "Helvetica Neue", sans-serif`   | Default `*` font, body, titles, controls             |
-| `font.mono`       | `"JetBrains Mono", "Cascadia Mono", "Consolas", monospace`        | `.mono`, paths, identifiers, codes, measurements     |
+| `font.interface`  | `"Instrument Sans", "Segoe UI", sans-serif` | All UI text, paths, identifiers, codes and measurements |
 
 Contrast: `text.faint` is the lightest a label may go. Every colour in the
 table above clears WCAG AA (4.5:1) against the real translucent panel, not
@@ -81,15 +88,15 @@ weight and colour, never by half a pixel.
 
 | Step | Ratio | Role                                                              |
 | ---- | ----- | ----------------------------------------------------------------- |
-| 10   | —     | **Caption.** Inter, 600, `text.faint`. Compact labels: sidebar     |
+| 10   | —     | **Caption.** Instrument Sans, 600, `text.faint`. Compact labels: sidebar |
 |      |       | headings, column headers, field labels, status pills,              |
 |      |       | row statuses, badges, accelerator hints, meta lines.               |
-| 13   | 1.30  | **Body.** Everything meant to be read: prose, section and card     |
+| 13   | 1.30  | **Body.** Instrument Sans, 400–500. Everything meant to be read: prose, section and card |
 |      |       | titles, table cells, paths, inputs, buttons, list items, hints.     |
 | 17   | 1.31  | **Heading.** 600–700. Dialog and settings-section titles, metric   |
 |      |       | values outside the grid, empty-state titles, icon glyphs.          |
 | 22   | 1.29  | **Title.** 700. Page headings, metric-grid values, overlay titles. |
-|      |       | The sidebar brand alone uses 800.                                  |
+|      |       | The sidebar brand uses 700 as the strongest interface weight.      |
 | 28   | 1.27  | **Display glyph.** Detail-panel empty-state mark.                  |
 | 36   | 1.29  | **Display glyph.** Table empty-state mark.                         |
 
@@ -102,10 +109,10 @@ hierarchy but noise.
 
 | Weight | Meaning                                                              |
 | ------ | -------------------------------------------------------------------- |
-| 400    | Body prose and input text.                                            |
-| 600    | Captions, navigation, filters, buttons and section headings.           |
+| 400    | Long prose and quiet supporting copy.                                  |
+| 500    | Body data, navigation and input text.                                 |
+| 600    | Captions, filters, buttons, section headings and compact metadata.     |
 | 700    | Primary actions, page headings and emphasised values.                  |
-| 800    | Brand wordmark only.                                                   |
 
 At the body step, the ladder is colour: `text.primary` for the value being
 read, `text.secondary` for supporting prose, `text.muted` for hints. The
@@ -246,9 +253,9 @@ Each component is documented as **Anatomy → Class → Rules**.
     `—` and the progress bar is hidden.
   - Storage sizes use binary measurements with localized labels (`To`, `Go`,
     `Mo`, `Ko` in French; `TB`, `GB`, `MB`, `KB` in English).
-  - Typography follows the shell roles: the `STOCKAGE` caption is Inter 10 / 600,
-    the used / total measurement is mono 13, and the readable percentage and
-    availability phrases use Inter 13. Monospace never costumes prose.
+  - Typography follows the shell roles: the `STOCKAGE` caption is Instrument Sans
+    10 / 600, the used / total measurement is Instrument Sans 13 / 600, and the
+    readable percentage and availability phrases use Instrument Sans 13.
   - The shell moves initial focus to the load action once the scene attaches.
 
 ### 4.2 Top bar
@@ -274,7 +281,7 @@ Each component is documented as **Anatomy → Class → Rules**.
     high-contrast orange focus border, and orange glow without an inner white
     text-field flash. TMDB, Scan, and History searches reuse this
     active/focus treatment while keeping separate text state.
-  - The workspace chip mirrors the configured workspace (mono, accent
+  - The workspace chip mirrors the configured workspace (Instrument Sans, accent
     color). When no workspace is configured it shows the localized empty
     placeholder. Always shows a tooltip with the absolute path.
   - The workspace tooltip is tracked and uninstalled explicitly.
@@ -304,13 +311,13 @@ Each component is documented as **Anatomy → Class → Rules**.
 
 ### 4.3 Card (metric)
 
-- **Anatomy:** title (Inter, muted) → numeric value (mono).
+- **Anatomy:** title (Instrument Sans, muted) → numeric value (Instrument Sans, emphasized).
 - **Classes:** `.card`, `.card-title`, `.card-value-mono`. Sizing for the
   metric row comes from `.metric-grid .card`.
 - **Rules:**
   - Show the real value, or `—`. Never invent placeholder data
     ("Pending check", "Awaiting selection").
-  - Cards carry counts and identifiers, so the value is always mono.
+  - Cards carry counts and identifiers, so the value uses the system-value role.
   - Metric cards are a row of equal small tiles, never a hero number with
     supporting stats.
 
@@ -324,13 +331,13 @@ section of Settings.
 
 ### 4.6 Settings section
 
-- **Anatomy:** title (Inter accent) → description (muted) → status/action row.
+- **Anatomy:** title (Instrument Sans accent) → description (muted) → status/action row.
 - **Classes:** `.settings-section`, `.settings-section-title`,
   `.settings-section-description`, `.workspace-value`, `.tmdb-attribution`,
   `.tmdb-attribution-copy`, `.tmdb-attribution-link`.
 - **Rules:**
   - Reuse `SettingsPane` rather than re-implementing the layout per story.
-  - The workspace path always uses `.workspace-value` (mono, accent-hover color).
+  - The workspace path always uses `.workspace-value` (Instrument Sans, accent-hover color).
   - The TMDB row displays the real Janus-backed connection result established
     automatically during application startup: `.dot-good` + `Actif` on success,
     `.dot-error` + `Inactif` otherwise. It never exposes the caller key, upstream
@@ -369,7 +376,7 @@ section of Settings.
   - Disabled state is one opacity, `0.45`, for every button and icon button.
     `.button.validate-action` additionally swaps to a neutral grey fill because
     a dimmed solid orange still reads as available.
-  - Button typography is centralized in `.button`: Inter/system sans at the
+  - Button typography is centralized in `.button`: Instrument Sans at the
     13 body step, 600 weight, 34 px minimum height, and ellipsis overrun for
     long FR/EN labels. Icon-only buttons override to the 17 step, since a
     single glyph at body size disappears in a 32 px target. Screen-specific buttons should add only semantic variants
@@ -413,11 +420,18 @@ section of Settings.
 
 - Translucent surface, subtle orange border at rest, full orange + glow on focus.
 - Combo popup uses `.combo-box-popup` styling; no overrides needed per call site.
+- The hierarchical `.tmdb-episode-picker` follows the same input surface in
+  both themes; it must never keep the dark fill when the light stylesheet is
+  active.
+- Light combo boxes explicitly own the displayed value plus popup `filled`,
+  `selected`, `focused` and `hover` cells. Popup scenes do not inherit the
+  shell's `.theme-light` class, so those popup selectors remain unscoped inside
+  the light-only stylesheet and must always set text and background together.
 
 ### 4.9 Section heading (`LABEL`)
 
 - **Class:** `.section-heading`, optionally with `.section-heading-accent`.
-- **Rules:** Inter 13 / 600, uppercase, preceded by a 1 px orange keyline supplied by
+- **Rules:** Instrument Sans 13 / 600, uppercase, preceded by a 1 px orange keyline supplied by
   CSS rather than decorative text. The base treatment is muted; the optional
   accent treatment raises the label to primary text and uses the full accent
   on the keyline. Used to introduce major dashboard regions (e.g. `SCAN`,
@@ -464,7 +478,7 @@ section of Settings.
 ### 4.11 Preview table (multi-column)
 
 - **Anatomy:** `TableView<ScanRow>` (or `TableView<RunEvent>`) whose first
-  column is a `CheckBox` cell, followed by mono columns for paths /
+  column is a `CheckBox` cell, followed by system-value columns for paths /
   extensions / metrics and a final status-pill column.
 - **Classes:** `.preview-table` on the table; cell variants
   `.cell-mono`, `.cell-muted`, `.cell-good`, `.cell-warn`, `.cell-error`;
@@ -473,7 +487,7 @@ section of Settings.
   `.quiet-muted` / `.ready` / `.preview` / `.warning` / `.ignored` /
   `.replace` / `.conflict` / `.danger` on the status cell.
 - **Rules:**
-  - **A status is a word, not a badge.** `.row-status` is Inter 10 / 600 text:
+  - **A status is a word, not a badge.** `.row-status` is Instrument Sans 10 / 600 text:
     transparent background, no border, no radius, no exception. The level is
     carried by the ink alone.
   - **Why:** a pill only works while it is the exception in its column, and a
@@ -495,6 +509,9 @@ section of Settings.
     glyph. This must preserve desktop multi-selection behavior.
   - Paths, filenames, extensions, and metrics use `.cell-mono`. Prose
     columns (media type, status pill text) use the default cell style.
+  - In light mode, selected rows keep dark ink on the pale-orange selection
+    fill. Positive proposed names use the darker light-theme green; neither
+    selection nor status may fall back to luminous dark-theme text colors.
   - Long values display the truncated text in the cell **plus a tooltip
     with the full value** so the user always has access to the original.
   - Empty cells render the design-system placeholder `—` with the
@@ -506,7 +523,7 @@ section of Settings.
     typography; `.preview-table > .placeholder > .label` is a direct-child
     selector on purpose, so it only dresses the bare-`Label` case and cannot
     silently outrank the empty-state classes.
-  - Empty-state glyphs must exist in the mono stack. `◫` and `◴` did not and
+  - Empty-state glyphs must exist in Instrument Sans. `◫` and `◴` did not and
     rendered as tofu boxes; the scan table uses `≡`, history uses `↺`, and the
     detail panels use `◌`.
   - Each row supplies a `ContextMenu` via `setRowFactory` with the
@@ -515,7 +532,7 @@ section of Settings.
 
 ### 4.12 Detail panel
 
-- **Anatomy:** `VBox` of Inter section headings (`§4.9`) and labelled
+- **Anatomy:** `VBox` of Instrument Sans section headings (`§4.9`) and labelled
   fields. Empty state when no row is selected uses a single muted line.
 - **Classes:** `.detail-panel`, `.detail-panel-section`,
   `.detail-panel-label`, `.detail-panel-value`, `.detail-panel-value-mono`,
@@ -557,7 +574,7 @@ section of Settings.
 
 ### 4.14 Workspace chip
 
-- **Anatomy:** pill-shaped `HBox` containing the mono `>_` prefix and
+- **Anatomy:** pill-shaped `HBox` containing the Instrument Sans `>_` prefix and
   the workspace path label.
 - **Classes:** `.workspace-chip`, `.workspace-chip-prefix`,
   `.workspace-chip-label`.
@@ -572,7 +589,7 @@ section of Settings.
 
 ### 4.14b Group name
 
-- **Anatomy:** a plain `Label` in mono 13px/700, plus a 1px rule across the row
+- **Anatomy:** a plain `Label` in Instrument Sans 13px/700, plus a 1px rule across the row
   that opens the block. No pill, no marker, no per-group colour.
 - **Classes:** `.group-name` + `.group-name-head` or `.group-name-ignored`;
   `.group-block-start` on the `TableRow`; `.identity-group-name` caps the width
@@ -582,10 +599,9 @@ section of Settings.
     first row of a block and every following row of the same block leaves the
     cell blank. Twenty-five files of one series would otherwise mean
     twenty-five repetitions of one piece of information.
-  - **Mono, at row size.** The seed comes from the filenames, so it is a system
-    value and takes the system face (§2.2). Mono against the sans of the row
-    text is what makes it read as a header: a different voice, not a louder one.
-    Never set it below the 13px of the rows it heads.
+  - **System value, at row size.** The seed comes from the filenames. Weight
+    and colour distinguish it from row copy (§2.2): a different voice, not a
+    louder one. Never set it below the 13px of the rows it heads.
   - **One rule per block**, `rgba(255,255,255,0.14)` on the top border of the
     row, drawn by `ScanScreen.updateGroupBlockStyle`.
   - `ScanTableColumns.Host.startsGroupBlock(int)` is the single definition of
@@ -602,6 +618,10 @@ section of Settings.
     out of view is never lost.
   - `MixedGroupDialog` and `SeriesIdentityDialog` list one group per line, so
     they always write the name.
+  - `SeriesIdentityDialog` sizes to its real row count: 300px for one resolved
+    identity, 38px more while the unresolved warning is present, 72px per
+    additional row, capped at 600px where its scroll pane takes over. A single
+    identity must never open into a mostly empty 520px-high window.
 
 ### 4.15 Exact plan review pane (Epic 6)
 
@@ -730,7 +750,7 @@ section of Settings.
   `.about-note`. Header reuses `.tmdb-dialog-header` / `.tmdb-dialog-title` /
   `.header-action`; the rules reuse `.settings-section-divider`.
 - **Rules:**
-  - **Section headings follow §4.9.** `LABEL`, uppercase, Inter, with the
+  - **Section headings follow §4.9.** `LABEL`, uppercase, Instrument Sans, with the
     shared orange keyline. About was
     the one screen whose headings were sentence case, which made them read as
     captions on the fields below rather than as region markers.
@@ -798,11 +818,23 @@ section of Settings.
 - **Language:** all user-visible strings exist in both FR and EN. Route
   through `UiText` rather than hardcoding. The dashboard reads
   `currentViewModel.language()` after every refresh.
-- **Theme:** dark is the only theme. `app.css` has no `.theme-light` rule
-  set: a partial light skin renders dark glass panels on a white page, which
-  is worse than not offering one. `Theme.LIGHT` still exists in the model and
-  is exercised by `AppShellViewModelTest`, but no UI path produces it. Adding
-  a light theme means styling every component, not eight overrides.
+- **Theme:** the first launch is dark. Preferences offer System, Dark and Light.
+  System follows the Windows application-theme setting while Episort is open;
+  on unsupported platforms or when detection fails it safely resolves to dark.
+  Both themes share component anatomy, typography, status colours and the orange
+  accent; `.theme-light` supplies the alternate neutral surfaces and text tokens.
+  Light mode preserves the dark theme's hierarchy: section headings, active
+  navigation and interactive states remain orange; inactive navigation icons
+  remain neutral. The top-bar workspace chip uses a light neutral surface with
+  dark Instrument Sans text, and `.workspace-value` remains unboxed machine data rather
+  than adopting text-field chrome.
+  It also mirrors the dark theme's material cues rather than flattening them:
+  two restrained ambient glows, orange-tinted shell separators, subtle orange
+  panel borders, softly tinted controls, and the same hover/focus escalation.
+  Popup menus are full theme surfaces: 10 px radius, 8 px maximum shadow blur,
+  warm/cool panel background, readable enabled and disabled labels, tinted hover,
+  and theme-matched separators. Disabled items retain full container opacity;
+  their muted label colour alone communicates unavailability.
 
 ---
 
@@ -829,7 +861,8 @@ section of Settings.
 
 | File                                                              | Role                                                |
 | ----------------------------------------------------------------- | --------------------------------------------------- |
-| `src/main/resources/styles/app.css`                               | All visual tokens & component classes               |
+| `src/main/resources/styles/app.css`                               | Dark/base tokens and all component anatomy           |
+| `src/main/resources/styles/light.css`                             | Complete light-theme token and state overrides       |
 | `src/main/java/com/episort/ui/AppShell.java`                      | Layout shell: sidebar + top bar + view host         |
 | `src/main/java/com/episort/ui/Sidebar.java`                       | Three-entry sidebar (Scan / History / Settings)     |
 | `src/main/java/com/episort/ui/TopBar.java`                        | Workspace chip, status, language, primary           |
@@ -872,6 +905,9 @@ rejected on review.
   and a select action; no-result and initial states use one centered
   `.tmdb-empty-state`; loading and errors stay inside the dialog instead of
   blocking the scan table.
+  In the narrow scan detail panel, the selected poster frame is 96Ã—142 so the
+  title and overview retain a readable text column; truncated titles, proposed
+  paths, destinations, and notes expose their complete values in tooltips.
   The elastic title input may be paired with compact `.tmdb-search-year` and
   `.tmdb-search-id` standard text fields. Both are optional, digits-only
   refinements: year maps to TMDB's four-digit `year` filter, while an ID takes
@@ -881,7 +917,7 @@ rejected on review.
   + `.app-loader-card` for analysis, and `.prereq-overlay` + `.prereq-card` for
   the missing-workspace gate. Never use a native `Alert` / `Dialog`.
 - The loader card is a status panel, not a splash: everything in it is
-  left-aligned — `.app-loader-eyebrow` (mono, accent), `.app-loader-text` (the
+  left-aligned — `.app-loader-eyebrow` (Instrument Sans, accent), `.app-loader-text` (the
   sentence naming the work), the bar with `.app-loader-percent` beside it, then
   the `.app-loader-cancel` ghost button and its `.app-loader-hint` on one row.
   There is no spinner: the bar carries both states itself, indeterminate while
@@ -893,7 +929,7 @@ rejected on review.
   `rgba(255,255,255,0.08)` track, fully rounded), shared by the loader overlay
   and the execution readout. A new bar reuses it rather than styling its own.
 - The only multi-line input is the detail panel's input-pattern editor,
-  `.pattern-editor`: a mono dark `TextArea` matching `.text-field`. A
+  `.pattern-editor`: an Instrument Sans dark `TextArea` matching `.text-field`. A
   `TextArea` with no class keeps its default light control background and
   punches a hole in the panel.
 - Every user-visible string goes through `UiText`, including file-chooser

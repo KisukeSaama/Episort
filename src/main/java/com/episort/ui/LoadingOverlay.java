@@ -13,7 +13,7 @@ import javafx.scene.layout.VBox;
 /**
  * The full-window veil shown while work is in flight.
  *
- * <p>Built as a status panel rather than a splash: a mono eyebrow, the sentence
+ * <p>Built as a status panel rather than a splash: a compact eyebrow, the sentence
  * naming the work, one bar, and — only when the work can actually be aborted — a
  * cancel button with its keyboard hint. Everything is left-aligned, because the
  * message is a line of text to read, not a logo to admire.

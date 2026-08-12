@@ -44,7 +44,7 @@ So: no cache layer, no retry or backoff wrapper, no circuit breaker, no token st
 
 ## APIs this service may call
 
-- TMDB — `/gateway/tmdb/…`
+- TMDB — `/gateway/tmdb-v3/…`
 
 Any path and any method under a slug above is forwarded. What the API itself allows for the secret
 Janus presents is the only limit; an API at a slug not listed is not reachable at all.

@@ -10,6 +10,7 @@ import com.episort.tmdb.TmdbSearchCriteria;
 import com.episort.tmdb.TmdbSearchResult;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.UiText;
+import com.episort.ui.ThemeStyles;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -180,6 +181,7 @@ final class TmdbManualMatchDialog {
         });
         String css = TmdbManualMatchDialog.class.getResource("/styles/app.css").toExternalForm();
         scene.getStylesheets().add(css);
+        ThemeStyles.register(body);
         stage.setScene(scene);
         stage.setMinWidth(720);
         stage.setMinHeight(480);

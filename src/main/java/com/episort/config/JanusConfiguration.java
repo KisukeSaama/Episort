@@ -29,7 +29,7 @@ public record JanusConfiguration(URI baseUri, String applicationId, String apiKe
     }
 
     public URI tmdbBaseUri() {
-        return baseUri.resolve("gateway/tmdb/");
+        return baseUri.resolve("gateway/tmdb-v3/");
     }
 
     private static URI normalizeBaseUri(URI value) {
