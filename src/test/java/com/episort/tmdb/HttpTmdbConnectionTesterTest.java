@@ -25,7 +25,7 @@ class HttpTmdbConnectionTesterTest {
     void validatesThroughJanusHeadersWithoutUpstreamAuthorization() throws Exception {
         Captured captured = new Captured();
         HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
-        server.createContext("/gateway/tmdb/authentication", exchange -> {
+        server.createContext("/gateway/tmdb-v3/authentication", exchange -> {
             captured.applicationId = exchange.getRequestHeaders().getFirst("X-Janus-Application-Id");
             captured.apiKey = exchange.getRequestHeaders().getFirst("X-Janus-Api-Key");
             captured.authorization = exchange.getRequestHeaders().getFirst("Authorization");

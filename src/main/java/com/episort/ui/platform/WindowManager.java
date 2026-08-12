@@ -73,6 +73,31 @@ public final class WindowManager {
         return stateModel.state();
     }
 
+    public WindowBounds normalBounds() {
+        return stateModel.normalBounds().orElseGet(this::currentBounds);
+    }
+
+    /** Restores a saved placement, constraining it to an available monitor. */
+    public void restorePlacement(WindowBounds savedBounds, WindowState savedState) {
+        WindowWorkArea area = workAreaAt(savedBounds.x() + savedBounds.width() / 2,
+                savedBounds.y() + Math.min(savedBounds.height(), TITLE_BAR_GRAB_HEIGHT) / 2);
+        double width = Math.max(normalMinWidth, Math.min(savedBounds.width(), area.width()));
+        double height = Math.max(normalMinHeight, Math.min(savedBounds.height(), area.height()));
+        WindowBounds visible = WindowGeometry.keepTitleBarVisible(
+                new WindowBounds(savedBounds.x(), savedBounds.y(), width, height), area);
+        applyBounds(visible);
+        stateModel.restore(visible);
+        if (savedState == WindowState.MAXIMIZED) {
+            maximize(area);
+        } else if (savedState == WindowState.SNAPPED_LEFT) {
+            snap(WindowSnapTarget.LEFT, area);
+        } else if (savedState == WindowState.SNAPPED_RIGHT) {
+            snap(WindowSnapTarget.RIGHT, area);
+        } else {
+            notifyState();
+        }
+    }
+
     public void minimize() {
         stage.setIconified(true);
     }

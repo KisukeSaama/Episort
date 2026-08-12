@@ -1,5 +1,6 @@
 package com.episort.ui.platform;
 
+import com.episort.ui.Theme;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
@@ -18,7 +19,7 @@ public final class WindowsTitleBar {
     private WindowsTitleBar() {
     }
 
-    public static void applyDarkMode(Stage stage) {
+    public static void applyTheme(Stage stage, Theme theme) {
         if (!supportsDwmAttributes(System.getProperty("os.name"))) {
             return;
         }
@@ -28,7 +29,7 @@ public final class WindowsTitleBar {
             if (window == null) {
                 return;
             }
-            IntByReference enabled = new IntByReference(1);
+            IntByReference enabled = new IntByReference(theme == Theme.DARK ? 1 : 0);
             int result = DwmApi.INSTANCE.DwmSetWindowAttribute(
                     window,
                     DWMWA_USE_IMMERSIVE_DARK_MODE,

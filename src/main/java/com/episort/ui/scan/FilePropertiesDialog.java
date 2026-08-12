@@ -3,6 +3,7 @@ package com.episort.ui.scan;
 import com.episort.tmdb.TmdbCandidate;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.UiText;
+import com.episort.ui.ThemeStyles;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -120,6 +121,7 @@ final class FilePropertiesDialog {
             }
         });
         scene.getStylesheets().add(FilePropertiesDialog.class.getResource("/styles/app.css").toExternalForm());
+        ThemeStyles.register(root);
         return scene;
     }
 

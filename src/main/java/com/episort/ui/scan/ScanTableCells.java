@@ -24,7 +24,7 @@ final class ScanTableCells {
     }
 
     /**
-     * Monospaced text with a hover tooltip, muted when there is no real value.
+     * System-value text with a hover tooltip, muted when there is no real value.
      *
      * <p>Filenames are long and the columns are narrow: without the tooltip the
      * only way to read a truncated name is to widen the column.

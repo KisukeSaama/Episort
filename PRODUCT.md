@@ -39,8 +39,9 @@ provient d'un signal réel, et l'absence de donnée s'affiche `—` plutôt que 
 comblée.
 
 L'esthétique assumée est celle d'un poste de travail sombre : panneaux translucides
-sur presque-noir, un unique accent orange, mono pour tout ce qui est système
-(chemins, codes, en-têtes) et sans-serif pour la prose.
+sur presque-noir, un unique accent orange et Instrument Sans pour toute
+l'interface. Les chemins, codes et mesures se distinguent par le poids, la couleur
+et les nombres tabulaires plutôt que par une seconde famille typographique.
 
 ## Anti-references
 

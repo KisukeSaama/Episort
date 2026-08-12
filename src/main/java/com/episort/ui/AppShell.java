@@ -108,6 +108,22 @@ public final class AppShell {
             Runnable onContinue,
             RunEventStore runEventStore,
             Consumer<String> openExternalLink) {
+        this(viewModel, configureWorkspace, selectInputFolder, tmdbConfiguration, currentWorkspace,
+                canContinue, onContinue, runEventStore, openExternalLink, ThemePreference.DARK, ignored -> {});
+    }
+
+    public AppShell(
+            AppShellViewModel viewModel,
+            Function<Path, AppShellViewModel> configureWorkspace,
+            Function<Path, CompletableFuture<AppShellViewModel>> selectInputFolder,
+            TmdbGatewayStatus tmdbConfiguration,
+            Supplier<Optional<Path>> currentWorkspace,
+            BooleanSupplier canContinue,
+            Runnable onContinue,
+            RunEventStore runEventStore,
+            Consumer<String> openExternalLink,
+            ThemePreference themePreference,
+            Consumer<ThemePreference> onThemePreferenceChange) {
         Fonts.loadAll();
         this.currentViewModel = viewModel;
         this.selectInputFolder = selectInputFolder;
@@ -125,6 +141,8 @@ public final class AppShell {
                     configureWorkspace,
                     this.currentWorkspace,
                     this::applyLanguage,
+                    themePreference,
+                    onThemePreferenceChange,
                     tmdbConfiguration,
                     openExternalLink,
                     this::onSettingsClose,
@@ -160,6 +178,7 @@ public final class AppShell {
         viewHost.getStyleClass().add("view-host");
 
         root = new BorderPane();
+        ThemeStyles.setCurrent(currentViewModel.theme());
         root.getStyleClass().add("app-shell");
         root.setTop(topBar.root());
         root.setLeft(sidebar.root());
@@ -169,6 +188,7 @@ public final class AppShell {
                                 AppShell.class.getResource("/styles/app.css"),
                                 "Missing stylesheet /styles/app.css")
                         .toExternalForm());
+        ThemeStyles.register(root);
         root.getStyleClass().add(currentViewModel.theme() == Theme.DARK ? "theme-dark" : "theme-light");
         root.widthProperty().addListener((observable, oldValue, newValue) -> applyResponsiveLayout(newValue.doubleValue()));
 
@@ -189,6 +209,18 @@ public final class AppShell {
 
     public ScanScreen scanScreen() {
         return scanScreen;
+    }
+
+    public void setTheme(Theme theme) {
+        if (theme != currentViewModel.theme()) {
+            ThemeStyles.setCurrent(theme);
+            // The general apply() path deliberately preserves UI preferences
+            // across scan/workspace view-model updates. A user preference
+            // change is the exception: preserving the previous theme here
+            // would immediately undo the selection.
+            currentViewModel = currentViewModel.withTheme(theme);
+            refreshShellState(false);
+        }
     }
 
     public void setInputSourcesLoader(Function<List<Path>, CompletableFuture<AppShellViewModel>> loader) {
@@ -721,7 +753,7 @@ public final class AppShell {
 
     private void apply(AppShellViewModel viewModel) {
         currentViewModel = AppShellViewModel.preservingTheme(currentViewModel, viewModel);
-        refreshShellState();
+        refreshShellState(true);
     }
 
     /**
@@ -767,6 +799,10 @@ public final class AppShell {
     }
 
     private void refreshShellState() {
+        refreshShellState(true);
+    }
+
+    private void refreshShellState(boolean refreshScan) {
         root.getStyleClass().removeAll("theme-dark", "theme-light");
         root.getStyleClass().add(currentViewModel.theme() == Theme.DARK ? "theme-dark" : "theme-light");
 
@@ -775,8 +811,10 @@ public final class AppShell {
         sidebar.setWorkspace(currentWorkspace.get());
 
         scanScreen.setWorkspaceRoot(currentWorkspace.get());
-        Optional<InventoryScanResult> result = currentViewModel.inventoryScanResult();
-        scanScreen.apply(result);
+        if (refreshScan) {
+            Optional<InventoryScanResult> result = currentViewModel.inventoryScanResult();
+            scanScreen.apply(result);
+        }
         topBar.setAppendActionsEnabled(scanScreen.hasLoadedFolder());
         if (currentView == AppView.HISTORY) {
             historyScreen.refresh();

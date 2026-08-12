@@ -9,7 +9,7 @@ plugins {
     id("org.openjfx.javafxplugin") version "0.1.0"
 }
 
-version = "0.1.2"
+version = "0.1.3"
 
 java {
     toolchain {
@@ -60,6 +60,7 @@ tasks.withType<JavaCompile>().configureEach {
 
 dependencies {
     implementation("net.java.dev.jna:jna:5.18.1")
+    implementation("net.java.dev.jna:jna-platform:5.18.1")
     implementation("com.google.code.gson:gson:2.11.0")
     testImplementation(platform("org.junit:junit-bom:5.12.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

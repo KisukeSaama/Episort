@@ -172,6 +172,7 @@ public final class RowDetailPanel {
         conflictValue = proseValue();
         alertValue = proseValue();
         noteValue = proseValue();
+        noteValue.setWrapText(true);
 
         inputPatternEditor.getStyleClass().add("pattern-editor");
         inputPatternEditor.setWrapText(true);
@@ -186,8 +187,8 @@ public final class RowDetailPanel {
             }
         });
 
-        tmdbPoster.setFitWidth(118);
-        tmdbPoster.setFitHeight(176);
+        tmdbPoster.setFitWidth(92);
+        tmdbPoster.setFitHeight(138);
         tmdbPoster.setPreserveRatio(true);
         tmdbPoster.getStyleClass().add("tmdb-poster-image");
         tmdbPosterPlaceholder.getStyleClass().add("tmdb-poster-placeholder");
@@ -514,10 +515,13 @@ public final class RowDetailPanel {
         refreshTmdbControlAvailability(tmdbBusyActive);
 
         proposedValue.setText(row.proposedFilename().orElse(UiText.EMPTY));
+        installTooltip(proposedValue, proposedValue.getText());
         destinationValue.setText(destinationText(row.destination()));
+        installTooltip(destinationValue, destinationValue.getText());
         conflictValue.setText(row.conflictText().orElse(UiText.EMPTY));
         alertValue.setText(row.alertText().orElse(UiText.EMPTY));
         noteValue.setText(row.noteText().orElse(UiText.EMPTY));
+        installTooltip(noteValue, noteValue.getText());
     }
 
     private void updateTmdbCard(ScanRow row) {
@@ -527,6 +531,7 @@ public final class RowDetailPanel {
             tmdbPoster.setVisible(false);
             tmdbPosterPlaceholder.setText("TMDB");
             tmdbMatchTitle.setText(UiText.tmdbNoMatchSelected(currentLanguage));
+            installTooltip(tmdbMatchTitle, tmdbMatchTitle.getText());
             tmdbMatchMeta.setText(UiText.EMPTY);
             tmdbMatchId.setText(UiText.EMPTY);
             tmdbMatchOverview.setText("");
@@ -536,6 +541,7 @@ public final class RowDetailPanel {
         }
         TmdbCandidate value = candidate.orElseThrow();
         tmdbMatchTitle.setText(value.identity().displayName());
+        installTooltip(tmdbMatchTitle, tmdbMatchTitle.getText());
         tmdbMatchMeta.setText(ScanRowText.mediaType(value.identity().mediaType(), currentLanguage)
                 + value.year().map(year -> " • " + year).orElse(""));
         tmdbMatchId.setText(UiText.tmdbIdLabel(currentLanguage) + ": " + value.identity().id());

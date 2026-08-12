@@ -10,6 +10,7 @@ import com.episort.ui.AppShell;
 import com.episort.ui.RoundedClip;
 import com.episort.ui.TableSearchBox;
 import com.episort.ui.UiText;
+import com.episort.ui.ThemeStyles;
 import com.episort.workflow.LastPlanRollbackService;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -360,6 +361,7 @@ public final class HistoryScreen {
                         HistoryScreen.class.getResource("/styles/app.css"),
                         "Missing stylesheet /styles/app.css")
                 .toExternalForm());
+        ThemeStyles.register(content);
         dialog.setScene(scene);
         dialog.showAndWait();
     }

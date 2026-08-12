@@ -4,6 +4,7 @@ import java.util.Objects;
 import javafx.scene.layout.Region;
 import javafx.stage.Popup;
 import javafx.stage.Stage;
+import com.episort.ui.ThemeStyles;
 
 /** Lightweight, non-interactive indication of the placement selected while dragging. */
 final class WindowSnapPreview {
@@ -14,6 +15,7 @@ final class WindowSnapPreview {
         surface.getStyleClass().add("window-snap-preview");
         surface.getStylesheets().add(Objects.requireNonNull(
                 WindowSnapPreview.class.getResource("/styles/app.css")).toExternalForm());
+        ThemeStyles.register(surface);
         surface.setMouseTransparent(true);
         popup.getContent().add(surface);
         popup.setAutoFix(false);

@@ -20,6 +20,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import javafx.application.Platform;
+import com.episort.ui.FxUpdateCoalescer;
+import com.episort.workflow.ExecutionProgress;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -64,6 +66,8 @@ public final class ExecutionPane {
     private final Label countTotal = new Label();
     private final Label percent = new Label();
     private final ProgressBar progressBar = new ProgressBar(0);
+    private final FxUpdateCoalescer<ExecutionProgress> progressUpdates =
+            new FxUpdateCoalescer<>(Platform::runLater, this::applyProgress);
     private final Label sourcePath = new Label(UiText.EMPTY);
     private final Label destinationPath = new Label(UiText.EMPTY);
     private final VBox readout;
@@ -176,17 +180,19 @@ public final class ExecutionPane {
 
     private ExecutionReport runExecution() {
         try {
-            return executionService.execute(approvedPlan, this::askUser, progress -> Platform.runLater(() -> {
-                progressBar.setProgress(progress.fraction());
-                countDone.setText(String.valueOf(progress.completed()));
-                countTotal.setText("/ " + progress.total());
-                percent.setText(percentText(progress.fraction()));
-                setPath(sourcePath, progress.currentSource());
-                setPath(destinationPath, progress.currentDestination());
-            }));
+            return executionService.execute(approvedPlan, this::askUser, progressUpdates::submit);
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
+    }
+
+    private void applyProgress(ExecutionProgress progress) {
+        progressBar.setProgress(progress.fraction());
+        countDone.setText(String.valueOf(progress.completed()));
+        countTotal.setText("/ " + progress.total());
+        percent.setText(percentText(progress.fraction()));
+        setPath(sourcePath, progress.currentSource());
+        setPath(destinationPath, progress.currentDestination());
     }
 
     /**

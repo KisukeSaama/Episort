@@ -346,7 +346,7 @@ final class ScanTableColumns {
     }
 
     /**
-     * The file extension, as the mono value it is.
+     * The file extension, styled as a system value.
      *
      * <p>It used to wear a colour-coded badge, one hue per known container.
      * An extension is neither an exception nor a decision: the hue mapping was

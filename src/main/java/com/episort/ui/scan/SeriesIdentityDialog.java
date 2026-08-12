@@ -2,6 +2,7 @@ package com.episort.ui.scan;
 
 import com.episort.ui.AppLanguage;
 import com.episort.ui.UiText;
+import com.episort.ui.ThemeStyles;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
@@ -36,6 +37,11 @@ import javafx.stage.Window;
  * still reachable manually in the table afterwards.
  */
 final class SeriesIdentityDialog {
+    private static final double MIN_DIALOG_HEIGHT = 300;
+    private static final double MAX_DIALOG_HEIGHT = 600;
+    private static final double EXTRA_ROW_HEIGHT = 72;
+    private static final double WARNING_HEIGHT = 38;
+
     /**
      * Column geometry. The list reads as a table, not as a stack of free-form
      * cards: every row measures the same, so the badges, the identities and the
@@ -122,7 +128,7 @@ final class SeriesIdentityDialog {
         body.getStyleClass().add("tmdb-dialog");
         body.setPadding(new Insets(18));
 
-        Scene scene = new Scene(body, 760, 520);
+        Scene scene = new Scene(body, 760, MIN_DIALOG_HEIGHT);
         scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ESCAPE) {
                 stage.close();
@@ -130,9 +136,10 @@ final class SeriesIdentityDialog {
         });
         scene.getStylesheets().add(
                 SeriesIdentityDialog.class.getResource("/styles/app.css").toExternalForm());
+        ThemeStyles.register(body);
         stage.setScene(scene);
         stage.setMinWidth(640);
-        stage.setMinHeight(400);
+        stage.setMinHeight(MIN_DIALOG_HEIGHT);
         refresh();
     }
 
@@ -152,6 +159,15 @@ final class SeriesIdentityDialog {
         warning.setText(UiText.scanIdentitiesUnresolvedWarning(language));
         warning.setVisible(anyUnresolved);
         warning.setManaged(anyUnresolved);
+        stage.setHeight(dialogHeightFor(rows.size(), anyUnresolved));
+    }
+
+    static double dialogHeightFor(int rowCount, boolean hasWarning) {
+        int extraRows = Math.max(0, rowCount - 1);
+        double requested = MIN_DIALOG_HEIGHT
+                + extraRows * EXTRA_ROW_HEIGHT
+                + (hasWarning ? WARNING_HEIGHT : 0);
+        return Math.min(MAX_DIALOG_HEIGHT, requested);
     }
 
     private Region card(GroupIdentityRow row) {

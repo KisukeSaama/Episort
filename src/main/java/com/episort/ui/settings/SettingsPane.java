@@ -3,6 +3,7 @@ package com.episort.ui.settings;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.AppShellViewModel;
 import com.episort.ui.UiText;
+import com.episort.ui.ThemePreference;
 import com.episort.workflow.TmdbGatewayStatus;
 import java.io.File;
 import java.nio.file.Path;
@@ -49,6 +50,7 @@ public final class SettingsPane {
     private final Region tmdbStatusDot;
     private final Button chooseWorkspace;
     private final ComboBox<AppLanguage> languageCombo;
+    private final ComboBox<ThemePreference> themeCombo;
     private final Supplier<Optional<Path>> currentWorkspace;
     private final TmdbGatewayStatus tmdbConfiguration;
     @SuppressWarnings("unused")
@@ -60,6 +62,8 @@ public final class SettingsPane {
             Function<Path, AppShellViewModel> configureWorkspace,
             Supplier<Optional<Path>> currentWorkspace,
             Consumer<AppLanguage> onLanguageChange,
+            ThemePreference themePreference,
+            Consumer<ThemePreference> onThemePreferenceChange,
             TmdbGatewayStatus tmdbConfiguration,
             Consumer<String> openExternalLink,
             Runnable onClose,
@@ -150,7 +154,20 @@ public final class SettingsPane {
             }
         });
 
-        HBox preferencesRow = new HBox(12, languageCombo);
+        themeCombo = new ComboBox<>(FXCollections.observableArrayList(ThemePreference.values()));
+        themeCombo.setConverter(new javafx.util.StringConverter<>() {
+            @Override public String toString(ThemePreference value) {
+                return value == null ? "" : UiText.themePreference(currentLanguage, value);
+            }
+            @Override public ThemePreference fromString(String value) { return themePreference; }
+        });
+        themeCombo.setValue(themePreference);
+        themeCombo.setOnAction(event -> {
+            ThemePreference selected = themeCombo.getValue();
+            if (selected != null) onThemePreferenceChange.accept(selected);
+        });
+
+        HBox preferencesRow = new HBox(12, languageCombo, themeCombo);
         preferencesRow.setAlignment(Pos.CENTER_LEFT);
         preferencesRow.getStyleClass().add("settings-row");
 
@@ -250,6 +267,13 @@ public final class SettingsPane {
         preferencesDescription.setText(UiText.preferencesSectionDescription(language));
         // The combo sits alone on its row, with no label of its own.
         languageCombo.setAccessibleText(UiText.languageLabel(language));
+        themeCombo.setAccessibleText(UiText.themeLabel(language));
+        themeCombo.setConverter(new javafx.util.StringConverter<>() {
+            @Override public String toString(ThemePreference value) {
+                return value == null ? "" : UiText.themePreference(language, value);
+            }
+            @Override public ThemePreference fromString(String value) { return themeCombo.getValue(); }
+        });
         tmdbTitle.setText(UiText.tmdbSettingsSectionTitle(language));
         tmdbDescription.setText(UiText.tmdbSettingsSectionDescription(language));
         tmdbAttribution.setText(UiText.tmdbSettingsAttribution(language));

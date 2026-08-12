@@ -9,6 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
+import com.episort.ui.platform.WindowBounds;
+import com.episort.ui.platform.WindowState;
+import com.episort.ui.ThemePreference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -62,5 +65,48 @@ class FileSettingsStoreTest {
     @Test
     void appSettingsRejectsNullOptional() {
         assertThrows(NullPointerException.class, () -> new AppSettings((Optional<Path>) null));
+    }
+
+    @Test
+    void persistsWindowPlacementWithoutOverwritingOtherSettings() {
+        Path settingsFile = tempDir.resolve("settings").resolve("episort.properties");
+        FileSettingsStore store = new FileSettingsStore(settingsFile);
+        store.saveLanguage("FR");
+        WindowPlacement placement = new WindowPlacement(
+                new WindowBounds(120, 80, 1440, 900), WindowState.MAXIMIZED);
+
+        store.saveWindowPlacement(placement);
+
+        assertEquals(placement, store.loadWindowPlacement().orElseThrow());
+        assertEquals("FR", store.loadLanguage().orElseThrow());
+    }
+
+    @Test
+    void ignoresMalformedWindowPlacement() throws Exception {
+        Path settingsFile = tempDir.resolve("settings").resolve("episort.properties");
+        Files.createDirectories(settingsFile.getParent());
+        Files.writeString(settingsFile, "window.x=0\nwindow.y=0\nwindow.width=nope\nwindow.height=900\n");
+
+        assertTrue(new FileSettingsStore(settingsFile).loadWindowPlacement().isEmpty());
+    }
+
+    @Test
+    void persistsThemePreferenceAndKeepsFirstLaunchUnset() {
+        Path settingsFile = tempDir.resolve("settings").resolve("episort.properties");
+        FileSettingsStore store = new FileSettingsStore(settingsFile);
+
+        assertTrue(store.loadThemePreference().isEmpty());
+        store.saveThemePreference(ThemePreference.SYSTEM);
+
+        assertEquals(ThemePreference.SYSTEM, store.loadThemePreference().orElseThrow());
+    }
+
+    @Test
+    void ignoresUnknownThemePreference() throws Exception {
+        Path settingsFile = tempDir.resolve("settings").resolve("episort.properties");
+        Files.createDirectories(settingsFile.getParent());
+        Files.writeString(settingsFile, "theme.preference=NEON\n");
+
+        assertTrue(new FileSettingsStore(settingsFile).loadThemePreference().isEmpty());
     }
 }
