@@ -2,6 +2,7 @@ package com.episort.ui.scan;
 
 import java.util.ArrayList;
 import java.util.List;
+import javafx.event.Event;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
@@ -10,6 +11,9 @@ import javafx.scene.Node;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextInputControl;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 
@@ -289,6 +293,29 @@ final class ScanSelectionController {
         return ancestorMatches(event, node -> node.getStyleClass().contains("selection-cell"));
     }
 
+    /** Inline editors own their click sequence so JavaFX can detect a double-click. */
+    static boolean shouldFocusRow(MouseEvent event) {
+        return shouldFocusRow(
+                event.getButton(),
+                isCheckboxCellEvent(event),
+                ancestorMatches(event, node -> node instanceof CommitOnFocusLossStringCell<?>));
+    }
+
+    static boolean shouldFocusRow(MouseButton button, boolean checkboxCell, boolean inlineEditCell) {
+        return button == MouseButton.PRIMARY && !checkboxCell && !inlineEditCell;
+    }
+
+    static boolean shouldSelectAllRows(KeyEvent event) {
+        return shouldSelectAllRows(
+                event.getCode(),
+                event.isShortcutDown(),
+                ancestorMatches(event, node -> node instanceof TextInputControl));
+    }
+
+    static boolean shouldSelectAllRows(KeyCode code, boolean shortcutDown, boolean editingText) {
+        return code == KeyCode.A && shortcutDown && !editingText;
+    }
+
     /** Ignored rows are greyed out so they visibly sit outside the run. */
     static void updateRowStyle(TableRow<ScanRow> tableRow, ScanRow item) {
         tableRow.getStyleClass().remove("ignored-row");
@@ -352,7 +379,7 @@ final class ScanSelectionController {
         return ancestorMatches(event, node -> node == ancestor);
     }
 
-    private static boolean ancestorMatches(MouseEvent event, java.util.function.Predicate<Node> test) {
+    private static boolean ancestorMatches(Event event, java.util.function.Predicate<Node> test) {
         if (!(event.getTarget() instanceof Node target)) {
             return false;
         }

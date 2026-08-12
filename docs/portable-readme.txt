@@ -1,4 +1,4 @@
-EPISORT 0.1.0 - PORTABLE APPLICATION
+EPISORT 0.1.1 - PORTABLE APPLICATION
 ====================================
 
 No Java installation is required. The public download is one executable. On
@@ -7,15 +7,15 @@ data directory; nothing is created beside the downloaded executable.
 
 WINDOWS
 -------
-Double-click Episort-0.1.0-windows-x64.exe. Runtime files are stored under
+Double-click Episort-0.1.1-windows-x64.exe. Runtime files are stored under
 %LOCALAPPDATA%\Episort.
 
 LINUX
 -----
 Run this command from a terminal:
 
-    chmod +x Episort-0.1.0-linux-x64
-    ./Episort-0.1.0-linux-x64
+    chmod +x Episort-0.1.1-linux-x64
+    ./Episort-0.1.1-linux-x64
 
 Runtime files are stored under ${XDG_DATA_HOME:-~/.local/share}/Episort. The
 bundle targets x64 glibc-based desktop Linux systems with GTK 3 available.

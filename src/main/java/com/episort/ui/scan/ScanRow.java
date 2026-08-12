@@ -8,15 +8,19 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.ReadOnlyBooleanProperty;
+import javafx.beans.property.ReadOnlyBooleanWrapper;
 import javafx.beans.property.SimpleBooleanProperty;
 
 /**
  * Per-row view-model backing the Scan preview table. Plain Java fields except
- * {@link #selected()} which is observable so the checkbox column and the
- * detail-panel binding can react to changes.
+ * {@link #selectedProperty()} and {@link #ignoredProperty()} which are
+ * observable so the table can react immediately to selection and ignore-state
+ * changes.
  */
 public final class ScanRow {
     private final BooleanProperty selected = new SimpleBooleanProperty(false);
+    private final ReadOnlyBooleanWrapper ignored = new ReadOnlyBooleanWrapper(false);
     private final Path sourcePath;
     private final String originalFilename;
     private final String extension;
@@ -68,6 +72,7 @@ public final class ScanRow {
         this.statusReasons = List.of();
         this.mediaTypeBeforeIgnore = Optional.empty();
         this.statusBeforeIgnore = Optional.empty();
+        updateIgnoredState();
     }
 
     public BooleanProperty selectedProperty() {
@@ -83,7 +88,11 @@ public final class ScanRow {
     }
 
     public boolean isIgnored() {
-        return status == ScanRowStatus.IGNORED || mediaType == ScanMediaType.IGNORED;
+        return ignored.get();
+    }
+
+    public ReadOnlyBooleanProperty ignoredProperty() {
+        return ignored.getReadOnlyProperty();
     }
 
     public void markIgnored() {
@@ -94,20 +103,20 @@ public final class ScanRow {
         statusBeforeIgnore = Optional.of(status);
         setSelected(false);
         status = ScanRowStatus.IGNORED;
+        updateIgnoredState();
     }
 
     public void stopIgnoring() {
         if (!isIgnored()) {
             return;
         }
-        mediaType = mediaTypeBeforeIgnore.orElse(mediaType == ScanMediaType.IGNORED
-                ? ScanMediaType.UNKNOWN
-                : mediaType);
+        mediaType = mediaTypeBeforeIgnore.orElseGet(this::inferredMediaTypeAfterIgnore);
         status = statusBeforeIgnore.orElse(tmdbMatch.isPresent()
                 ? ScanRowStatus.TMDB
                 : ScanRowStatus.REVIEW);
         mediaTypeBeforeIgnore = Optional.empty();
         statusBeforeIgnore = Optional.empty();
+        updateIgnoredState();
     }
 
     public Path sourcePath() {
@@ -128,6 +137,7 @@ public final class ScanRow {
 
     public void setMediaType(ScanMediaType mediaType) {
         this.mediaType = Objects.requireNonNull(mediaType, "mediaType");
+        updateIgnoredState();
     }
 
     public ScanRowStatus status() {
@@ -136,6 +146,7 @@ public final class ScanRow {
 
     public void setStatus(ScanRowStatus status) {
         this.status = Objects.requireNonNull(status, "status");
+        updateIgnoredState();
     }
 
     public Optional<String> proposedFilename() {
@@ -262,5 +273,20 @@ public final class ScanRow {
     private static String fileNameOnly(String value) {
         int slash = Math.max(value.lastIndexOf('/'), value.lastIndexOf('\\'));
         return slash >= 0 ? value.substring(slash + 1) : value;
+    }
+
+    private ScanMediaType inferredMediaTypeAfterIgnore() {
+        if (mediaType != ScanMediaType.IGNORED) {
+            return mediaType;
+        }
+        boolean hasEpisodeOrder = inputParse
+                .flatMap(ScanInputParse::normalizedOrder)
+                .filter(value -> !value.isBlank())
+                .isPresent();
+        return hasEpisodeOrder ? ScanMediaType.SERIES : ScanMediaType.UNKNOWN;
+    }
+
+    private void updateIgnoredState() {
+        ignored.set(status == ScanRowStatus.IGNORED || mediaType == ScanMediaType.IGNORED);
     }
 }

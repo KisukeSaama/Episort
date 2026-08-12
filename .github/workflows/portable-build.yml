@@ -29,13 +29,13 @@ jobs:
           - name: Windows x64
             os: windows-latest
             command: .\gradlew.bat clean build portableArchive --no-daemon
-            artifact: Episort-0.1.0-windows-x64
-            executable: build/portable/distributions/Episort-0.1.0-windows-x64.exe
+            artifact: episort-windows-x64
+            executable: build/portable/distributions/Episort-*-windows-x64.exe
           - name: Linux x64
             os: ubuntu-22.04
             command: ./gradlew clean build portableArchive --no-daemon
-            artifact: Episort-0.1.0-linux-x64
-            executable: build/portable/distributions/Episort-0.1.0-linux-x64
+            artifact: episort-linux-x64
+            executable: build/portable/distributions/Episort-*-linux-x64
 
     steps:
       - name: Check out repository
@@ -84,15 +84,16 @@ jobs:
       - name: Download portable executables
         uses: actions/download-artifact@v8
         with:
-          pattern: Episort-0.1.0-*
+          pattern: episort-*
           path: release-assets
           merge-multiple: true
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create "$GITHUB_REF_NAME" release-assets/*
-          --verify-tag
-          --title "Episort 0.1.0"
-          --notes-file docs/releases/v0.1.0.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" release-assets/* \
+            --verify-tag \
+            --title "Episort $version" \
+            --notes-file "docs/releases/$GITHUB_REF_NAME.md"

@@ -27,7 +27,6 @@ import java.util.Map;
 final class ScanGroupIndex {
 
     private final Map<ScanRow, InventoryGroup> groupByRow = new HashMap<>();
-    private final Map<ScanRow, BatchTmdbMatch> matchByRow = new HashMap<>();
     private final Map<ScanRow, List<ScanRow>> peersByRow = new HashMap<>();
     /** Scan order preserved: the identity screen lists groups as the table does. */
     private final Map<String, List<ScanRow>> rowsByGroupName = new LinkedHashMap<>();
@@ -47,7 +46,6 @@ final class ScanGroupIndex {
     /** Re-derives every view from the known groups and the rows now on screen. */
     void rebuild(List<ScanRow> rows) {
         groupByRow.clear();
-        matchByRow.clear();
         peersByRow.clear();
         rowsByGroupName.clear();
         Map<String, ScanRow> byPath = new HashMap<>();
@@ -55,7 +53,6 @@ final class ScanGroupIndex {
             byPath.putIfAbsent(pathKey(row.sourcePath()), row);
         }
         for (InventoryGroup group : knownGroups) {
-            BatchTmdbMatch match = directMatch(group);
             List<ScanRow> members = new ArrayList<>();
             for (InventoryItem item : group.items()) {
                 ScanRow row = byPath.get(pathKey(item.sourcePath()));
@@ -64,22 +61,26 @@ final class ScanGroupIndex {
                 }
                 members.add(row);
                 groupByRow.put(row, group);
-                matchByRow.put(row, match);
-            }
-            for (ScanRow member : members) {
-                peersByRow.put(member, members);
-            }
-            if (!members.isEmpty() && namesAMedia(group.type())) {
-                rowsByGroupName
-                        .computeIfAbsent(match.seedName(), ignored -> new ArrayList<>())
-                        .addAll(members);
             }
         }
+        for (ScanRow row : rows) {
+            InventoryGroup group = groupByRow.get(row);
+            BatchTmdbMatch match = effectiveMatch(group, row);
+            if (match == null) {
+                continue;
+            }
+            if (!row.isIgnored() && match.namesAMedia()) {
+                rowsByGroupName
+                        .computeIfAbsent(match.seedName(), ignored -> new ArrayList<>())
+                        .add(row);
+            }
+        }
+        rowsByGroupName.values().forEach(members ->
+                members.forEach(member -> peersByRow.put(member, members)));
     }
 
     void clear() {
         groupByRow.clear();
-        matchByRow.clear();
         peersByRow.clear();
         rowsByGroupName.clear();
         knownGroups.clear();
@@ -90,7 +91,7 @@ final class ScanGroupIndex {
     }
 
     BatchTmdbMatch matchOf(ScanRow row) {
-        return matchByRow.get(row);
+        return effectiveMatch(groupByRow.get(row), row);
     }
 
     /** Every group that can carry an identity, in scan order. */
@@ -112,23 +113,20 @@ final class ScanGroupIndex {
      * means nothing to the reader: those rows simply read "ignored".
      */
     String displayName(ScanRow row, AppLanguage language) {
-        InventoryGroup group = groupByRow.get(row);
-        if (group == null) {
+        BatchTmdbMatch match = matchOf(row);
+        if (match == null) {
             return UiText.EMPTY;
         }
-        if (!namesAMedia(group.type())) {
-            return UiText.scanMediaTypeIgnored(language);
-        }
-        if (group.seedName() == null || group.seedName().isBlank()) {
+        if (match.seedName() == null || match.seedName().isBlank()) {
             return UiText.EMPTY;
         }
-        return group.seedName();
+        return match.seedText(language);
     }
 
     /** Whether the row's group is one that can carry a TMDB identity at all. */
     boolean namesAMedia(ScanRow row) {
-        InventoryGroup group = groupByRow.get(row);
-        return group != null && namesAMedia(group.type());
+        BatchTmdbMatch match = matchOf(row);
+        return match != null && match.namesAMedia();
     }
 
     /** Sidecars, unsupported files and ignored entries never carry an identity. */
@@ -143,6 +141,45 @@ final class ScanGroupIndex {
                 ? UiText.EMPTY
                 : group.seedName();
         return new BatchTmdbMatch(seed, group.type(), group.items().size(), group.tmdbIdentityFinal());
+    }
+
+    /**
+     * A user can reactivate a supported video that the initial inventory placed
+     * in a non-media bucket. Once they explicitly assign Series or Movie, that
+     * current decision supersedes the immutable scan-time group for TMDB work.
+     */
+    private static BatchTmdbMatch effectiveMatch(InventoryGroup group, ScanRow row) {
+        if (group == null) {
+            return null;
+        }
+        BatchTmdbMatch scanned = directMatch(group);
+        if (scanned.namesAMedia() || row.isIgnored()) {
+            return scanned;
+        }
+        InventoryGroupType type = switch (row.mediaType()) {
+            case SERIES -> InventoryGroupType.LIKELY_SERIES;
+            case MOVIE -> InventoryGroupType.LIKELY_MOVIE;
+            case UNKNOWN, IGNORED -> null;
+        };
+        if (type == null) {
+            return scanned;
+        }
+        String seed = reactivatedSeed(row);
+        return new BatchTmdbMatch(seed, type, 1, false);
+    }
+
+    private static String reactivatedSeed(ScanRow row) {
+        String seed = row.mediaType() == ScanMediaType.MOVIE
+                ? ScanRowEditor.derivedMovieTitle(row)
+                : row.inputParse()
+                        .flatMap(parse -> parse.tokenValue(ScanInputRole.SERIES))
+                        .orElse("");
+        if (seed == null || seed.isBlank()) {
+            String filename = row.originalFilename();
+            int dot = filename.lastIndexOf('.');
+            seed = dot > 0 ? filename.substring(0, dot) : filename;
+        }
+        return seed.trim();
     }
 
     private static String pathKey(Path path) {

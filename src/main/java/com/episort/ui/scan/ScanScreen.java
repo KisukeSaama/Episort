@@ -58,6 +58,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -71,6 +72,7 @@ import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
@@ -651,11 +653,21 @@ public final class ScanScreen {
         table.comparatorProperty().addListener((observable, oldValue, newValue) -> table.refresh());
         sorted.addListener((ListChangeListener<ScanRow>) change -> table.refresh());
         selection.install();
+        table.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (ScanSelectionController.shouldSelectAllRows(event)) {
+                selection.setAllVisibleChecked(true);
+                event.consume();
+            }
+        });
 
         columns.installOn(table);
 
         table.setRowFactory(view -> {
             TableRow<ScanRow> row = new TableRow<>();
+            ChangeListener<Boolean> ignoredListener = (observable, wasIgnored, isIgnored) -> {
+                ScanSelectionController.updateRowStyle(row, row.getItem());
+                updateGroupBlockStyle(row);
+            };
             row.setOnContextMenuRequested(event -> {
                 if (row.isEmpty()) {
                     return;
@@ -679,14 +691,18 @@ public final class ScanScreen {
                 selection.anchorOn(item);
             });
             row.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
-                if (row.isEmpty()
-                        || event.getButton() != MouseButton.PRIMARY
-                        || ScanSelectionController.isCheckboxCellEvent(event)) {
+                if (row.isEmpty() || !ScanSelectionController.shouldFocusRow(event)) {
                     return;
                 }
                 selection.focusOnly(row.getItem());
             });
             row.itemProperty().addListener((observable, oldItem, newItem) -> {
+                if (oldItem != null) {
+                    oldItem.ignoredProperty().removeListener(ignoredListener);
+                }
+                if (newItem != null) {
+                    newItem.ignoredProperty().addListener(ignoredListener);
+                }
                 ScanSelectionController.updateRowStyle(row, newItem);
                 updateGroupBlockStyle(row);
             });
@@ -767,6 +783,7 @@ public final class ScanScreen {
             row.setMediaType(mediaType);
             ScanRowEditor.recomputeProposedName(row);
         }
+        groups.rebuild(rows);
         refreshAfterBatchEdit(anchor);
     }
 
@@ -1116,6 +1133,7 @@ public final class ScanScreen {
             applySelectedTmdbMetadataToRow(row, details, order);
             updated++;
         }
+        groups.rebuild(rows);
         String message = UiText.tmdbFilesUpdated(currentLanguage, updated);
         for (ScanRow row : targetRows) {
             row.setNoteText(Optional.of(message));
@@ -1156,6 +1174,7 @@ public final class ScanScreen {
         for (int index = 0; index < sequence.size(); index++) {
             applyTmdbEpisode(targets.get(index), series, order, sequence.get(index));
         }
+        groups.rebuild(rows);
         String message = sequence.size() == targets.size()
                 ? UiText.tmdbFilesUpdated(currentLanguage, sequence.size())
                 : UiText.tmdbSequenceIncomplete(currentLanguage, sequence.size(), targets.size());
@@ -1220,11 +1239,7 @@ public final class ScanScreen {
                 List.of(inventoryItemFor(row)),
                 new TmdbMovieMetadata(movie.identity().id(), movie.identity().displayName(), movie.releaseYear()))
                 .getFirst();
-        if (proposal.type() == MediaMatchType.UNMATCHED) {
-            row.setAlertText(Optional.of(proposal.reason()));
-        } else {
-            row.setAlertText(Optional.empty());
-        }
+        row.setAlertText(TmdbMovieAlertPolicy.blockingAlert(row.tmdbSelectedByUser(), proposal));
     }
 
     private void applySeriesMetadata(ScanRow row, TmdbSeriesDetails series, TmdbEpisodeOrder order) {
@@ -1384,13 +1399,17 @@ public final class ScanScreen {
             } else {
                 row.markIgnored();
             }
+            groups.rebuild(rows);
             rebuildReviewSessionFromRows();
             ScanTrace.publishIgnore(row, wasIgnored, previousStatus, previousAlerts);
             table.refresh();
             updateMetricsFromRows();
             updateFilterPredicate();
-            if (selection.focused() == row) {
-                showDetail(row);
+            if (filtered.contains(row)) {
+                // Ignored rows cannot be checked, so restoring the checkbox
+                // selection drops the row focus. Put it back explicitly to
+                // expose the type and TMDB controls unlocked by reactivation.
+                selection.focusForContextMenu(row);
             }
         });
 
