@@ -2,7 +2,7 @@
 
 Episort is a Windows-first JavaFX desktop app that organizes TV series and movies for a Plex-style library. It scans a working directory, parses file names with deterministic rules, resolves titles against TMDB, and prepares a file operation plan that must be validated before anything is moved.
 
-The pipeline is fully deterministic: the same folder always produces the same plan. No model, no network beyond TMDB, no guesswork you cannot inspect.
+The pipeline is fully deterministic: the same folder always produces the same plan. No model and no guesswork you cannot inspect. Metadata requests are routed through the Janus gateway to TMDB.
 
 ## How it works
 
@@ -107,12 +107,6 @@ local `.env`. To start from the committed template:
 Copy-Item .env.example .env
 ```
 
-```dotenv
-JANUS_URL=https://janus.kisukesaama.com
-JANUS_APPLICATION_ID=be061c51-1947-4ec5-9ac7-86e917168e41
-JANUS_API_KEY=the-release-caller-key
-```
-
 Process variables take priority over `.env`, which takes priority over the
 bundled release configuration. End users do not need a TMDB or Janus account.
 Janus injects TMDB credentials server-side and owns caching, retries, rate
@@ -121,4 +115,6 @@ limiting, key rotation, revocation, monitoring, and audit trails.
 ## Documentation
 
 - Design system : `docs/design-system.md`
-- BMAD artifacts: `_bmad-output/`
+- TMDB and Janus integration: `docs/tmdb-api-integration.md`
+- Portable packaging: `docs/portable-readme.txt`
+- Release notes: `docs/releases/v0.1.0.md`
