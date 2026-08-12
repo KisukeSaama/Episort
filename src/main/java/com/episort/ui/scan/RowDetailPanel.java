@@ -111,6 +111,7 @@ public final class RowDetailPanel {
     private int tmdbTargetCount = 0;
     /** False for rows whose group names no media — sidecars have no identity to look up. */
     private boolean tmdbSearchable = true;
+    private boolean tmdbBusyActive;
     private BiConsumer<ScanRow, String> onApplyCandidate = (r, c) -> {};
     private BiConsumer<ScanRow, String> onApplyInputPattern = (r, p) -> {};
     private BiConsumer<ScanRow, TmdbEpisodeOrder> onApplySelectedMatch = (r, o) -> {};
@@ -394,17 +395,22 @@ public final class RowDetailPanel {
     }
 
     public void setTmdbBusy(boolean busy, String message) {
+        tmdbBusyActive = busy;
+        refreshTmdbControlAvailability(busy);
+        tmdbBusy.setVisible(busy);
+        tmdbBusy.setManaged(busy);
+        tmdbBusyLabel.setText(message == null ? "" : message);
+        tmdbBusyLabel.setVisible(busy);
+        tmdbBusyLabel.setManaged(busy);
+    }
+
+    private void refreshTmdbControlAvailability(boolean busy) {
         tmdbSearch.setDisable(busy || !tmdbSearchable);
         tmdbOrder.setDisable(busy || !tmdbSearchable);
         tmdbApply.setDisable(busy || !tmdbSearchable || currentRow == null || currentRow.tmdbCandidate().isEmpty());
         tmdbReset.setDisable(busy || !tmdbSearchable || currentRow == null || currentRow.tmdbMatch().isEmpty());
         tmdbFirstEpisode.setDisable(busy || !tmdbSearchable || availableFirstEpisodes.isEmpty());
         tmdbApplySequence.setDisable(busy || !tmdbSearchable || selectedFirstEpisode == null);
-        tmdbBusy.setVisible(busy);
-        tmdbBusy.setManaged(busy);
-        tmdbBusyLabel.setText(message == null ? "" : message);
-        tmdbBusyLabel.setVisible(busy);
-        tmdbBusyLabel.setManaged(busy);
     }
 
     public void applyLanguage(AppLanguage language) {
@@ -463,7 +469,7 @@ public final class RowDetailPanel {
         }
         currentRow = row;
         currentGroupMatch = groupMatch;
-        tmdbSearchable = groupMatch == null || groupMatch.namesAMedia();
+        tmdbSearchable = isTmdbSearchable(groupMatch);
         emptyState.setVisible(false);
         emptyState.setManaged(false);
         contentScroll.setVisible(true);
@@ -502,12 +508,10 @@ public final class RowDetailPanel {
         tmdbOrder.setValue(orderLabel(row.appliedTmdbOrder().orElse(TmdbEpisodeOrder.AIRED)));
         tmdbReset.setDisable(row.tmdbMatch().isEmpty());
         updateTmdbCard(row);
-        if (!tmdbSearchable) {
-            tmdbSearch.setDisable(true);
-            tmdbOrder.setDisable(true);
-            tmdbApply.setDisable(true);
-            tmdbReset.setDisable(true);
-        }
+        // Recompute both enabled and disabled states. A panel that previously
+        // showed an ignored row must re-enable manual search as soon as that
+        // row is reactivated into a media-bearing group.
+        refreshTmdbControlAvailability(tmdbBusyActive);
 
         proposedValue.setText(row.proposedFilename().orElse(UiText.EMPTY));
         destinationValue.setText(destinationText(row.destination()));
@@ -626,6 +630,10 @@ public final class RowDetailPanel {
                 && selectedLabel != null
                 && row.tmdbMatch().filter(selectedLabel::equals).isPresent()
                 && row.tmdbCandidate().isPresent();
+    }
+
+    static boolean isTmdbSearchable(BatchTmdbMatch groupMatch) {
+        return groupMatch == null || groupMatch.namesAMedia();
     }
 
     private String orderLabel(TmdbEpisodeOrder order) {
