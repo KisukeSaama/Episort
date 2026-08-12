@@ -92,11 +92,12 @@ class ScanGroupIndexTest {
     @Test
     void onlyMediaBearingGroupsGetAnIdentityEntry() {
         ScanRow video = row("a.mkv");
-        ScanRow sidecar = row("b.mkv");
+        ScanRow sidecar = new ScanRow(
+                ROOT.resolve("b.srt"), "b.srt", "srt", ScanMediaType.IGNORED, ScanRowStatus.IGNORED);
         ScanGroupIndex index = new ScanGroupIndex();
         index.replaceGroups(List.of(
                 group(InventoryGroupType.LIKELY_SERIES, "Show", "a.mkv"),
-                group(InventoryGroupType.SIDECAR, "sidecar", "b.mkv")));
+                group(InventoryGroupType.SIDECAR, "sidecar", "b.srt")));
 
         index.rebuild(List.of(video, sidecar));
 
@@ -107,14 +108,107 @@ class ScanGroupIndexTest {
 
     @Test
     void ignoredGroupsReadAsIgnoredRatherThanTheirInternalSeed() {
-        ScanRow sidecar = row("b.mkv");
+        ScanRow sidecar = new ScanRow(
+                ROOT.resolve("b.srt"), "b.srt", "srt", ScanMediaType.IGNORED, ScanRowStatus.IGNORED);
         ScanGroupIndex index = new ScanGroupIndex();
-        index.replaceGroups(List.of(group(InventoryGroupType.SIDECAR, "sidecar", "b.mkv")));
+        index.replaceGroups(List.of(group(InventoryGroupType.SIDECAR, "sidecar", "b.srt")));
         index.rebuild(List.of(sidecar));
 
         assertEquals(
                 UiText.scanMediaTypeIgnored(AppLanguage.FRENCH),
                 index.displayName(sidecar, AppLanguage.FRENCH));
+    }
+
+    @Test
+    void activeEpisodeOverridesItsNonMediaScanBucket() {
+        ScanRow episode = row("Detective Conan - S16E30.mkv");
+        episode.setInputParse(ScanInputPatternParser.parse(episode.originalFilename()));
+        ScanGroupIndex index = new ScanGroupIndex();
+        index.replaceGroups(List.of(group(
+                InventoryGroupType.IGNORED,
+                "ignored",
+                "Detective Conan - S16E30.mkv")));
+
+        index.rebuild(List.of(episode));
+
+        assertTrue(index.namesAMedia(episode));
+        assertEquals("Detective Conan", index.displayName(episode, AppLanguage.FRENCH));
+        assertEquals(List.of(episode), index.membersOf("Detective Conan"));
+    }
+
+    @Test
+    void tmdbUpdateOverridesCachedIgnoredGroupWithoutAnotherIndexRebuild() {
+        ScanRow episode = new ScanRow(
+                ROOT.resolve("Detective Conan - S16E30.mkv"),
+                "Detective Conan - S16E30.mkv",
+                "mkv",
+                ScanMediaType.IGNORED,
+                ScanRowStatus.IGNORED);
+        episode.setInputParse(ScanInputPatternParser.parse(episode.originalFilename()));
+        ScanGroupIndex index = new ScanGroupIndex();
+        index.replaceGroups(List.of(group(
+                InventoryGroupType.IGNORED,
+                "ignored",
+                "Detective Conan - S16E30.mkv")));
+        index.rebuild(List.of(episode));
+
+        episode.setMediaType(ScanMediaType.SERIES);
+        episode.setStatus(ScanRowStatus.TMDB);
+
+        assertTrue(index.namesAMedia(episode));
+        assertTrue(index.matchOf(episode).namesAMedia());
+        assertEquals("Detective Conan", index.displayName(episode, AppLanguage.FRENCH));
+    }
+
+    @Test
+    void reactivatedIgnoredEpisodeImmediatelyBecomesAnInteractiveSeriesGroup() {
+        ScanRow episode = new ScanRow(
+                ROOT.resolve("Detective Conan - S16E30.mkv"),
+                "Detective Conan - S16E30.mkv",
+                "mkv",
+                ScanMediaType.IGNORED,
+                ScanRowStatus.IGNORED);
+        episode.setInputParse(ScanInputPatternParser.parse(episode.originalFilename()));
+        ScanGroupIndex index = new ScanGroupIndex();
+        index.replaceGroups(List.of(group(
+                InventoryGroupType.IGNORED,
+                "ignored",
+                "Detective Conan - S16E30.mkv")));
+        index.rebuild(List.of(episode));
+
+        episode.stopIgnoring();
+        index.rebuild(List.of(episode));
+
+        assertFalse(episode.isIgnored());
+        assertEquals(ScanMediaType.SERIES, episode.mediaType());
+        assertEquals(ScanRowStatus.REVIEW, episode.status());
+        assertTrue(index.namesAMedia(episode));
+        assertTrue(index.matchOf(episode).namesAMedia());
+        assertEquals("Detective Conan", index.displayName(episode, AppLanguage.FRENCH));
+        assertEquals(List.of(episode), index.membersOf("Detective Conan"));
+    }
+
+    @Test
+    void reactivatedMovieUsesItsDerivedTitleAsTheMediaGroup() {
+        ScanRow movie = new ScanRow(
+                ROOT.resolve("Brice.de.Nice.2005.mkv"),
+                "Brice.de.Nice.2005.mkv",
+                "mkv",
+                ScanMediaType.IGNORED,
+                ScanRowStatus.IGNORED);
+        ScanGroupIndex index = new ScanGroupIndex();
+        index.replaceGroups(List.of(group(
+                InventoryGroupType.IGNORED,
+                "ignored",
+                "Brice.de.Nice.2005.mkv")));
+        index.rebuild(List.of(movie));
+
+        movie.stopIgnoring();
+        movie.setMediaType(ScanMediaType.MOVIE);
+        index.rebuild(List.of(movie));
+
+        assertTrue(index.namesAMedia(movie));
+        assertEquals("Brice de Nice", index.displayName(movie, AppLanguage.FRENCH));
     }
 
     @Test

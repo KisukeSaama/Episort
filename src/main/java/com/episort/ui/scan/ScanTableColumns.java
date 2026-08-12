@@ -399,10 +399,13 @@ final class ScanTableColumns {
                     setGraphic(null);
                     return;
                 }
+                ScanRow row = getTableRow() == null ? null : getTableRow().getItem();
                 updating = true;
                 try {
                     picker.setConverter(mediaTypeConverter());
-                    picker.setValue(item == ScanMediaType.MOVIE ? ScanMediaType.MOVIE : ScanMediaType.SERIES);
+                    picker.setPromptText(ScanRowText.mediaType(item, host.language()));
+                    picker.setValue(editablePickerValue(item));
+                    picker.setDisable(isTypePickerDisabled(row));
                 } finally {
                     updating = false;
                 }
@@ -491,5 +494,16 @@ final class ScanTableColumns {
                         : ScanMediaType.SERIES;
             }
         };
+    }
+
+    /** Unknown and ignored are states to display, never aliases for Series. */
+    static ScanMediaType editablePickerValue(ScanMediaType mediaType) {
+        return mediaType == ScanMediaType.SERIES || mediaType == ScanMediaType.MOVIE
+                ? mediaType
+                : null;
+    }
+
+    static boolean isTypePickerDisabled(ScanRow row) {
+        return row != null && row.isIgnored();
     }
 }
