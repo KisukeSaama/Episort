@@ -23,6 +23,7 @@ import com.episort.ui.AppShellViewModel;
 import com.episort.ui.UiText;
 import com.episort.ui.WorkflowPhase;
 import com.episort.ui.platform.WindowManager;
+import com.episort.ui.platform.WindowState;
 import com.episort.ui.platform.WindowsTitleBar;
 import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ErrorSeverity;
@@ -48,9 +49,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.scene.paint.Color;
 import javafx.scene.Scene;
-import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
@@ -113,16 +112,20 @@ public class EpisortApplication extends Application {
         stage.setTitle("Episort");
         // No native chrome: the top bar draws the window buttons itself, which
         // is what keeps them from costing a second row of height.
-        stage.initStyle(StageStyle.TRANSPARENT);
+        stage.initStyle(StageStyle.UNDECORATED);
         stage.getIcons().add(AppShell.logoImage());
         appShell.setLoading(true, UiText.loadingStartup(viewModel.language()));
-        Scene scene = new Scene(appShell.root(), 1180, 760, Color.TRANSPARENT);
+        Scene scene = new Scene(appShell.root(), 1180, 760);
         stage.setScene(scene);
         stage.setMinWidth(1180);
         stage.setMinHeight(760);
         stage.show();
         WindowManager windowManager = appShell.installWindowDecorations(stage);
-        installWindowShape(stage, scene, appShell, windowManager);
+        windowManager.addStateListener(state -> WindowsTitleBar.applyCornerPreference(
+                stage, state == WindowState.NORMAL && !stage.isFullScreen()));
+        stage.fullScreenProperty().addListener((observable, wasFullScreen, isFullScreen) ->
+                WindowsTitleBar.applyCornerPreference(
+                        stage, windowManager.state() == WindowState.NORMAL && !isFullScreen));
         Platform.runLater(() -> {
             appShell.setLoading(false, "");
             // Story 7.4: an execution that never closed means the app stopped mid-run.
@@ -133,29 +136,6 @@ public class EpisortApplication extends Application {
         appShell.setLanguageChangeListener(language -> settingsStore.saveLanguage(language.name()));
         WindowsTitleBar.applyDarkMode(stage);
         appShell.scanScreen().setTmdbLookup(tmdbClient, tmdbCredentialsSupplier);
-    }
-
-    private static void installWindowShape(
-            Stage stage, Scene scene, AppShell appShell, WindowManager windowManager) {
-        Rectangle clip = new Rectangle();
-        clip.widthProperty().bind(scene.widthProperty());
-        clip.heightProperty().bind(scene.heightProperty());
-        appShell.root().setClip(clip);
-
-        Runnable refresh = () -> {
-            boolean restored = windowManager.state() == com.episort.ui.platform.WindowState.NORMAL
-                    && !stage.isFullScreen();
-            double arc = restored ? 20 : 0;
-            clip.setArcWidth(arc);
-            clip.setArcHeight(arc);
-            appShell.root().getStyleClass().remove("window-restored");
-            if (restored) {
-                appShell.root().getStyleClass().add("window-restored");
-            }
-        };
-        windowManager.addStateListener(state -> refresh.run());
-        stage.fullScreenProperty().addListener((observable, wasFullScreen, isFullScreen) -> refresh.run());
-        refresh.run();
     }
 
     private static AppLanguage parseLanguage(String stored) {
