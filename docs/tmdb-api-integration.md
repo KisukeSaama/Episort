@@ -7,7 +7,7 @@ episodes, posters, and alternative episode orders.
 
 The desktop client sends every metadata request to:
 
-`https://janus.kisukesaama.com/gateway/tmdb/...`
+`https://janus.kisukesaama.com/gateway/tmdb-v3/...`
 
 The release caller configuration is bundled in `janus-client.properties` so an
 installed application works without user configuration:

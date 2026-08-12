@@ -449,6 +449,10 @@ public final class UiText {
     public static String settingsPageSubtitle(AppLanguage language) { return t(language, "settings.page.subtitle"); }
     public static String preferencesSectionTitle(AppLanguage language) { return t(language, "preferences.section.title"); }
     public static String preferencesSectionDescription(AppLanguage language) { return t(language, "preferences.section.description"); }
+    public static String themeLabel(AppLanguage language) { return t(language, "preferences.theme.label"); }
+    public static String themePreference(AppLanguage language, ThemePreference preference) {
+        return t(language, "preferences.theme." + preference.name().toLowerCase(java.util.Locale.ROOT));
+    }
     public static String tmdbSettingsSectionTitle(AppLanguage language) { return t(language, "tmdb.settings.section.title"); }
     public static String tmdbSettingsSectionDescription(AppLanguage language) { return t(language, "tmdb.settings.section.description"); }
     public static String tmdbSettingsActive(AppLanguage language) { return t(language, "tmdb.settings.active"); }

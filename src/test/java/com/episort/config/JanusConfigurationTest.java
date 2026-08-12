@@ -12,7 +12,7 @@ class JanusConfigurationTest {
     void buildsTmdbRouteFromTheCurrentGatewayPrefix() {
         JanusConfiguration configuration = new JanusConfiguration(
                 URI.create("https://janus.example"), "application-id", "caller-key");
-        assertEquals("https://janus.example/gateway/tmdb/", configuration.tmdbBaseUri().toString());
+        assertEquals("https://janus.example/gateway/tmdb-v3/", configuration.tmdbBaseUri().toString());
     }
 
     @Test

@@ -11,12 +11,10 @@ public final class Fonts {
         if (loaded) {
             return;
         }
-        load("/fonts/Inter-Regular.ttf");
-        load("/fonts/Inter-SemiBold.ttf");
-        load("/fonts/Inter-Bold.ttf");
-        load("/fonts/Inter-ExtraBold.ttf");
-        load("/fonts/JetBrainsMono-Regular.ttf");
-        load("/fonts/JetBrainsMono-Bold.ttf");
+        load("/fonts/InstrumentSans-Regular.ttf");
+        load("/fonts/InstrumentSans-Medium.ttf");
+        load("/fonts/InstrumentSans-SemiBold.ttf");
+        load("/fonts/InstrumentSans-Bold.ttf");
         loaded = true;
     }
 
