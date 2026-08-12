@@ -2,6 +2,23 @@
 
 All notable changes to Episort are documented in this file.
 
+## [Unreleased]
+
+## [0.1.1] - 2026-08-12
+
+### Fixed
+
+- A manually confirmed TMDB movie identity no longer remains blocked by the
+  automatic filename-similarity warning after its metadata is loaded.
+- An active video recognized as a Series or Movie now overrides an obsolete
+  non-media scan group and can be matched against TMDB.
+- Double-clicking an editable scan-table cell once again opens its inline
+  editor instead of being intercepted by row selection refreshes.
+- Files restored from the ignored state immediately regain their TMDB matching
+  controls and consistent row metadata.
+- `Ctrl+A` selects all scan rows while preserving the native shortcut inside
+  text editors.
+
 ## [0.1.0] - 2026-08-11
 
 First public release.
