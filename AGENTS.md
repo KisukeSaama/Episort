@@ -29,17 +29,6 @@ TMDB API keys and read access tokens live exclusively in the Janus vault and mus
 
 All scans, folder creation, renaming, and moving operations must stay inside the configured working directory. Never touch files outside it.
 
-## BMAD Workflow
-
-Epics, stories, implementation, and code review are driven by the BMAD dev agent **Amelia**.
-
-- BMAD config: `_bmad/`
-- Planning artifacts (story contexts, etc.): `_bmad-output/planning-artifacts/`
-- Implementation artifacts: `_bmad-output/implementation-artifacts/`
-- Brainstorming notes: `_bmad-output/brainstorming/`
-
-Read the relevant story context before coding, write implementation notes back to `implementation-artifacts/`, and keep changes scoped to the story under review so Amelia can verify them.
-
 ## UI / Design System
 
 All UI work follows `docs/design-system.md` — the source of truth for tokens, layout, components, and do/don't rules.
