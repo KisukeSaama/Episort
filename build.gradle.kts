@@ -5,6 +5,7 @@ import org.gradle.jvm.tasks.Jar
 import org.gradle.kotlin.dsl.support.serviceOf
 import org.gradle.process.ExecOperations
 import java.security.MessageDigest
+import java.time.Duration
 import java.util.Locale
 
 plugins {
@@ -77,6 +78,11 @@ tasks.named<JavaExec>("run") {
 
 tasks.test {
     useJUnitPlatform()
+    // CI runners are headless. JavaFX tests skip when no toolkit is available;
+    // this property keeps a misbehaving toolkit or leaked test thread from
+    // holding a release job indefinitely.
+    systemProperty("java.awt.headless", "true")
+    timeout.set(Duration.ofMinutes(2))
     // Same native-access grant as the application: tests touch JNA too.
     jvmArgs("--enable-native-access=ALL-UNNAMED")
     // Deletions go straight through instead of to the recycle bin: a test run

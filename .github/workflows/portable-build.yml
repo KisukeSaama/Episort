@@ -22,6 +22,7 @@ jobs:
   portable:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -35,9 +36,6 @@ jobs:
             os: ubuntu-22.04
             command: sudo apt-get update && sudo apt-get install --yes rpm && ./gradlew clean build linuxPackages --no-daemon
             artifact: episort-linux-x64
-            executable: |
-              build/portable/distributions/*.deb
-              build/portable/distributions/*.rpm
 
     steps:
       - name: Check out repository
@@ -61,13 +59,25 @@ jobs:
       - name: Build and verify portable application
         run: ${{ matrix.command }}
 
-      - name: Upload portable executable
+      - name: Upload Windows portable executable
+        if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
           path: |
             ${{ matrix.executable }}
             ${{ matrix.executable }}.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Linux packages
+        if: matrix.os == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            build/portable/distributions/*.deb
+            build/portable/distributions/*.rpm
           if-no-files-found: error
           retention-days: 30
 
