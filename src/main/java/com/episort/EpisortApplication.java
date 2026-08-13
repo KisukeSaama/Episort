@@ -21,11 +21,15 @@ import com.episort.tmdb.debug.TmdbRequestTrace;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.AppShell;
 import com.episort.ui.AppShellViewModel;
+import com.episort.ui.diagnostics.FrameRateProbe;
+import com.episort.ui.FocusRelease;
 import com.episort.ui.FxUpdateCoalescer;
+import com.episort.ui.PopupMotion;
 import com.episort.ui.UiText;
 import com.episort.ui.WorkflowPhase;
 import com.episort.ui.Theme;
 import com.episort.ui.ThemePreference;
+import com.episort.ui.ThemeStyles;
 import com.episort.ui.platform.SystemTheme;
 import com.episort.ui.platform.WindowManager;
 import com.episort.ui.platform.WindowState;
@@ -59,8 +63,21 @@ import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import javafx.stage.WindowEvent;
 
 public class EpisortApplication extends Application {
+    /** The window the app opens into: both screens laid out in full (§3.1). */
+    public static final double INITIAL_WIDTH = 1280;
+    public static final double INITIAL_HEIGHT = 800;
+    /**
+     * The floor is what the compact layout can actually hold, not what the wide
+     * one needs. It used to be 1180 × 760 against a single breakpoint at 1200,
+     * so the narrow layout lived in a twenty-pixel band and the window could not
+     * be tiled to half of a 1920 screen.
+     */
+    public static final double MIN_WIDTH = 820;
+    public static final double MIN_HEIGHT = 600;
+
     private final ExecutorService scanExecutor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "episort-scan");
         thread.setDaemon(true);
@@ -70,7 +87,7 @@ public class EpisortApplication extends Application {
     private final FileSettingsStore settingsStoreEarly = FileSettingsStore.userProfileStore();
 
     private volatile AppShell appShellRef;
-    private volatile ThemePreference themePreference = ThemePreference.DARK;
+    private volatile ThemePreference themePreference = ThemePreference.SYSTEM;
     private final ScheduledExecutorService themeWatcher = Executors.newSingleThreadScheduledExecutor(runnable -> {
         Thread thread = new Thread(runnable, "episort-system-theme");
         thread.setDaemon(true);
@@ -92,6 +109,9 @@ public class EpisortApplication extends Application {
 
     @Override
     public void start(Stage stage) {
+        // Before anything can open a menu: the entrance is installed on the
+        // window list, so a popup shown later is caught as it appears.
+        PopupMotion.install();
         FileSettingsStore settingsStore = settingsStoreEarly;
         Optional<JanusConfiguration> janusConfiguration = JanusConfigurationProvider.load();
         tmdbCredentialsSupplier = () -> janusConfiguration;
@@ -104,8 +124,11 @@ public class EpisortApplication extends Application {
         AppLanguage resolvedLanguage = settingsStore.loadLanguage()
                 .map(EpisortApplication::parseLanguage)
                 .orElseGet(AppLanguage::detectFromOs);
-        // An absent preference means a first launch and intentionally starts dark.
-        themePreference = settingsStore.loadThemePreference().orElse(ThemePreference.DARK);
+        // An absent preference means a first launch, which follows the desktop:
+        // the choice is the user's to make, and until they make one the safest
+        // guess is the one they already made for everything else. From the
+        // first visit to the settings the stored preference wins instead.
+        themePreference = settingsStore.loadThemePreference().orElse(ThemePreference.SYSTEM);
         Theme initialTheme = resolveTheme(themePreference);
         AppShellViewModel viewModel = AppShellViewModel.fromStartupPrerequisites(
                         startupWorkflow.loadWorkspaceConfiguration(),
@@ -136,17 +159,25 @@ public class EpisortApplication extends Application {
         stage.initStyle(StageStyle.UNDECORATED);
         stage.getIcons().add(AppShell.logoImage());
         appShell.setLoading(true, UiText.loadingStartup(viewModel.language()));
-        Scene scene = new Scene(appShell.root(), 1180, 760);
+        Scene scene = new Scene(appShell.root(), INITIAL_WIDTH, INITIAL_HEIGHT);
+        ThemeStyles.registerScene(scene);
+        // Without this the search field keeps the caret and the focus ring after
+        // a click on empty space, and goes on capturing the keyboard.
+        FocusRelease.install(scene);
         stage.setScene(scene);
-        stage.setMinWidth(1180);
-        stage.setMinHeight(760);
+        stage.setMinWidth(MIN_WIDTH);
+        stage.setMinHeight(MIN_HEIGHT);
         WindowManager windowManager = appShell.installWindowDecorations(stage);
         settingsStore.loadWindowPlacement()
                 .ifPresent(placement -> windowManager.restorePlacement(
                         placement.normalBounds(), placement.state()));
-        stage.setOnCloseRequest(event -> settingsStore.saveWindowPlacement(
-                new WindowPlacement(windowManager.normalBounds(), windowManager.state())));
+        // On hiding, not on close request: the title bar's own ✕ calls
+        // Stage.close(), which hides the window without ever firing a close
+        // request, so a placement saved there would only survive Alt+F4.
+        stage.addEventHandler(WindowEvent.WINDOW_HIDING,
+                event -> persistWindowPlacement(settingsStore, windowManager));
         stage.show();
+        FrameRateProbe.startIfEnabled();
         Platform.runLater(() -> {
             appShell.setLoading(false, "");
             // Story 7.4: an execution that never closed means the app stopped mid-run.
@@ -161,9 +192,33 @@ public class EpisortApplication extends Application {
                 WindowsTitleBar.applyCornerPreference(
                         stage, windowManager.state() == WindowState.NORMAL && !isFullScreen));
         WindowsTitleBar.applyTheme(stage, initialTheme);
+        // And again once the window has its system frame back: adopting it is a
+        // frame change, and DWM answers a frame change with its own defaults.
+        // Without this the dark window wore the system's light border, which
+        // Windows only paints on the active window — so it appeared on the way
+        // back from another application rather than at startup.
+        windowManager.whenFrameSettled(() -> applyWindowChrome(stage, windowManager));
         appShell.scanScreen().setTmdbLookup(tmdbClient, tmdbCredentialsSupplier);
         themeWatcher.scheduleWithFixedDelay(
                 () -> refreshSystemTheme(stage), 1, 1, TimeUnit.SECONDS);
+    }
+
+    /** Everything Windows itself draws of this window: its border and its corners. */
+    private void applyWindowChrome(Stage stage, WindowManager windowManager) {
+        WindowsTitleBar.applyTheme(stage, resolveTheme(themePreference));
+        WindowsTitleBar.applyCornerPreference(
+                stage, windowManager.state() == WindowState.NORMAL && !stage.isFullScreen());
+    }
+
+    /** Best-effort: a settings write that fails must not hold up the exit. */
+    private static void persistWindowPlacement(
+            FileSettingsStore settingsStore, WindowManager windowManager) {
+        try {
+            settingsStore.saveWindowPlacement(
+                    new WindowPlacement(windowManager.normalBounds(), windowManager.state()));
+        } catch (RuntimeException ignored) {
+            // ignore
+        }
     }
 
     private static AppLanguage parseLanguage(String stored) {

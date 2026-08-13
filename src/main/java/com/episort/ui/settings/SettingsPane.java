@@ -34,8 +34,7 @@ public final class SettingsPane {
     private static final String TMDB_LOGO_RESOURCE = "/assets/tmdb-logo-dark.png";
 
     private final VBox root;
-    private final Label pageEyebrow;
-    private final Label pageTitle;
+    private final Label heading;
     private final Label pageSubtitle;
     private final Label workspaceTitle;
     private final Label workspaceDescription;
@@ -72,17 +71,24 @@ public final class SettingsPane {
         this.tmdbConfiguration = tmdbConfiguration;
         this.onClose = onClose;
 
-        pageEyebrow = new Label();
-        pageEyebrow.getStyleClass().add("page-title");
-
-        pageTitle = new Label();
-        pageTitle.getStyleClass().add("page-heading");
+        // Same header as Scan and History: the accented section heading, then a
+        // single line of context under it. A second, larger title used to sit
+        // between the two, which pushed the first section of this screen about
+        // fifty pixels below where the other screens put theirs; moving between
+        // the three made the content jump.
+        heading = new Label();
+        heading.getStyleClass().addAll("section-heading", "section-heading-accent");
+        HBox headingRow = new HBox(heading);
+        headingRow.getStyleClass().add("screen-heading-row");
 
         pageSubtitle = new Label();
         pageSubtitle.getStyleClass().add("page-subtitle");
         pageSubtitle.setWrapText(true);
 
-        VBox header = new VBox(4, pageEyebrow, pageTitle, pageSubtitle);
+        // The heading row already carries six pixels of air under the label, so
+        // the gap to the subtitle is set from what the eye sees, not from the
+        // ten-pixel step.
+        VBox header = new VBox(4, headingRow, pageSubtitle);
 
         // ---- Workspace section -------------------------------------
         workspaceTitle = new Label();
@@ -230,9 +236,12 @@ public final class SettingsPane {
         applyLanguage(AppLanguage.FRENCH);
         refreshWorkspaceValue(currentWorkspace.get());
 
-        root = new VBox(18, header, workspaceSection, tmdbSection, preferencesSection);
-        root.getStyleClass().add("settings-page");
-        root.setMaxWidth(960);
+        // The screen takes the content area whole, like Scan and History: a
+        // centred 960 px column moved every section sideways on each visit.
+        // Padding and vertical rhythm come from .screen-root, so the three
+        // screens start their content on the same line.
+        root = new VBox(14, header, workspaceSection, tmdbSection, preferencesSection);
+        root.getStyleClass().addAll("screen-root", "settings-page");
     }
 
     public VBox root() {
@@ -255,8 +264,7 @@ public final class SettingsPane {
         for (Consumer<AppLanguage> hook : extraSectionLanguageHooks) {
             hook.accept(language);
         }
-        pageEyebrow.setText(UiText.settingsHeading(language));
-        pageTitle.setText(UiText.settingsPageTitle(language));
+        heading.setText(UiText.settingsHeading(language));
         pageSubtitle.setText(UiText.settingsPageSubtitle(language));
 
         workspaceTitle.setText(UiText.workspaceSectionTitle(language));

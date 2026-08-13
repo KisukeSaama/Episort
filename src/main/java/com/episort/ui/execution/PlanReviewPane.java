@@ -148,7 +148,7 @@ public final class PlanReviewPane {
         // the plan itself. The footer keeps the same action under the table, so a
         // long list never has to be scrolled back up to leave it.
         backButton.setText(UiText.planBack(language));
-        backButton.getStyleClass().addAll("header-action", "ghost");
+        backButton.getStyleClass().addAll("header-action", "back-action");
         backButton.setOnAction(event -> close());
 
         Region headerSpacer = new Region();
@@ -177,9 +177,7 @@ public final class PlanReviewPane {
 
         banner.getStyleClass().add("banner-text");
         banner.setWrapText(true);
-        Label bannerIcon = new Label("•");
-        bannerIcon.getStyleClass().add("banner-icon");
-        bannerBox = new HBox(8, bannerIcon, banner);
+        bannerBox = new HBox(8, banner);
         bannerBox.getStyleClass().add("banner");
         HBox.setHgrow(banner, Priority.ALWAYS);
 
@@ -537,6 +535,8 @@ public final class PlanReviewPane {
         selectionColumn.setReorderable(false);
         selectionColumn.getStyleClass().add("selection-column");
         selectAllCheckbox.getStyleClass().add("row-checkbox");
+        selectAllCheckbox.setAccessibleText(UiText.a11ySelectAllRows(language));
+        selectAllCheckbox.setTooltip(new Tooltip(UiText.a11ySelectAllRows(language)));
         selectAllCheckbox.setOnAction(event -> setAllSelected(selectAllCheckbox.isSelected()));
         StackPane selectAllHost = new StackPane(selectAllCheckbox);
         selectAllHost.getStyleClass().add("selection-header");
@@ -649,6 +649,8 @@ public final class PlanReviewPane {
                     return;
                 }
                 checkBox.setSelected(boundRow.selected.get());
+                checkBox.setAccessibleText(UiText.a11ySelectRow(language) + " "
+                        + boundRow.operation.sourcePath().getFileName());
                 setGraphic(checkBox);
             }
         };
@@ -724,6 +726,8 @@ public final class PlanReviewPane {
                 combo.setValue(item.choice.get());
                 binding = false;
                 combo.setDisable(combo.getItems().size() < 2);
+                combo.setAccessibleText(UiText.conflictColumnDecision(language) + " "
+                        + item.operation.sourcePath().getFileName());
                 setGraphic(combo);
                 setTooltip(new Tooltip(item.operation.conflict().orElseThrow().detail()));
             }

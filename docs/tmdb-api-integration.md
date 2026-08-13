@@ -42,6 +42,38 @@ The Janus TMDB connection already targets TMDB API v3, so forwarded paths are
 and `/authentication`. TMDB episode
 IDs remain stable identities for aired/DVD/absolute remapping.
 
+## Request volume
+
+A full media library reaches the batch matcher in one go, so the cost per
+folder is kept down first and the remaining requests are then sent several at a
+time.
+
+- **Seasons travel together.** `tv/{id}` is called with
+  `append_to_response=episode_groups`, then once more with up to twenty
+  `season/{n}` sub-resources, which is the TMDB ceiling. A show costs two
+  requests whatever its length. Any season the gateway does not append is
+  fetched on its own, so a change on that side costs speed and never episodes.
+- **A film costs no detail request.** `search/movie` already returns the title
+  and release date, which is everything a movie proposal reads.
+- **One index per folder.** A group the scan reads as a series only queries
+  `search/tv`, and falls back to `search/movie` when that comes back empty.
+- **Identical work happens once per run.** Groups whose titles normalize the
+  same share one search, and groups landing on the same show share one episode
+  load, even when they are resolved concurrently.
+
+## Pacing
+
+`TmdbRequestPacer` holds one application-wide budget: at most six requests in
+flight, departures spaced by an interval derived from
+`X-Janus-RateLimit-Remaining` and `X-Janus-RateLimit-Reset`, which spreads what
+is left of the quota over what is left of the window. With a comfortable quota
+the interval stays at its 20 ms floor and nothing is slowed down.
+
+This is not a second retry layer, which stays with Janus. The only status the
+pacer acts on is 429: the caller quota being enforced, which the gateway
+contract asks the caller to honour by waiting out `Retry-After`. Replaying is
+safe because every TMDB call Episort makes is a GET.
+
 ## Diagnostics and attribution
 
 Janus problem responses are surfaced without logging the caller key or response

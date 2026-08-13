@@ -4,9 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import javafx.animation.AnimationTimer;
+import javafx.application.Platform;
+import javafx.geometry.Point2D;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Cursor;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.ButtonBase;
 import javafx.scene.control.ComboBoxBase;
@@ -21,7 +25,17 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
-/** Owns all placement behavior for Episort's custom window chrome. */
+/**
+ * Owns all placement behavior for Episort's custom window chrome.
+ *
+ * <p>Two arrangements live here. On Windows the window is given the system
+ * frame ({@link NativeWindowFrame}) and the system takes the placement over
+ * entirely: it moves the window, snaps it, maximizes it and animates all three,
+ * and what remains below is the part that follows along — reading back what
+ * Windows decided so the title bar's own buttons stay in step. Everywhere else,
+ * and if adopting the frame fails, Episort keeps doing it itself: its own drag,
+ * its own edge detection, its own preview.
+ */
 public final class WindowManager {
     private static final double RESIZE_MARGIN = 6;
     private static final double TITLE_BAR_GRAB_HEIGHT = 32;
@@ -35,6 +49,9 @@ public final class WindowManager {
     private final double normalMinHeight;
 
     private final List<Consumer<WindowState>> stateListeners = new ArrayList<>();
+    private final List<Runnable> frameListeners = new ArrayList<>();
+    /** Whether the native frame question has been settled, one way or the other. */
+    private boolean frameSettled;
     private boolean dragging;
     private boolean dragMoved;
     private boolean resizing;
@@ -49,6 +66,10 @@ public final class WindowManager {
     private WindowBounds resizeStartBounds;
     private WindowSnapTarget snapTarget = WindowSnapTarget.NONE;
     private WindowWorkArea snapArea;
+    /** Non-null once Windows owns the placement. */
+    private NativeWindowFrame systemFrame;
+    /** A saved placement waiting for the window to be on screen to be applied. */
+    private WindowState pendingState = WindowState.NORMAL;
 
     private WindowManager(Stage stage, Region dragRegion) {
         this.stage = stage;
@@ -69,6 +90,25 @@ public final class WindowManager {
         safeListener.accept(stateModel.state());
     }
 
+    /**
+     * Runs once the window's native frame is final, adopted or not.
+     *
+     * <p>Adopting the frame puts {@code WS_THICKFRAME} back on a window that was
+     * created without it, and tells Windows the frame changed. Whatever DWM was
+     * asked about the window before that — its border colour, its corners — was
+     * asked about a frame that no longer exists, and the system answers the
+     * question again with its own defaults. Anything set on the window handle
+     * therefore has to be set again from here.
+     */
+    public void whenFrameSettled(Runnable action) {
+        Runnable safeAction = Objects.requireNonNull(action);
+        if (frameSettled) {
+            safeAction.run();
+            return;
+        }
+        frameListeners.add(safeAction);
+    }
+
     public WindowState state() {
         return stateModel.state();
     }
@@ -87,14 +127,33 @@ public final class WindowManager {
                 new WindowBounds(savedBounds.x(), savedBounds.y(), width, height), area);
         applyBounds(visible);
         stateModel.restore(visible);
-        if (savedState == WindowState.MAXIMIZED) {
-            maximize(area);
-        } else if (savedState == WindowState.SNAPPED_LEFT) {
-            snap(WindowSnapTarget.LEFT, area);
-        } else if (savedState == WindowState.SNAPPED_RIGHT) {
-            snap(WindowSnapTarget.RIGHT, area);
-        } else {
+        pendingState = savedState;
+        if (NativeWindowFrame.isSupported()) {
+            // Held back until the window is on screen, since the frame that will
+            // maximize it does not exist before then. The window keeps its normal
+            // rectangle meanwhile, which is the one Windows must restore it to.
             notifyState();
+            return;
+        }
+        applyPendingState(area);
+    }
+
+    private void applyPendingState(WindowWorkArea area) {
+        WindowState wanted = pendingState;
+        pendingState = WindowState.NORMAL;
+        if (systemFrame != null) {
+            // A half-screen placement is, to Windows, an ordinary window at that
+            // size; only being maximized is a state it keeps.
+            if (wanted == WindowState.MAXIMIZED) {
+                systemFrame.setMaximized(true);
+            }
+            return;
+        }
+        switch (wanted) {
+            case MAXIMIZED -> maximize(area);
+            case SNAPPED_LEFT -> snap(WindowSnapTarget.LEFT, area);
+            case SNAPPED_RIGHT -> snap(WindowSnapTarget.RIGHT, area);
+            case NORMAL -> notifyState();
         }
     }
 
@@ -103,6 +162,10 @@ public final class WindowManager {
     }
 
     public void toggleMaximize() {
+        if (systemFrame != null) {
+            systemFrame.setMaximized(!systemFrame.isMaximized());
+            return;
+        }
         if (stateModel.state() == WindowState.NORMAL) {
             maximize(workAreaAt(stage.getX() + stage.getWidth() / 2, stage.getY() + stage.getHeight() / 2));
         } else {
@@ -122,6 +185,86 @@ public final class WindowManager {
         scene.addEventFilter(MouseEvent.MOUSE_DRAGGED, this::resize);
         scene.addEventFilter(MouseEvent.MOUSE_RELEASED, this::finishResize);
         stage.addEventHandler(WindowEvent.WINDOW_HIDDEN, event -> preview.hide());
+        // One pulse after the event rather than inside it: the window is only
+        // findable once glass has actually put it on screen, which it finishes
+        // doing after the handler returns.
+        stage.addEventHandler(WindowEvent.WINDOW_SHOWN, event -> Platform.runLater(this::adoptSystemFrame));
+    }
+
+    /**
+     * Hands the placement to Windows, now that there is a window to hand over.
+     *
+     * <p>Nothing here is required for the application to work: if the frame
+     * cannot be adopted — another platform, an old Windows, the property turned
+     * off — Episort keeps placing the window itself, exactly as it did.
+     */
+    private void adoptSystemFrame() {
+        keepWindowLargeEnoughForItsContent();
+        systemFrame = NativeWindowFrame.install(stage).orElse(null);
+        if (Boolean.getBoolean("episort.debug.window")) {
+            System.out.println(systemFrame == null
+                    ? "[episort.window] no system frame; Episort places the window itself"
+                    : systemFrame.describe());
+            System.out.printf(
+                    "[episort.window] stage=%.0fx%.0f content needs at least %.0fx%.0f%n",
+                    stage.getWidth(), stage.getHeight(),
+                    stage.getScene().getRoot().minWidth(-1), stage.getScene().getRoot().minHeight(-1));
+        }
+        if (systemFrame != null) {
+            // Windows changes the placement without asking, from a drag, from
+            // Win+Left, from a snap layout. Following the stage is how the title
+            // bar's own maximize button learns about it.
+            stage.xProperty().addListener(observable -> syncSystemState());
+            stage.yProperty().addListener(observable -> syncSystemState());
+            stage.widthProperty().addListener(observable -> syncSystemState());
+            stage.heightProperty().addListener(observable -> syncSystemState());
+        }
+        applyPendingState(workAreaAt(
+                stage.getX() + stage.getWidth() / 2, stage.getY() + stage.getHeight() / 2));
+        notifyFrameSettled();
+    }
+
+    private void notifyFrameSettled() {
+        frameSettled = true;
+        List<Runnable> waiting = List.copyOf(frameListeners);
+        frameListeners.clear();
+        waiting.forEach(Runnable::run);
+    }
+
+    /**
+     * Raises the window's minimum to what its content cannot go below.
+     *
+     * <p>Measured rather than declared, because the declared one was wishful:
+     * the shell needs more room than the 1180×760 it asked for, and below that
+     * the interface is not made smaller, it is cut off. Nobody noticed while
+     * Episort placed its own windows and never went that small. Windows does:
+     * asked for a half of the screen it takes one, and the close button left
+     * with the part that no longer fitted.
+     *
+     * <p>Honouring it is what makes Windows snap this window to its minimum
+     * rather than to an exact half — which is what the system does for any
+     * application that will not go narrower.
+     */
+    private void keepWindowLargeEnoughForItsContent() {
+        Parent root = stage.getScene().getRoot();
+        stage.setMinWidth(Math.max(normalMinWidth, root.minWidth(-1)));
+        stage.setMinHeight(Math.max(normalMinHeight, root.minHeight(-1)));
+    }
+
+    /** Reads back what Windows did to the window, and reports it once it differs. */
+    private void syncSystemState() {
+        if (systemFrame == null) {
+            return;
+        }
+        WindowState before = stateModel.state();
+        if (systemFrame.isMaximized()) {
+            stateModel.enter(WindowState.MAXIMIZED, stateModel.normalBounds().orElseGet(this::currentBounds));
+        } else {
+            stateModel.restore(currentBounds());
+        }
+        if (stateModel.state() != before) {
+            notifyState();
+        }
     }
 
     private void onMousePressed(MouseEvent event) {
@@ -151,8 +294,16 @@ public final class WindowManager {
             }
             dragMoved = true;
         }
-        if (stateModel.state() != WindowState.NORMAL && !restoredForDrag) {
+        // Windows pulls a maximized window back to its normal size under the
+        // pointer by itself; only the fallback has to do it by hand.
+        if (systemFrame == null && stateModel.state() != WindowState.NORMAL && !restoredForDrag) {
             restoreForDrag(event);
+        }
+        // Only once the press has become a real drag: a plain click must not
+        // enter the system loop, or it would swallow the release and with it the
+        // double click that maximizes.
+        if (moveNatively(event)) {
+            return;
         }
         stage.setX(event.getScreenX() - dragOffsetX);
         stage.setY(event.getScreenY() - dragOffsetY);
@@ -182,6 +333,77 @@ public final class WindowManager {
         }
     }
 
+    /**
+     * Hands the rest of the drag to the system, and reports whether it did.
+     *
+     * <p>With the system frame in place this is the whole of dragging: Windows
+     * moves the window, shows its own snap overlay at the edges, offers Snap
+     * Assist afterwards, and this method has nothing left to do but let the loop
+     * run and read the result back.
+     *
+     * <p>Without it the move is still the system's, but the edges do nothing, so
+     * the drop has to be snapped by hand. No mouse event describes that drop —
+     * the loop consumed the release — so it is reconstructed from where the
+     * pointer stands inside the window once the loop hands back. The preview
+     * follows through an {@link AnimationTimer} rather than mouse events for the
+     * same reason; when Windows does not let frames through during its loop the
+     * timer simply never fires, and the drag runs without a preview rather than
+     * leaving an unpainted one on screen.
+     */
+    private boolean moveNatively(MouseEvent event) {
+        if (!NativeWindowMove.isSupported()) {
+            return false;
+        }
+        double grabOffsetX = event.getScreenX() - stage.getX();
+        double grabOffsetY = event.getScreenY() - stage.getY();
+        AnimationTimer previewTracker = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                updateSnapPreview(stage.getX() + grabOffsetX, stage.getY() + grabOffsetY);
+            }
+        };
+        if (systemFrame == null) {
+            previewTracker.start();
+        }
+        boolean started;
+        try {
+            started = NativeWindowMove.begin(stage);
+        } finally {
+            previewTracker.stop();
+        }
+        if (!started) {
+            preview.hide();
+            snapTarget = WindowSnapTarget.NONE;
+            return false;
+        }
+        dragging = false;
+        dragMoved = false;
+        if (systemFrame != null) {
+            Platform.runLater(this::syncSystemState);
+            event.consume();
+            return true;
+        }
+        // Read now, while the pointer is still where it was let go.
+        Point2D dropOffset = NativeWindowMove.pointerOffset(stage)
+                .orElseGet(() -> new Point2D(grabOffsetX, grabOffsetY));
+        // Applied one pulse later: the window's final position reaches the stage
+        // through the same queue as everything else, and reading it here could
+        // still return where the drag started — which would snap to the wrong
+        // edge, or move the window back.
+        Platform.runLater(() -> finishNativeMove(dropOffset.getX(), dropOffset.getY()));
+        event.consume();
+        return true;
+    }
+
+    private void finishNativeMove(double pointerOffsetX, double pointerOffsetY) {
+        double dropX = stage.getX() + pointerOffsetX;
+        double dropY = stage.getY() + pointerOffsetY;
+        evaluateSnapTarget(dropX, dropY);
+        applySnapOrKeepVisible(dropX, dropY);
+        preview.hide();
+        snapTarget = WindowSnapTarget.NONE;
+    }
+
     private void restoreForDrag(MouseEvent event) {
         WindowBounds restoreBounds = stateModel.normalBounds().orElseGet(this::currentBounds);
         double ratio = stage.getWidth() <= 0 ? 0.5 : (event.getScreenX() - stage.getX()) / stage.getWidth();
@@ -201,10 +423,15 @@ public final class WindowManager {
         restoredForDrag = true;
     }
 
-    private void updateSnapPreview(double screenX, double screenY) {
+    /** Records which edge the given point selects, without touching the preview. */
+    private WindowSnapTarget evaluateSnapTarget(double screenX, double screenY) {
         snapArea = workAreaAt(screenX, screenY);
         snapTarget = WindowGeometry.snapTargetAt(screenX, screenY, snapArea);
-        if (snapTarget == WindowSnapTarget.NONE) {
+        return snapTarget;
+    }
+
+    private void updateSnapPreview(double screenX, double screenY) {
+        if (evaluateSnapTarget(screenX, screenY) == WindowSnapTarget.NONE) {
             preview.hide();
         } else {
             preview.show(stage, WindowGeometry.boundsFor(snapTarget, snapArea));

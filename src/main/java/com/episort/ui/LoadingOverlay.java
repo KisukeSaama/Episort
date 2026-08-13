@@ -92,8 +92,13 @@ final class LoadingOverlay {
         }
     }
 
+    /**
+     * The veil fades rather than blinking. A full-window surface that appears
+     * and disappears between two frames reads as a glitch, and the work it
+     * announces often finishes fast enough for that to happen twice.
+     */
     void setVisible(boolean visible) {
-        show(root, visible);
+        ViewTransition.fade(root, visible);
     }
 
     /**

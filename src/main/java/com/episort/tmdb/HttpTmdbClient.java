@@ -9,6 +9,8 @@ import com.episort.tmdb.dto.TmdbMovieResponseDto;
 import com.episort.tmdb.dto.TmdbSearchResponseDto;
 import com.episort.tmdb.dto.TmdbSeriesResponseDto;
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -21,9 +23,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /** HTTP implementation of the application-level TMDB v3 API integration. */
 public final class HttpTmdbClient implements TmdbClient {
@@ -31,8 +36,11 @@ public final class HttpTmdbClient implements TmdbClient {
     private static final String LANGUAGE = "en-US";
     private static final int ABSOLUTE_GROUP_TYPE = 2;
     private static final int DVD_GROUP_TYPE = 3;
+    /** TMDB serves at most twenty appended sub-resources in one response. */
+    private static final int MAX_APPENDED_RESOURCES = 20;
     private final HttpClient httpClient;
     private final URI baseUriOverride;
+    private final TmdbRequestPacer pacer;
     private final Gson gson = new Gson();
 
     public HttpTmdbClient() {
@@ -42,12 +50,14 @@ public final class HttpTmdbClient implements TmdbClient {
     private HttpTmdbClient(HttpClient httpClient) {
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
         this.baseUriOverride = null;
+        this.pacer = new TmdbRequestPacer();
     }
 
     HttpTmdbClient(HttpClient httpClient, URI baseUri) {
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
         String value = Objects.requireNonNull(baseUri, "baseUri").toString();
         this.baseUriOverride = URI.create(value.endsWith("/") ? value : value + "/");
+        this.pacer = new TmdbRequestPacer();
     }
 
     @Override
@@ -65,13 +75,25 @@ public final class HttpTmdbClient implements TmdbClient {
 
         String encoded = encode(criteria.query());
         String common = "query=" + encoded + "&include_adult=false&language=" + LANGUAGE;
-        String tvPath = "search/tv?" + common
-                + criteria.year().map(year -> "&first_air_date_year=" + year).orElse("");
-        String moviePath = "search/movie?" + common
-                + criteria.year().map(year -> "&primary_release_year=" + year).orElse("");
-        TmdbSearchResponseDto tv = send(tvPath, credentials, TmdbSearchResponseDto.class);
-        TmdbSearchResponseDto movies = send(moviePath, credentials, TmdbSearchResponseDto.class);
-        return new TmdbSearchResult(mapSearch(tv, TmdbMediaType.SERIES), mapSearch(movies, TmdbMediaType.MOVIE));
+        // A caller that already knows which index it needs only pays for that
+        // one. Over a full library that halves the search traffic, and the
+        // caller is free to ask for the other index when this one comes back
+        // empty.
+        boolean wantsSeries = criteria.mediaType().map(TmdbMediaType.SERIES::equals).orElse(true);
+        boolean wantsMovies = criteria.mediaType().map(TmdbMediaType.MOVIE::equals).orElse(true);
+        List<TmdbCandidate> series = List.of();
+        List<TmdbCandidate> movies = List.of();
+        if (wantsSeries) {
+            String tvPath = "search/tv?" + common
+                    + criteria.year().map(year -> "&first_air_date_year=" + year).orElse("");
+            series = mapSearch(send(tvPath, credentials, TmdbSearchResponseDto.class), TmdbMediaType.SERIES);
+        }
+        if (wantsMovies) {
+            String moviePath = "search/movie?" + common
+                    + criteria.year().map(year -> "&primary_release_year=" + year).orElse("");
+            movies = mapSearch(send(moviePath, credentials, TmdbSearchResponseDto.class), TmdbMediaType.MOVIE);
+        }
+        return new TmdbSearchResult(series, movies);
     }
 
     private TmdbSearchResult searchById(String id, JanusConfiguration credentials) {
@@ -103,10 +125,14 @@ public final class HttpTmdbClient implements TmdbClient {
         Objects.requireNonNull(identity, "identity");
         TmdbEpisodeOrder safeOrder = requestedOrder == null ? TmdbEpisodeOrder.AIRED : requestedOrder;
         String id = encode(identity.id());
-        TmdbSeriesResponseDto series = send(
-                "tv/" + id + "?language=" + LANGUAGE, credentials, TmdbSeriesResponseDto.class);
-        TmdbEpisodeGroupsDto groupIndex = sendIfFound(
-                        "tv/" + id + "/episode_groups", credentials, TmdbEpisodeGroupsDto.class)
+        // The series record and its episode group index travel together:
+        // append_to_response is what stops a show from costing one round trip
+        // per thing we need to know about it.
+        JsonObject payload = sendObject(
+                "tv/" + id + "?language=" + LANGUAGE + "&append_to_response=episode_groups", credentials);
+        TmdbSeriesResponseDto series = gson.fromJson(payload, TmdbSeriesResponseDto.class);
+        TmdbEpisodeGroupsDto groupIndex = appended(payload, "episode_groups", TmdbEpisodeGroupsDto.class)
+                .or(() -> sendIfFound("tv/" + id + "/episode_groups", credentials, TmdbEpisodeGroupsDto.class))
                 .orElseGet(TmdbEpisodeGroupsDto::new);
         EnumSet<TmdbEpisodeOrder> supported = supportedOrders(groupIndex);
         TmdbIdentity resolvedIdentity = new TmdbIdentity(
@@ -230,23 +256,43 @@ public final class HttpTmdbClient implements TmdbClient {
                 aliases);
     }
 
+    /**
+     * Loads every aired season of a show. Seasons are asked for twenty at a
+     * time through {@code append_to_response}, so a long-running series costs
+     * one request instead of one per season. Whatever the gateway does not
+     * append is still fetched the long way, so a change on that side costs
+     * speed and never episodes.
+     */
     private List<TmdbEpisode> loadAiredEpisodes(
             String seriesId,
             List<TmdbSeriesResponseDto.SeasonSummary> seasons,
             JanusConfiguration credentials) {
-        List<TmdbEpisode> episodes = new ArrayList<>();
-        List<TmdbSeriesResponseDto.SeasonSummary> orderedSeasons = seasons == null
+        List<Integer> numbers = seasons == null
                 ? List.of()
                 : seasons.stream()
                         .filter(season -> season != null && season.season_number != null)
-                        .sorted(Comparator.comparingInt(season -> season.season_number))
+                        .map(season -> season.season_number)
+                        .distinct()
+                        .sorted()
                         .toList();
-        for (TmdbSeriesResponseDto.SeasonSummary season : orderedSeasons) {
-            TmdbSeriesResponseDto.SeasonDetails details = send(
-                    "tv/" + seriesId + "/season/" + season.season_number + "?language=" + LANGUAGE,
-                    credentials,
-                    TmdbSeriesResponseDto.SeasonDetails.class);
-            if (details.episodes == null) continue;
+        Map<Integer, TmdbSeriesResponseDto.SeasonDetails> loaded = new LinkedHashMap<>();
+        for (int from = 0; from < numbers.size(); from += MAX_APPENDED_RESOURCES) {
+            List<Integer> batch = numbers.subList(from, Math.min(numbers.size(), from + MAX_APPENDED_RESOURCES));
+            String append = batch.stream().map(number -> "season/" + number).collect(Collectors.joining(","));
+            JsonObject payload = sendObject(
+                    "tv/" + seriesId + "?language=" + LANGUAGE + "&append_to_response=" + append, credentials);
+            for (Integer number : batch) {
+                appended(payload, "season/" + number, TmdbSeriesResponseDto.SeasonDetails.class)
+                        .ifPresent(details -> loaded.put(number, details));
+            }
+        }
+        List<TmdbEpisode> episodes = new ArrayList<>();
+        for (Integer number : numbers) {
+            TmdbSeriesResponseDto.SeasonDetails details = loaded.containsKey(number)
+                    ? loaded.get(number)
+                    : send("tv/" + seriesId + "/season/" + number + "?language=" + LANGUAGE,
+                            credentials, TmdbSeriesResponseDto.SeasonDetails.class);
+            if (details == null || details.episodes == null) continue;
             details.episodes.stream().map(HttpTmdbClient::mapAiredEpisode).flatMap(Optional::stream)
                     .forEach(episodes::add);
         }
@@ -337,6 +383,19 @@ public final class HttpTmdbClient implements TmdbClient {
         return gson.fromJson(response.body(), type);
     }
 
+    /** Reads a payload that carries appended sub-resources under composite keys. */
+    private JsonObject sendObject(String path, JanusConfiguration credentials) {
+        JsonObject payload = send(path, credentials, JsonObject.class);
+        return payload == null ? new JsonObject() : payload;
+    }
+
+    private <T> Optional<T> appended(JsonObject payload, String field, Class<T> type) {
+        if (payload == null) return Optional.empty();
+        JsonElement element = payload.get(field);
+        if (element == null || !element.isJsonObject()) return Optional.empty();
+        return Optional.ofNullable(gson.fromJson(element, type));
+    }
+
     private <T> Optional<T> sendIfFound(String path, JanusConfiguration credentials, Class<T> type) {
         HttpResponse<String> response = sendResponse(path, credentials);
         if (response.statusCode() == 404) return Optional.empty();
@@ -346,14 +405,22 @@ public final class HttpTmdbClient implements TmdbClient {
         return Optional.ofNullable(gson.fromJson(response.body(), type));
     }
 
+    /**
+     * Every call leaves through the pacer, which holds the application-wide
+     * request budget: a library-sized scan and a single manual search share the
+     * same allowance rather than competing for it.
+     */
     private HttpResponse<String> sendResponse(String path, JanusConfiguration credentials) {
-        Instant start = Instant.now();
+        Instant queued = Instant.now();
         try {
-            HttpResponse<String> response = sendOnce(request(path, credentials));
-            publishTrace("GET", path, response, Duration.between(start, Instant.now()).toMillis(), null);
-            return response;
+            return pacer.send(() -> {
+                Instant start = Instant.now();
+                HttpResponse<String> sent = sendOnce(request(path, credentials));
+                publishTrace("GET", path, sent, Duration.between(start, Instant.now()).toMillis(), null);
+                return sent;
+            });
         } catch (TmdbException exception) {
-            publishFailure("GET", path, Duration.between(start, Instant.now()).toMillis(), exception.getMessage());
+            publishFailure("GET", path, Duration.between(queued, Instant.now()).toMillis(), exception.getMessage());
             throw exception;
         }
     }
@@ -383,8 +450,10 @@ public final class HttpTmdbClient implements TmdbClient {
     }
 
     private static TmdbException requestFailed(int statusCode) {
+        // User-facing messages stay free of transport detail; the status code and
+        // gateway wording belong to the diagnostic field, which never reaches the UI.
         if (statusCode == 401) {
-            return TmdbException.recoverable("TMDB_AUTH_FAILED", "TMDB authentication failed.",
+            return TmdbException.recoverable("TMDB_AUTH_FAILED", "TMDB is unavailable right now.",
                     "Janus rejected the Episort caller credentials (HTTP 401).");
         }
         if (statusCode == 429) {
@@ -392,7 +461,7 @@ public final class HttpTmdbClient implements TmdbClient {
                     "Janus returned HTTP 429. Retry-After is managed by the gateway and caller workflow.");
         }
         return TmdbException.recoverable("TMDB_REQUEST_FAILED",
-                "TMDB lookup failed (HTTP " + statusCode + ").",
+                "TMDB did not answer this request.",
                 "Janus/TMDB returned HTTP " + statusCode + ". Response body omitted.");
     }
 

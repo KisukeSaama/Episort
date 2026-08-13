@@ -69,7 +69,7 @@ public final class AboutPane {
 
     public AboutPane(AppLanguage language, Runnable onBack) {
         Button back = new Button(UiText.aboutBack(language));
-        back.getStyleClass().addAll("header-action", "ghost");
+        back.getStyleClass().addAll("header-action", "back-action");
         back.setOnAction(event -> onBack.run());
 
         Label title = new Label(UiText.menuAbout(language));

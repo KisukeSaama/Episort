@@ -35,7 +35,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import javafx.application.Platform;
-import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
@@ -50,7 +49,8 @@ import javafx.stage.Window;
 import javafx.stage.WindowEvent;
 
 public final class AppShell {
-    private static final double STACK_BREAKPOINT = 1200;
+    /** Deliberately null: the first call must apply, not match a default. */
+    private ShellLayout currentLayout;
 
     private final BorderPane root;
     private final Sidebar sidebar;
@@ -194,7 +194,9 @@ public final class AppShell {
 
         applyLanguageInternal(currentViewModel.language());
         refreshShellState();
-        applyResponsiveLayout(1180);
+        // A starting point only: the width listener corrects it during the first
+        // layout pass, before anything is painted.
+        applyResponsiveLayout(ShellLayout.MEDIUM_BREAKPOINT);
         showView(AppView.SCAN);
         installCancelShortcut();
     }
@@ -267,6 +269,22 @@ public final class AppShell {
     }
 
     /**
+     * Puts a full-frame surface in the content area. The overlays are re-added
+     * with it so they keep sitting above whatever is showing.
+     *
+     * <p>The arriving screen plays its entrance only when it is the thing the
+     * user is meant to be looking at: mounting one underneath a loader or a
+     * prerequisite gate would animate straight into the dimmed opacity those
+     * states own.
+     */
+    private void mountScreen(Region screenRoot) {
+        viewHost.getChildren().setAll(screenRoot, prereqOverlay.root(), loadingOverlay.root());
+        if (!loading && !prereqOverlay.isVisible()) {
+            ViewTransition.playEntrance(screenRoot);
+        }
+    }
+
+    /**
      * @param cancellable when true the loader offers an explicit cancel button
      *                    and reacts to the Esc key. Only the analysis pipeline
      *                    is cancellable; startup and settings work is not.
@@ -285,7 +303,9 @@ public final class AppShell {
         if (currentScreenRoot != null) {
             boolean blocked = loading || prereqOverlay.isVisible();
             currentScreenRoot.setMouseTransparent(blocked);
-            currentScreenRoot.setOpacity(loading ? 0.45 : prereqOverlay.isVisible() ? 0.35 : 1.0);
+            ViewTransition.fadeTo(
+                    currentScreenRoot,
+                    loading ? 0.45 : prereqOverlay.isVisible() ? 0.35 : 1.0);
         }
         refreshPrimaryAction();
     }
@@ -335,13 +355,16 @@ public final class AppShell {
 
     private ScrollPane buildSettingsView() {
         Region content = settingsPane == null ? new VBox() : settingsPane.root();
-        StackPane host = new StackPane(content);
-        StackPane.setAlignment(content, Pos.TOP_CENTER);
 
-        ScrollPane scroll = new ScrollPane(host);
+        // Wrapped exactly like History: the screen root sits directly in the
+        // scroll pane and fills it. It used to be centred inside a StackPane,
+        // which is what made the page shift sideways on every navigation.
+        ScrollPane scroll = new ScrollPane(content);
         scroll.getStyleClass().add("content-scroll");
         scroll.setFitToWidth(true);
+        scroll.setFitToHeight(true);
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        SmoothScroll.install(scroll);
         return scroll;
     }
 
@@ -376,7 +399,7 @@ public final class AppShell {
             case SETTINGS -> settingsScroll;
         };
         currentScreenRoot = screenRoot;
-        viewHost.getChildren().setAll(screenRoot, prereqOverlay.root(), loadingOverlay.root());
+        mountScreen(screenRoot);
         refreshPrerequisitesGate();
 
         if (view == AppView.HISTORY) {
@@ -446,7 +469,7 @@ public final class AppShell {
                 this::onPlanReviewClosed,
                 this::onPlanReviewExecutingChanged);
         currentScreenRoot = planReviewPane.root();
-        viewHost.getChildren().setAll(currentScreenRoot, prereqOverlay.root(), loadingOverlay.root());
+        mountScreen(currentScreenRoot);
         // The plan is on screen: the top bar must not offer to build another one,
         // nor to swap the plan for the About screen.
         topBar.setPrimaryActionDisabled(true);
@@ -865,9 +888,19 @@ public final class AppShell {
     }
 
     private void applyResponsiveLayout(double width) {
-        boolean stackedDetail = width < STACK_BREAKPOINT;
-        scanScreen.setStackedLayout(stackedDetail);
-        historyScreen.setStackedLayout(stackedDetail);
+        ShellLayout layout = ShellLayout.forWidth(width);
+        if (layout == currentLayout) {
+            return;
+        }
+        currentLayout = layout;
+        scanScreen.setStackedLayout(layout.stacksDetailPanel());
+        historyScreen.setStackedLayout(layout.stacksDetailPanel());
+        sidebar.setCollapsed(layout.collapsesSidebar());
+        topBar.setCompact(layout.foldsMirrorActionsIntoMenu());
+        // The screens tighten their own padding through CSS rather than through
+        // a second set of Java constants, so the spacing scale stays in §2.3.
+        root.getStyleClass().removeAll(ShellLayout.allStyleClasses());
+        root.getStyleClass().add(layout.styleClass());
     }
 
     private void applyLanguage(AppLanguage language) {
@@ -945,7 +978,7 @@ public final class AppShell {
         }
         aboutPane = new AboutPane(currentViewModel.language(), () -> showView(currentView));
         currentScreenRoot = aboutPane.root();
-        viewHost.getChildren().setAll(currentScreenRoot, prereqOverlay.root(), loadingOverlay.root());
+        mountScreen(currentScreenRoot);
         // Reading what the application is does not require a configured workspace:
         // the missing-workspace gate guards the work, not the documentation.
         prereqOverlay.show(false, List.of(), currentViewModel.language());

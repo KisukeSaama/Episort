@@ -32,11 +32,11 @@ Series Name in English/
 
 ## Stack
 
-- Java 21
-- JavaFX
+- Java 25
+- JavaFX 25
 - Gradle
 - JUnit 5
-- Go 1.26 (single-file release launcher only)
+- Go 1.26 (Windows single-file release launcher only)
 
 ## Commands
 
@@ -44,7 +44,7 @@ Series Name in English/
 ./gradlew run
 ./gradlew test
 ./gradlew build
-./gradlew portableArchive # also requires Go 1.26
+./gradlew portableArchive # Linux also requires dpkg-deb and rpmbuild
 ```
 
 On Windows PowerShell:
@@ -57,20 +57,26 @@ On Windows PowerShell:
 
 ## Portable application
 
-Each portable build is distributed as one executable containing Java 21,
-JavaFX, and the complete application. Users do not install Java and do not keep
-an application folder beside the downloaded file.
+Each portable build includes Java 25, JavaFX, and the complete application. Users
+do not need to install Java separately.
 
 Windows:
 
-1. Download `Episort-0.1.2-windows-x64.exe`.
+1. Download `Episort-0.2.0-windows-x64.exe`.
 2. Double-click the downloaded executable.
 
-Linux:
+Linux Debian/Ubuntu:
 
 ```bash
-chmod +x Episort-0.1.2-linux-x64
-./Episort-0.1.2-linux-x64
+sudo apt install ./episort_0.2.0-1_amd64.deb
+episort
+```
+
+Linux Fedora/RHEL:
+
+```bash
+sudo dnf install ./episort-0.2.0-1.x86_64.rpm
+episort
 ```
 
 On first launch, the embedded runtime is verified and extracted to
@@ -83,16 +89,15 @@ The Linux bundle targets x64 glibc-based desktop distributions and expects the
 usual GTK 3 graphical libraries supplied by mainstream Ubuntu, Debian, Fedora,
 and similar desktop installations.
 
-Build the single-file executable for the current operating system with:
+Build the portable package for the current operating system with:
 
 ```bash
 ./gradlew clean build portableArchive
 ```
 
-The executable and its SHA-256 checksum are written to
-`build/portable/distributions/`. Native launchers must be built on their target
-operating system, so the repository workflow builds the Windows and Linux
-executables independently.
+The Windows executable, or the Linux `.deb` and `.rpm` packages, are written to
+`build/portable/distributions/`. Native packages must be built on Linux, so the
+repository workflow builds Windows and Linux artifacts independently.
 
 ## Configuration
 
@@ -117,4 +122,5 @@ limiting, key rotation, revocation, monitoring, and audit trails.
 - Design system : `docs/design-system.md`
 - TMDB and Janus integration: `docs/tmdb-api-integration.md`
 - Portable packaging: `docs/portable-readme.txt`
+- Release notes: `docs/releases/v0.2.0.md`
 - Release notes: `docs/releases/v0.1.0.md`

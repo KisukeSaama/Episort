@@ -4,6 +4,7 @@ import com.episort.tmdb.TmdbCandidate;
 import com.episort.tmdb.TmdbEpisode;
 import com.episort.tmdb.TmdbEpisodeOrder;
 import com.episort.ui.AppLanguage;
+import com.episort.ui.SmoothScroll;
 import com.episort.ui.UiText;
 import java.nio.file.Path;
 import java.util.List;
@@ -18,7 +19,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.Tooltip;
@@ -35,6 +36,7 @@ public final class RowDetailPanel {
     private final VBox root;
 
     private final VBox emptyState;
+    private final ScrollPane emptyScroll;
     private final Label emptyTitle;
     private final Label emptyHint;
     private final VBox content;
@@ -73,7 +75,9 @@ public final class RowDetailPanel {
     private final Button tmdbSearch = new Button();
     private final Button tmdbApply = new Button();
     private final Button tmdbReset = new Button();
-    private final ProgressIndicator tmdbBusy = new ProgressIndicator();
+    /** The shell has one progress look, {@code .episort-progress}. Modena's
+     * spinning arc was the last control on screen drawn by another toolkit. */
+    private final ProgressBar tmdbBusy = new ProgressBar();
     private final Label tmdbBusyLabel = new Label();
 
     private final Label proposedValue;
@@ -131,6 +135,28 @@ public final class RowDetailPanel {
         emptyState = new VBox(8, emptyIcon, emptyTitle, emptyHint);
         emptyState.getStyleClass().add("detail-panel-empty-state");
         emptyState.setAlignment(Pos.CENTER);
+        // Never squeezed below the three lines it is made of: the layout is free
+        // to hand it less height than that, and a Label given less than it needs
+        // does not scroll, it drops to one ellipsised line.
+        emptyState.setMinHeight(Region.USE_PREF_SIZE);
+
+        // Under the table on a short window, the panel is the first thing the
+        // layout takes height from, and a VBox that runs out of room hands its
+        // child the minimum and lets the rest hang past the bottom edge: the
+        // hint was drawn outside the card, cut down to a single ellipsised line.
+        // The same scroll pane the filled panel uses keeps it inside the card;
+        // it only ever shows a bar on a window too short for three lines of
+        // text, and asks for no height of its own the layout has to find.
+        emptyScroll = new ScrollPane(emptyState);
+        emptyScroll.getStyleClass().addAll("detail-scroll", "detail-empty-scroll");
+        emptyScroll.setFitToWidth(true);
+        // Fills the card, so the state sits in the middle of it rather than
+        // against the top with a padding holding it there.
+        emptyScroll.setFitToHeight(true);
+        emptyScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        emptyScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        SmoothScroll.install(emptyScroll);
+        emptyScroll.setMinHeight(0);
 
         sourceHeading = sectionHeading();
         detectionHeading = sectionHeading();
@@ -263,13 +289,18 @@ public final class RowDetailPanel {
         tmdbSecondaryControls.getStyleClass().add("tmdb-detail-secondary-controls");
         HBox.setHgrow(tmdbSearch, Priority.ALWAYS);
         HBox.setHgrow(tmdbReset, Priority.ALWAYS);
-        tmdbBusy.setMaxSize(18, 18);
+        tmdbBusy.getStyleClass().add("episort-progress");
+        tmdbBusy.setProgress(ProgressBar.INDETERMINATE_PROGRESS);
+        tmdbBusy.setMaxWidth(Double.MAX_VALUE);
         tmdbBusy.setVisible(false);
         tmdbBusy.setManaged(false);
         tmdbBusyLabel.getStyleClass().add("tmdb-match-meta");
+        tmdbBusyLabel.setWrapText(true);
         tmdbBusyLabel.setVisible(false);
         tmdbBusyLabel.setManaged(false);
-        HBox tmdbBusyRow = new HBox(8, tmdbBusy, tmdbBusyLabel);
+        // Named work above the bar that reports it, the same order the loader
+        // overlay uses. A bar with no sentence says only that something runs.
+        VBox tmdbBusyRow = new VBox(6, tmdbBusyLabel, tmdbBusy);
         tmdbBusyRow.setAlignment(Pos.CENTER_LEFT);
         VBox tmdbSequenceControls = new VBox(6,
                 tmdbFirstEpisodeLabel, tmdbFirstEpisode, tmdbApplySequence);
@@ -324,12 +355,13 @@ public final class RowDetailPanel {
         contentScroll.setFitToWidth(true);
         contentScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         contentScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        SmoothScroll.install(contentScroll);
         contentScroll.setVisible(false);
         contentScroll.setManaged(false);
         contentScroll.setMinHeight(0);
         contentScroll.setPrefHeight(0);
 
-        root = new VBox(12, emptyState, contentScroll);
+        root = new VBox(12, emptyScroll, contentScroll);
         root.getStyleClass().add("detail-panel");
         root.setMinWidth(320);
         root.setMinHeight(0);
@@ -337,6 +369,7 @@ public final class RowDetailPanel {
         root.setMaxWidth(420);
         root.setMaxHeight(Double.MAX_VALUE);
         VBox.setVgrow(contentScroll, Priority.ALWAYS);
+        VBox.setVgrow(emptyScroll, Priority.ALWAYS);
 
         applyLanguage(AppLanguage.FRENCH);
     }
@@ -400,6 +433,7 @@ public final class RowDetailPanel {
         refreshTmdbControlAvailability(busy);
         tmdbBusy.setVisible(busy);
         tmdbBusy.setManaged(busy);
+        tmdbBusy.setAccessibleText(message == null ? "" : message);
         tmdbBusyLabel.setText(message == null ? "" : message);
         tmdbBusyLabel.setVisible(busy);
         tmdbBusyLabel.setManaged(busy);
@@ -471,8 +505,8 @@ public final class RowDetailPanel {
         currentRow = row;
         currentGroupMatch = groupMatch;
         tmdbSearchable = isTmdbSearchable(groupMatch);
-        emptyState.setVisible(false);
-        emptyState.setManaged(false);
+        emptyScroll.setVisible(false);
+        emptyScroll.setManaged(false);
         contentScroll.setVisible(true);
         contentScroll.setManaged(true);
 
@@ -573,7 +607,7 @@ public final class RowDetailPanel {
         if (normalized.length() <= 360) {
             return normalized;
         }
-        return normalized.substring(0, 357).stripTrailing() + "...";
+        return normalized.substring(0, 359).stripTrailing() + "…";
     }
 
     private Optional<String> localizedOverview(TmdbCandidate candidate) {
@@ -662,8 +696,8 @@ public final class RowDetailPanel {
         currentRow = null;
         currentGroupMatch = null;
         tmdbSearchable = true;
-        emptyState.setVisible(true);
-        emptyState.setManaged(true);
+        emptyScroll.setVisible(true);
+        emptyScroll.setManaged(true);
         contentScroll.setVisible(false);
         contentScroll.setManaged(false);
     }

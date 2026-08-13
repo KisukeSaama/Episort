@@ -1,6 +1,9 @@
+import org.gradle.api.file.FileSystemOperations
 import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.bundling.Zip
 import org.gradle.jvm.tasks.Jar
+import org.gradle.kotlin.dsl.support.serviceOf
+import org.gradle.process.ExecOperations
 import java.security.MessageDigest
 import java.util.Locale
 
@@ -9,17 +12,24 @@ plugins {
     id("org.openjfx.javafxplugin") version "0.1.0"
 }
 
-version = "0.1.3"
+version = "0.2.0"
+
+// Java 25 and JavaFX 25 are the current long-term-support pair. JavaFX carries
+// the reason for the jump: CSS transitions arrived in 23 and interpolation of
+// backgrounds, borders and insets in 24, which is what lets the interface state
+// changes animate from the stylesheet instead of not at all.
+val javaLanguageVersion = 25
+val javafxVersion = "25.0.4"
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(javaLanguageVersion)
     }
 }
 
 // The About screen shows the version it was built with rather than a constant
 // kept in Java, which drifts from the artifact the moment someone forgets it.
-val generateBuildInfo by tasks.registering {
+val generateBuildInfo = tasks.register("generateBuildInfo") {
     val outputDirectory = layout.buildDirectory.dir("generated/build-info")
     val appVersion = project.version.toString()
     inputs.property("version", appVersion)
@@ -36,7 +46,7 @@ sourceSets.main {
 }
 
 javafx {
-    version = "21.0.5"
+    version = javafxVersion
     modules = listOf("javafx.controls")
 }
 
@@ -44,10 +54,31 @@ application {
     // Use a non-Application launcher so the JavaFX runtime check accepts the
     // classpath layout produced by the Application plugin.
     mainClass = "com.episort.Launcher"
+    // JavaFX and JNA both load native libraries. Since Java 24 that is a
+    // restricted operation which warns now and is refused later, so the grant
+    // is explicit. Everything ships on the classpath here, hence ALL-UNNAMED.
+    applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
+}
+
+// `./gradlew run -Depisort.debug.fps=true` has to reach the application, not the
+// Gradle daemon, or the diagnostics the app exposes are unreachable from the
+// command line. `javafx.` goes through for the same reason: the pulse rate
+// picked by RenderTuning has to be overridable while measuring it.
+tasks.named<JavaExec>("run") {
+    systemProperties(providers.systemPropertiesPrefixedBy("episort.").get())
+    systemProperties(providers.systemPropertiesPrefixedBy("javafx.").get())
+    // Both grants are spelled out because setting jvmArgs here replaces the
+    // list the Application plugin would have carried over from
+    // applicationDefaultJvmArgs. Unlike the packaged application, the JavaFX
+    // plugin runs the app with JavaFX on the module path, where the grant has
+    // to name the module rather than the unnamed one.
+    jvmArgs("--enable-native-access=ALL-UNNAMED", "--enable-native-access=javafx.graphics")
 }
 
 tasks.test {
     useJUnitPlatform()
+    // Same native-access grant as the application: tests touch JNA too.
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
     // Deletions go straight through instead of to the recycle bin: a test run
     // must not depend on a desktop session, nor fill the developer's bin with
     // temporary fixtures.
@@ -90,6 +121,8 @@ val portableDistributions = portableRoot.map { it.dir("distributions") }
 val portablePayloads = portableRoot.map { it.dir("payloads") }
 val portableWindowsArchive = portablePayloads.map { it.file("$portableBaseName.zip") }
 val portableLinuxArchive = portablePayloads.map { it.file("$portableBaseName.tar.gz") }
+val portableLinuxPackages = portableRoot.map { it.dir("distributions") }
+val portableLinuxPackageWork = portableRoot.map { it.dir("package-work") }
 val singleFilePortable = portableDistributions.map {
     it.file("$portableBaseName${if (portableOs == "windows") ".exe" else ""}")
 }
@@ -103,10 +136,31 @@ val portableLauncherWork = portableRoot.map { it.dir("launcher-work") }
 val portableSmokeData = portableRoot.map { it.dir("smoke-data") }
 val goExecutable = providers.gradleProperty("goExecutable").orElse("go")
 val packagingLauncher = javaToolchains.launcherFor {
-    languageVersion = JavaLanguageVersion.of(21)
+    languageVersion = JavaLanguageVersion.of(javaLanguageVersion)
 }
 
-val portableApp by tasks.registering(Exec::class) {
+// Running another process or touching files from inside a task action goes
+// through these services since Gradle 9; `project.exec`, `project.copy` and
+// `project.delete` are no longer reachable at execution time.
+val execOperations = serviceOf<ExecOperations>()
+val fileOperations = serviceOf<FileSystemOperations>()
+
+// Everything the packaging tasks need to know about the project is read here,
+// while the build is being configured. Reaching for `project` from inside a task
+// action is deprecated in Gradle 9 and fails in Gradle 10.
+val applicationVersion = project.version.toString()
+val applicationMainClass = application.mainClass
+val applicationJarName = tasks.named<Jar>("jar").flatMap { it.archiveFileName }
+val applicationLibDirectory = layout.buildDirectory.dir("install/${project.name}/lib")
+val portableIcon = layout.projectDirectory.file(
+    if (portableOs == "windows") {
+        "src/main/resources/assets/episort-logo.ico"
+    } else {
+        "src/main/resources/assets/episort-logo.png"
+    }
+)
+
+val portableApp = tasks.register<Exec>("portableApp") {
     group = "distribution"
     description = "Builds a self-contained native app image for the current Windows or Linux host."
     dependsOn(tasks.installDist)
@@ -119,44 +173,35 @@ val portableApp by tasks.registering(Exec::class) {
         }
 
         val imageRoot = portableImageRoot.get().asFile
-        delete(imageRoot)
+        fileOperations.delete { delete(imageRoot) }
         imageRoot.mkdirs()
 
         val jpackageExecutable = packagingLauncher.get().metadata.installationPath
             .file("bin/${if (portableOs == "windows") "jpackage.exe" else "jpackage"}")
             .asFile
         if (!jpackageExecutable.isFile) {
-            throw GradleException("jpackage was not found in the Java 21 toolchain: $jpackageExecutable")
+            throw GradleException("jpackage was not found in the Java 25 toolchain: $jpackageExecutable")
         }
-
-        val applicationJar = tasks.named<Jar>("jar").get().archiveFileName.get()
-        val applicationLib = layout.buildDirectory.dir("install/${project.name}/lib").get().asFile
-        val icon = layout.projectDirectory.file(
-            if (portableOs == "windows") {
-                "src/main/resources/assets/episort-logo.ico"
-            } else {
-                "src/main/resources/assets/episort-logo.png"
-            }
-        ).asFile
 
         commandLine(
             jpackageExecutable.absolutePath,
             "--type", "app-image",
             "--name", "Episort",
-            "--app-version", project.version.toString(),
+            "--app-version", applicationVersion,
             "--vendor", "Episort",
             "--description", "Safely organize TV series and movies with a reviewed file-operation plan.",
-            "--input", applicationLib.absolutePath,
-            "--main-jar", applicationJar,
-            "--main-class", application.mainClass.get(),
-            "--icon", icon.absolutePath,
+            "--input", applicationLibDirectory.get().asFile.absolutePath,
+            "--main-jar", applicationJarName.get(),
+            "--main-class", applicationMainClass.get(),
+            "--icon", portableIcon.asFile.absolutePath,
             "--java-options", "-Dfile.encoding=UTF-8",
+            "--java-options", "--enable-native-access=ALL-UNNAMED",
             "--dest", imageRoot.absolutePath
         )
     }
 
     doLast {
-        copy {
+        fileOperations.copy {
             from(portableReadme)
             into(portableImage)
             rename { "README.txt" }
@@ -164,7 +209,81 @@ val portableApp by tasks.registering(Exec::class) {
     }
 }
 
-val verifyPortableApp by tasks.registering {
+fun registerLinuxPackage(packageType: String) = tasks.register<Exec>("portable${packageType.replaceFirstChar { it.uppercase() }}") {
+    group = "distribution"
+    description = "Builds the native Linux .$packageType package."
+    dependsOn(tasks.installDist)
+    onlyIf { portableOs == "linux" }
+    inputs.dir(applicationLibDirectory)
+    outputs.dir(portableLinuxPackageWork.map { it.dir(packageType) })
+
+    doFirst {
+        val packageDirectory = portableLinuxPackageWork.get().asFile.resolve(packageType)
+        fileOperations.delete { delete(packageDirectory) }
+        packageDirectory.mkdirs()
+
+        val jpackageExecutable = packagingLauncher.get().metadata.installationPath
+            .file("bin/jpackage")
+            .asFile
+        if (!jpackageExecutable.isFile) {
+            throw GradleException("jpackage was not found in the Java 25 toolchain: $jpackageExecutable")
+        }
+
+        val packageOptions = when (packageType) {
+            "deb" -> listOf("--linux-deb-maintainer", "maintainer@episort.app")
+            "rpm" -> listOf("--linux-rpm-license-type", "GPL-3.0-or-later")
+            else -> error("Unsupported Linux package type: $packageType")
+        }
+        commandLine(
+            jpackageExecutable.absolutePath,
+            "--type", packageType,
+            "--name", "Episort",
+            "--app-version", applicationVersion,
+            "--vendor", "Episort",
+            "--description", "Safely organize TV series and movies with a reviewed file-operation plan.",
+            "--input", applicationLibDirectory.get().asFile.absolutePath,
+            "--main-jar", applicationJarName.get(),
+            "--main-class", applicationMainClass.get(),
+            "--icon", portableIcon.asFile.absolutePath,
+            "--java-options", "-Dfile.encoding=UTF-8",
+            "--java-options", "--enable-native-access=ALL-UNNAMED",
+            "--linux-package-name", "episort",
+            "--linux-app-release", "1",
+            "--linux-menu-group", "Utility",
+            "--linux-shortcut",
+            *packageOptions.toTypedArray(),
+            "--dest", packageDirectory.absolutePath
+        )
+    }
+}
+
+val portableDeb = registerLinuxPackage("deb")
+val portableRpm = registerLinuxPackage("rpm")
+
+tasks.register("linuxPackages") {
+    group = "distribution"
+    description = "Builds the native Linux .deb and .rpm packages."
+    dependsOn(portableDeb, portableRpm)
+    onlyIf { portableOs == "linux" }
+
+    doLast {
+        val packageDirectory = portableLinuxPackages.get().asFile
+        fileOperations.delete { delete(packageDirectory) }
+        packageDirectory.mkdirs()
+        fileOperations.copy {
+            from(portableLinuxPackageWork.map { it.dir("deb") })
+            into(packageDirectory)
+            include("*.deb")
+        }
+        fileOperations.copy {
+            from(portableLinuxPackageWork.map { it.dir("rpm") })
+            into(packageDirectory)
+            include("*.rpm")
+        }
+    }
+}
+
+val verifyPortableApp = tasks.register("verifyPortableApp") {
     group = "verification"
     description = "Verifies the native launcher and bundled Java runtime in the portable app image."
     dependsOn(portableApp)
@@ -194,7 +313,7 @@ val verifyPortableApp by tasks.registering {
     }
 }
 
-val portableZip by tasks.registering(Zip::class) {
+val portableZip = tasks.register<Zip>("portableZip") {
     group = "distribution"
     description = "Archives the Windows portable app image."
     dependsOn(verifyPortableApp)
@@ -206,7 +325,7 @@ val portableZip by tasks.registering(Zip::class) {
     }
 }
 
-val portableTar by tasks.registering(Exec::class) {
+val portableTar = tasks.register<Exec>("portableTar") {
     group = "distribution"
     description = "Archives the Linux portable app image while preserving executable permissions."
     dependsOn(verifyPortableApp)
@@ -216,7 +335,7 @@ val portableTar by tasks.registering(Exec::class) {
     doFirst {
         val archive = portableLinuxArchive.get().asFile
         archive.parentFile.mkdirs()
-        delete(archive)
+        fileOperations.delete { delete(archive) }
         commandLine(
             "tar",
             "-C", portableImageRoot.get().asFile.absolutePath,
@@ -228,7 +347,7 @@ val portableTar by tasks.registering(Exec::class) {
 
 val portablePackagingTask = if (portableOs == "windows") portableZip else portableTar
 val portableArchiveFile = if (portableOs == "windows") portableWindowsArchive else portableLinuxArchive
-val testPortableLauncher by tasks.registering(Exec::class) {
+val testPortableLauncher = tasks.register<Exec>("testPortableLauncher") {
     group = "verification"
     description = "Runs the native single-file launcher tests."
     inputs.files(portableLauncherSources)
@@ -236,7 +355,7 @@ val testPortableLauncher by tasks.registering(Exec::class) {
     commandLine(goExecutable.get(), "test", ".")
 }
 
-val buildSingleFilePortable by tasks.registering(Exec::class) {
+val buildSingleFilePortable = tasks.register<Exec>("buildSingleFilePortable") {
     group = "distribution"
     description = "Embeds the complete application image in one native executable."
     dependsOn(portablePackagingTask, testPortableLauncher)
@@ -254,16 +373,16 @@ val buildSingleFilePortable by tasks.registering(Exec::class) {
         val archive = portableArchiveFile.get().asFile
         val workDirectory = portableLauncherWork.get().asFile
         val output = singleFilePortable.get().asFile
-        delete(workDirectory)
+        fileOperations.delete { delete(workDirectory) }
         workDirectory.mkdirs()
         output.parentFile.mkdirs()
-        delete(output)
-        copy {
+        fileOperations.delete { delete(output) }
+        fileOperations.copy {
             from(portableLauncherSource)
             include("*.go", "go.mod", "payload.bin")
             into(workDirectory)
         }
-        copy {
+        fileOperations.copy {
             from(archive)
             into(workDirectory)
             rename { "payload.bin" }
@@ -272,7 +391,7 @@ val buildSingleFilePortable by tasks.registering(Exec::class) {
             // jpackage embeds the icon in the launcher inside the payload. The
             // outer, single-file Go launcher is a separate executable and needs
             // its own Windows resources or Explorer displays the generic icon.
-            project.exec {
+            execOperations.exec {
                 workingDir(workDirectory)
                 commandLine(
                     goExecutable.get(),
@@ -282,8 +401,8 @@ val buildSingleFilePortable by tasks.registering(Exec::class) {
                     "--out", "episort-resource",
                     "--manifest", "gui",
                     "--icon", portableWindowsIcon.asFile.absolutePath,
-                    "--file-version", project.version.toString(),
-                    "--product-version", project.version.toString(),
+                    "--file-version", applicationVersion,
+                    "--product-version", applicationVersion,
                     "--file-description", "Episort portable launcher",
                     "--product-name", "Episort",
                     "--original-filename", output.name
@@ -307,7 +426,7 @@ val buildSingleFilePortable by tasks.registering(Exec::class) {
             add("-w")
             if (portableOs == "windows") add("-H=windowsgui")
             add("-X")
-            add("main.version=${project.version}")
+            add("main.version=$applicationVersion")
             add("-X")
             add("main.payloadFormat=${if (portableOs == "windows") "zip" else "tar.gz"}")
             add("-X")
@@ -326,7 +445,7 @@ val buildSingleFilePortable by tasks.registering(Exec::class) {
     }
 }
 
-val verifySingleFilePortable by tasks.registering(Exec::class) {
+val verifySingleFilePortable = tasks.register<Exec>("verifySingleFilePortable") {
     group = "verification"
     description = "Verifies that the one-file launcher safely extracts into user application data."
     dependsOn(buildSingleFilePortable)
@@ -348,7 +467,7 @@ val verifySingleFilePortable by tasks.registering(Exec::class) {
         if (!signatureIsValid) {
             throw GradleException("Single-file portable executable has an invalid native signature")
         }
-        delete(smokeData)
+        fileOperations.delete { delete(smokeData) }
         smokeData.mkdirs()
         if (portableOs == "windows") {
             environment("LOCALAPPDATA", smokeData.absolutePath)
@@ -369,7 +488,7 @@ val verifySingleFilePortable by tasks.registering(Exec::class) {
     }
 }
 
-val singleFileChecksum by tasks.registering {
+val singleFileChecksum = tasks.register("singleFileChecksum") {
     group = "distribution"
     description = "Writes the SHA-256 checksum for the single-file portable executable."
     dependsOn(verifySingleFilePortable)
@@ -397,6 +516,6 @@ val singleFileChecksum by tasks.registering {
 
 tasks.register("portableArchive") {
     group = "distribution"
-    description = "Builds the one-file portable executable for the current Windows or Linux host."
-    dependsOn(singleFileChecksum)
+    description = "Builds the Windows portable executable or native Linux packages for the current host."
+    dependsOn(if (portableOs == "linux") tasks.named("linuxPackages") else singleFileChecksum)
 }

@@ -2,7 +2,7 @@
 
 Episort is a JavaFX desktop app that sorts TV series episodes (`.avi`, `.mp4`, `.mkv`) using TMDB references — aired, DVD, and absolute orders — from a user-selected working directory that may mix several series.
 
-Stack: Java 21, JavaFX, Gradle, JUnit 5, plus Go 1.26 only for the native single-file launcher under `tools/portable-launcher/`. Layout: `src/main/`, `src/test/`, `docs/`, `assets/`. Keep TMDB access, episode matching, filesystem ops, and UI in separate packages.
+Stack: Java 25, JavaFX 25, Gradle, JUnit 5, plus Go 1.26 only for the native single-file launcher under `tools/portable-launcher/`. Layout: `src/main/`, `src/test/`, `docs/`, `assets/`. Keep TMDB access, episode matching, filesystem ops, and UI in separate packages.
 
 ## Commands
 

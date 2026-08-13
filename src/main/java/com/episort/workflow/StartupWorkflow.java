@@ -88,7 +88,7 @@ public final class StartupWorkflow {
         return ApplicationError.recoverable(
                 "TMDB_CONFIGURATION_REQUIRED",
                 ErrorSeverity.BLOCKING,
-                "TMDB through Janus is unavailable.",
+                "TMDB is unavailable.",
                 "No Janus TMDB gateway is configured.");
     }
 }

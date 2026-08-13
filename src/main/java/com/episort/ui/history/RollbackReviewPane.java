@@ -72,7 +72,7 @@ final class RollbackReviewPane {
         this.onExecutingChanged = onExecutingChanged;
 
         title.getStyleClass().add("tmdb-dialog-title");
-        backButton.getStyleClass().addAll("header-action", "ghost");
+        backButton.getStyleClass().addAll("header-action", "back-action");
         backButton.setOnAction(event -> close());
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
@@ -112,9 +112,7 @@ final class RollbackReviewPane {
 
         Label bannerText = new Label(UiText.rollbackReady(language));
         bannerText.getStyleClass().add("banner-text");
-        Label bannerIcon = new Label("•");
-        bannerIcon.getStyleClass().add("banner-icon");
-        HBox banner = new HBox(8, bannerIcon, bannerText);
+        HBox banner = new HBox(8, bannerText);
         banner.getStyleClass().addAll("banner", "banner-info");
 
         TableView<RollbackMove> table = buildTable();
@@ -141,6 +139,9 @@ final class RollbackReviewPane {
     private TableView<RollbackMove> buildTable() {
         TableView<RollbackMove> table = new TableView<>(FXCollections.observableArrayList(moves));
         table.getStyleClass().addAll("preview-table", "plan-table");
+        // Without this the empty manifest falls back to JavaFX's own English
+        // "No content in table" in the middle of a French screen.
+        table.setPlaceholder(new Label(UiText.rollbackEmpty(language)));
         RoundedClip.install(table, 14);
 
         TableColumn<RollbackMove, String> source =
