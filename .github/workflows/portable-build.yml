@@ -34,7 +34,7 @@ jobs:
             executable: build/portable/distributions/Episort-*-windows-x64.exe
           - name: Linux x64
             os: ubuntu-22.04
-            command: sudo apt-get update && sudo apt-get install --yes rpm && ./gradlew clean build linuxPackages --no-daemon
+            command: sudo apt-get update && sudo apt-get install --yes rpm xvfb && xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" ./gradlew clean build linuxPackages --no-daemon
             artifact: episort-linux-x64
 
     steps:

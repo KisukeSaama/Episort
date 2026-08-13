@@ -78,10 +78,8 @@ tasks.named<JavaExec>("run") {
 
 tasks.test {
     useJUnitPlatform()
-    // CI runners are headless. JavaFX tests skip when no toolkit is available;
-    // this property keeps a misbehaving toolkit or leaked test thread from
-    // holding a release job indefinitely.
-    systemProperty("java.awt.headless", "true")
+    // UI tests run under Xvfb in CI. The timeout keeps a misbehaving toolkit
+    // or leaked test thread from holding a release job indefinitely.
     timeout.set(Duration.ofMinutes(2))
     // Same native-access grant as the application: tests touch JNA too.
     jvmArgs("--enable-native-access=ALL-UNNAMED")
