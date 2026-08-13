@@ -27,14 +27,11 @@
 
 .view-host,
 .content-scroll,
-.content-scroll > .viewport,
-.settings-scroll,
-.settings-scroll > .viewport {
+.content-scroll > .viewport {
     -fx-background-color: transparent;
 }
 
 .label,
-.page-heading,
 .section-heading,
 .card-title,
 .card-value-mono,
@@ -73,7 +70,6 @@
 
 .sidebar-section-label,
 .sidebar-section-heading,
-.page-title,
 .identity-meta,
 .identity-id,
 .exec-label,
@@ -84,6 +80,13 @@
 .detail-panel-label,
 .detail-panel-empty,
 .workspace-chip-prefix,
+/* The whole readout is supporting text here as it is in the dark theme: caption,
+   figure, the word beside it and both measurements. Left to the blanket `.label`
+   rule they came out at full strength, so an ambient block read as loudly as the
+   work in the content area. */
+.storage-heading,
+.storage-percentage,
+.storage-percentage-suffix,
 .storage-capacity,
 .storage-available {
     -fx-text-fill: #6b625b;
@@ -130,7 +133,6 @@
 
 .card,
 .settings-section,
-.widget,
 .banner,
 .identity-card,
 .exec-readout,
@@ -176,7 +178,6 @@
 }
 
 .episort-search-box,
-.top-search,
 .text-field,
 .text-area,
 .combo-box,
@@ -193,8 +194,7 @@
     -fx-background-color: #faf8f5;
 }
 
-.episort-search-field,
-.top-search .text-field {
+.episort-search-field {
     -fx-background-color: transparent;
     -fx-text-fill: #211d1a;
     -fx-prompt-text-fill: #6b625b;
@@ -202,7 +202,6 @@
 }
 
 .episort-search-box:hover,
-.top-search:hover,
 .tmdb-search-box:hover {
     -fx-background-color: #faf8f5;
     -fx-border-color: #fb923c;
@@ -230,6 +229,60 @@
     -fx-border-color: #d8d0c7;
     -fx-text-fill: #71675f;
     -fx-opacity: 0.72;
+}
+
+/* Keyboard focus: the two-stroke ring of app.css §10b, in this theme's ink.
+   It is restated here rather than inherited because the :hover rules above are
+   the same specificity and come from the later stylesheet — without this, a
+   focused control that is also hovered would lose its outer stroke. */
+.button:focus-visible,
+.menu-button:focus-visible,
+.icon-button:focus-visible,
+.nav-item:focus-visible {
+    -fx-border-color: #c4520d, rgba(196,82,13,0.38);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -3;
+    -fx-border-radius: 8, 11;
+}
+
+.filter-chip:focus-visible {
+    -fx-border-color: #c4520d, rgba(196,82,13,0.38);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -3;
+    -fx-border-radius: 999, 999;
+}
+
+/* Solid-orange actions cannot show an orange ring against their own fill, so
+   here the ring goes dark rather than pale: on a cream ground the contrast has
+   to come from ink, not from light. */
+.button.primary:focus-visible,
+.menu-button.primary:focus-visible,
+.button.validate-action:focus-visible {
+    -fx-border-color: #4a2408, rgba(74,36,8,0.38);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -3;
+    -fx-border-radius: 8, 11;
+}
+
+.text-field:focused,
+.password-field:focused,
+.combo-box:focused,
+.pattern-editor:focused,
+.episort-search-box:focus-within,
+.episort-search-box:focus-within:hover,
+.tmdb-search-box:focus-within,
+.tmdb-search-box:focus-within:hover {
+    -fx-border-color: #c4520d, rgba(196,82,13,0.38);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -3;
+    -fx-border-radius: 8, 11;
+}
+
+.theme-light .row-checkbox:focus-visible .box {
+    -fx-border-color: #c4520d, rgba(196,82,13,0.38);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -2;
+    -fx-border-radius: 4, 6;
 }
 
 .button.primary,
@@ -260,6 +313,14 @@
 .filter-chip:hover {
     -fx-background-color: #fff7ed;
     -fx-border-color: #fb923c;
+    -fx-text-fill: #7c3108;
+}
+
+/* After :hover, which it always implies — the later rule is the one that wins
+   at equal specificity, so a pressed chip would otherwise wear the hover fill. */
+.filter-chip:pressed {
+    -fx-background-color: #f9ddc6;
+    -fx-border-color: #f97316;
     -fx-text-fill: #7c3108;
 }
 
@@ -342,6 +403,13 @@
     -fx-background-color: #d8d0c7;
 }
 
+/* The rule that separates the readout from the navigation. The dark theme draws
+   it in translucent white, which on a light rail is nothing at all, so the
+   bottom of the sidebar had no separator between the two groups. */
+.storage-usage {
+    -fx-border-color: #d8d0c7 transparent transparent transparent;
+}
+
 .app-loader-overlay,
 .prereq-overlay {
     -fx-background-color: rgba(238,234,228,0.82);
@@ -377,6 +445,15 @@
     -fx-border-color: #c9bfb4;
     -fx-background-radius: 10;
     -fx-border-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(55,43,34,0.24), 8, 0.08, 0, 3);
+}
+
+/* Popup scenes never carry the shell's .theme-light class, so these selectors
+   stay unscoped and set ink and surface together (§4.8). */
+.tooltip {
+    -fx-background-color: #faf8f5;
+    -fx-border-color: #c9bfb4;
+    -fx-text-fill: #332d28;
     -fx-effect: dropshadow(gaussian, rgba(55,43,34,0.24), 8, 0.08, 0, 3);
 }
 
@@ -575,6 +652,25 @@
     -fx-border-color: #f97316;
 }
 
+/* Same restraint as the dark theme: no edge until the pointer is on it, and a
+   neutral wash rather than the accent. */
+.theme-light .button.back-action {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: #5d554e;
+}
+
+.theme-light .button.back-action:hover {
+    -fx-background-color: rgba(55,43,34,0.07);
+    -fx-border-color: transparent;
+    -fx-text-fill: #211d1a;
+}
+
+.theme-light .button.back-action:pressed {
+    -fx-background-color: rgba(55,43,34,0.12);
+    -fx-border-color: transparent;
+}
+
 .theme-light .button.ghost:disabled {
     -fx-background-color: transparent;
     -fx-border-color: #d8d0c7;
@@ -638,7 +734,6 @@
     -fx-text-fill: #2f6f44;
 }
 
-.theme-light .row-status.preview,
 .theme-light .row-status.warning {
     -fx-text-fill: #8f3908;
 }

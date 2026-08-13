@@ -36,12 +36,12 @@ public final class HttpTmdbConnectionTester implements TmdbConnectionTester {
                     && successfulValidationResponse(response.body())) {
                 return TmdbConnectionTestResult.passed();
             }
-            return TmdbConnectionTestResult.failure(failure("TMDB through Janus is unavailable."));
+            return TmdbConnectionTestResult.failure(failure("TMDB is unavailable."));
         } catch (IOException exception) {
-            return TmdbConnectionTestResult.failure(failure("Janus is unavailable. Check your network."));
+            return TmdbConnectionTestResult.failure(failure("TMDB could not be reached. Check your network."));
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            return TmdbConnectionTestResult.failure(failure("The Janus connection test was interrupted."));
+            return TmdbConnectionTestResult.failure(failure("The TMDB connection test was interrupted."));
         }
     }
 

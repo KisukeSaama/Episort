@@ -33,6 +33,7 @@ import com.episort.tmdb.TmdbSeriesDetails;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.RoundedClip;
 import com.episort.ui.UiText;
+import com.episort.ui.ViewTransition;
 import com.episort.ui.WorkflowPhase;
 import com.episort.ui.WorkflowStepper;
 import com.episort.workflow.ReviewSession;
@@ -155,17 +156,27 @@ public final class ScanScreen {
         configureResolveManualMatchesButton();
         detailStack = new VBox(10, resolveManualMatchesButton, detailRoot);
         detailStack.getStyleClass().add("scan-detail-stack");
-        VBox tableStack = new VBox(12, filterBar.root(), table);
         VBox.setVgrow(table, Priority.ALWAYS);
-        HBox initialBody = new HBox(16, tableStack, detailStack);
-        HBox.setHgrow(tableStack, Priority.ALWAYS);
+        HBox initialBody = new HBox(16, table, detailStack);
         HBox.setHgrow(table, Priority.ALWAYS);
         HBox.setHgrow(detailStack, Priority.NEVER);
         VBox.setVgrow(detailRoot, Priority.ALWAYS);
         VBox.setVgrow(detailStack, Priority.ALWAYS);
         currentBody = initialBody;
 
-        root = new VBox(14, heading, workflow, metricCards.root(), currentBody);
+        // The search box rides the heading line, which had the whole width to
+        // itself, rather than the chip row, which was short of it. Together with
+        // the filter bar moving out of the table column, that is the ~350 px the
+        // eleven chips were missing to hold on a single row.
+        Region headingSpacer = new Region();
+        HBox.setHgrow(headingSpacer, Priority.ALWAYS);
+        HBox headingRow = new HBox(12, heading, headingSpacer, filterBar.searchRoot());
+        headingRow.getStyleClass().add("screen-heading-row");
+
+        // The filter bar sits above the body, not inside the table column, so it
+        // measures against the whole screen instead of the width left over by the
+        // detail panel. Same placement as the history filter row (§4.13).
+        root = new VBox(14, headingRow, workflow, metricCards.root(), filterBar.root(), currentBody);
         root.getStyleClass().add("screen-root");
         VBox.setVgrow(currentBody, Priority.ALWAYS);
         root.addEventFilter(MouseEvent.MOUSE_PRESSED,
@@ -603,22 +614,20 @@ public final class ScanScreen {
             vbox.getChildren().clear();
         }
 
-        VBox tableStack = new VBox(12, filterBar.root(), table);
         VBox.setVgrow(table, Priority.ALWAYS);
         Pane next;
         if (stacked) {
             detailRoot.setMaxWidth(Double.MAX_VALUE);
             detailStack.setMaxWidth(Double.MAX_VALUE);
-            VBox stack = new VBox(16, tableStack, detailStack);
-            VBox.setVgrow(tableStack, Priority.ALWAYS);
+            VBox stack = new VBox(16, table, detailStack);
             next = stack;
         } else {
             detailRoot.setMaxWidth(420);
             detailRoot.setPrefWidth(380);
             detailStack.setMaxWidth(420);
             detailStack.setPrefWidth(380);
-            HBox row = new HBox(16, tableStack, detailStack);
-            HBox.setHgrow(tableStack, Priority.ALWAYS);
+            HBox row = new HBox(16, table, detailStack);
+            HBox.setHgrow(table, Priority.ALWAYS);
             HBox.setHgrow(detailStack, Priority.NEVER);
             next = row;
         }
@@ -774,8 +783,11 @@ public final class ScanScreen {
     }
 
     /** The filter bar changed: re-filter, and keep the header checkbox honest. */
-    private void onFilterChanged() {
+    private void onFilterChanged(ScanFilterBar.Change change) {
         updateFilterPredicate();
+        if (change == ScanFilterBar.Change.CHIPS) {
+            ViewTransition.playContentSwap(table.lookup(".virtual-flow"));
+        }
     }
 
     private void applyMediaTypeToSelection(ScanRow anchor, ScanMediaType mediaType) {
@@ -874,7 +886,7 @@ public final class ScanScreen {
         }
         Optional<JanusConfiguration> credentials = tmdbCredentialsSupplier.get();
         if (credentials.isEmpty()) {
-            row.setNoteText(Optional.of(UiText.scanNoteJanusConfigurationMissing(currentLanguage)));
+            row.setNoteText(Optional.of(UiText.scanNoteTmdbUnavailable(currentLanguage)));
             table.refresh();
             showDetail(row);
             return;
@@ -966,7 +978,7 @@ public final class ScanScreen {
         }
         Optional<JanusConfiguration> credentials = tmdbCredentialsSupplier.get();
         if (credentials.isEmpty()) {
-            anchor.setNoteText(Optional.of(UiText.scanNoteJanusConfigurationMissing(currentLanguage)));
+            anchor.setNoteText(Optional.of(UiText.scanNoteTmdbUnavailable(currentLanguage)));
             table.refresh();
             showDetail(anchor);
             return;
@@ -1004,7 +1016,7 @@ public final class ScanScreen {
         Optional<JanusConfiguration> credentials = tmdbCredentialsSupplier.get();
         if (credentials.isEmpty()) {
             detailPanel.setTmdbCandidateOptions(List.of());
-            row.setNoteText(Optional.of(UiText.scanNoteJanusConfigurationMissing(currentLanguage)));
+            row.setNoteText(Optional.of(UiText.scanNoteTmdbUnavailable(currentLanguage)));
             table.refresh();
             return;
         }

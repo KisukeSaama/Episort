@@ -93,20 +93,20 @@ class HttpTmdbClientTest {
     }
 
     @Test
-    void loadsAllAiredSeasonsAndDetectsAlternativeOrders() throws Exception {
+    void loadsEveryAiredSeasonAndTheOrderIndexInTwoRequests() throws Exception {
         FakeTmdbServer server = FakeTmdbServer.start();
         server.enqueue("/tv/101", 200, """
                 {"id":101,"name":"Show","seasons":[
-                  {"season_number":0,"episode_count":1},{"season_number":1,"episode_count":2}]}
+                  {"season_number":0,"episode_count":1},{"season_number":1,"episode_count":2}],
+                 "episode_groups":{"results":[{"id":"absolute","type":2},{"id":"dvd","type":3}]}}
                 """);
-        server.enqueue("/tv/101/episode_groups", 200,
-                "{\"results\":[{\"id\":\"absolute\",\"type\":2},{\"id\":\"dvd\",\"type\":3}]}");
-        server.enqueue("/tv/101/season/0", 200,
-                "{\"season_number\":0,\"episodes\":[{\"id\":9,\"season_number\":0,\"episode_number\":1,\"name\":\"Special\"}]}");
-        server.enqueue("/tv/101/season/1", 200, """
-                {"season_number":1,"episodes":[
-                  {"id":11,"season_number":1,"episode_number":1,"name":"Pilot"},
-                  {"id":12,"season_number":1,"episode_number":2,"name":"Second"}]}
+        server.enqueue("/tv/101", 200, """
+                {"id":101,"name":"Show",
+                 "season/0":{"season_number":0,"episodes":[
+                   {"id":9,"season_number":0,"episode_number":1,"name":"Special"}]},
+                 "season/1":{"season_number":1,"episodes":[
+                   {"id":11,"season_number":1,"episode_number":1,"name":"Pilot"},
+                   {"id":12,"season_number":1,"episode_number":2,"name":"Second"}]}}
                 """);
         try {
             HttpTmdbClient client = new HttpTmdbClient(HttpClient.newHttpClient(), server.baseUri());
@@ -119,6 +119,52 @@ class HttpTmdbClientTest {
             assertTrue(details.airedEpisodes().getFirst().special());
             assertTrue(details.supportedOrders().containsAll(
                     List.of(TmdbEpisodeOrder.AIRED, TmdbEpisodeOrder.DVD, TmdbEpisodeOrder.ABSOLUTE)));
+            assertEquals(List.of("/tv/101", "/tv/101"), server.paths);
+            assertTrue(server.rawQueries.get(0).contains("append_to_response=episode_groups"));
+            assertTrue(server.rawQueries.get(1).contains("append_to_response=season/0,season/1"));
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void fetchesSeasonsOneByOneWhenTheGatewayDropsTheAppendedOnes() throws Exception {
+        FakeTmdbServer server = FakeTmdbServer.start();
+        server.enqueue("/tv/101", 200,
+                "{\"id\":101,\"name\":\"Show\",\"seasons\":[{\"season_number\":1,\"episode_count\":1}]}");
+        server.enqueue("/tv/101/episode_groups", 200, "{\"results\":[]}");
+        server.enqueue("/tv/101", 200, "{\"id\":101,\"name\":\"Show\"}");
+        server.enqueue("/tv/101/season/1", 200,
+                "{\"season_number\":1,\"episodes\":[{\"id\":11,\"season_number\":1,\"episode_number\":1,\"name\":\"Pilot\"}]}");
+        try {
+            HttpTmdbClient client = new HttpTmdbClient(HttpClient.newHttpClient(), server.baseUri());
+
+            TmdbSeriesDetails details = client.seriesDetails(
+                    new TmdbIdentity("101", TmdbMediaType.SERIES, "Local"), tokenCredentials());
+
+            assertEquals(1, details.airedEpisodes().size());
+            assertEquals("Pilot", details.airedEpisodes().getFirst().title());
+            assertTrue(server.paths.contains("/tv/101/season/1"));
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void searchesOnlyTheRequestedIndex() throws Exception {
+        FakeTmdbServer server = FakeTmdbServer.start();
+        server.enqueue("/search/tv", 200, """
+                {"results":[{"id":101,"name":"The Office","first_air_date":"2005-03-24"}]}
+                """);
+        try {
+            HttpTmdbClient client = new HttpTmdbClient(HttpClient.newHttpClient(), server.baseUri());
+
+            TmdbSearchResult result = client.search(
+                    TmdbSearchCriteria.title("The Office", TmdbMediaType.SERIES), tokenCredentials());
+
+            assertEquals(1, result.seriesCandidates().size());
+            assertTrue(result.movieCandidates().isEmpty());
+            assertEquals(List.of("/search/tv"), server.paths);
         } finally {
             server.stop();
         }

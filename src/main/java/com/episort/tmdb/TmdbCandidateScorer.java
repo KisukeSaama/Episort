@@ -211,11 +211,6 @@ public final class TmdbCandidateScorer {
         return stripped.isBlank() ? trimmed : stripped;
     }
 
-    public static String normalizeSearchKey(String query, InventoryGroupType type) {
-        String prefix = type == null ? "unknown" : type.name().toLowerCase(Locale.ROOT);
-        return prefix + ":" + normalizeTitle(query);
-    }
-
     public static String normalizeTitle(String value) {
         if (value == null) {
             return "";

@@ -1,6 +1,7 @@
 package com.episort.ui.scan;
 
 import com.episort.ui.AppLanguage;
+import com.episort.ui.SmoothScroll;
 import com.episort.ui.UiText;
 import com.episort.ui.ThemeStyles;
 import java.util.List;
@@ -85,6 +86,7 @@ final class SeriesIdentityDialog {
         Button closeButton = new Button("×");
         closeButton.getStyleClass().addAll("icon-button", "tmdb-dialog-close");
         closeButton.setTooltip(new Tooltip(UiText.scanIdentitiesClose(language)));
+        closeButton.setAccessibleText(UiText.scanIdentitiesClose(language));
         closeButton.setOnAction(event -> stage.close());
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
@@ -113,6 +115,7 @@ final class SeriesIdentityDialog {
         ScrollPane scroll = new ScrollPane(groupList);
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("tmdb-search-results");
+        SmoothScroll.install(scroll);
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         Button confirm = new Button(UiText.scanIdentitiesConfirm(language));
@@ -137,6 +140,7 @@ final class SeriesIdentityDialog {
         scene.getStylesheets().add(
                 SeriesIdentityDialog.class.getResource("/styles/app.css").toExternalForm());
         ThemeStyles.register(body);
+        ThemeStyles.registerScene(scene);
         stage.setScene(scene);
         stage.setMinWidth(640);
         stage.setMinHeight(MIN_DIALOG_HEIGHT);

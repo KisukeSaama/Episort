@@ -116,6 +116,7 @@ final class MixedGroupDialog {
         scene.getStylesheets().add(
                 MixedGroupDialog.class.getResource("/styles/app.css").toExternalForm());
         ThemeStyles.register(body);
+        ThemeStyles.registerScene(scene);
         stage.setScene(scene);
     }
 

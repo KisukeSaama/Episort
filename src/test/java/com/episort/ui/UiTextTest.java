@@ -62,7 +62,7 @@ class UiTextTest {
     void everyPlanConflictTypeHasLocalizedText() {
         for (PlanConflictType type : PlanConflictType.values()) {
             for (AppLanguage language : AppLanguage.values()) {
-                assertNotEquals("—", UiText.planConflict(language, type.name()),
+                assertNotEquals(UiText.EMPTY, UiText.planConflict(language, type.name()),
                         type + " has no localized text in " + language);
             }
         }
@@ -75,7 +75,7 @@ class UiTextTest {
                 continue;
             }
             for (AppLanguage language : AppLanguage.values()) {
-                assertNotEquals("—", UiText.planExclusion(language, reason.name()),
+                assertNotEquals(UiText.EMPTY, UiText.planExclusion(language, reason.name()),
                         reason + " has no localized text in " + language);
             }
         }

@@ -42,6 +42,11 @@ public final class AppMenuBar {
     private final CheckMenuItem settingsViewItem;
     private final MenuItem aboutItem;
 
+    /** Each scan-only entry answers to its own precondition and to the view. */
+    private boolean loadEnabled = true;
+    private boolean appendEnabled = true;
+    private boolean scanActionsAvailable = true;
+
     public AppMenuBar(TopBarActions actions) {
         Objects.requireNonNull(actions, "actions");
 
@@ -131,13 +136,13 @@ public final class AppMenuBar {
     }
 
     public void setLoadEnabled(boolean enabled) {
-        loadFolderItem.setDisable(!enabled);
-        loadFilesItem.setDisable(!enabled);
+        loadEnabled = enabled;
+        refreshScanActions();
     }
 
     public void setAppendEnabled(boolean enabled) {
-        addFolderItem.setDisable(!enabled);
-        addFilesItem.setDisable(!enabled);
+        appendEnabled = enabled;
+        refreshScanActions();
     }
 
     public void setResetEnabled(boolean enabled) {
@@ -161,15 +166,30 @@ public final class AppMenuBar {
     }
 
     /**
-     * Hides the scan-only entries when another screen is showing, so the menus
-     * never offer an action the current view has no meaning for.
+     * Greys out the scan-only entries when another screen is showing.
+     *
+     * <p>The bar itself never changes. It used to drop the Analysis title and
+     * the loading entries outside the scan screen, so the menus were a different
+     * set of words on every view and had to be read again each time to find out
+     * what was there. A menu is a map of the application, not of the screen: an
+     * action the current view has no meaning for stays where it is, disabled,
+     * which also says the action exists somewhere else.
      */
-    public void setScanActionsVisible(boolean visible) {
-        loadFolderItem.setVisible(visible);
-        loadFilesItem.setVisible(visible);
-        addFolderItem.setVisible(visible);
-        addFilesItem.setVisible(visible);
-        analysisMenu.setVisible(visible);
+    public void setScanActionsAvailable(boolean available) {
+        scanActionsAvailable = available;
+        refreshScanActions();
+    }
+
+    /**
+     * Two conditions, one state: an entry is live when its own precondition
+     * holds <em>and</em> the scan screen is the one showing.
+     */
+    private void refreshScanActions() {
+        loadFolderItem.setDisable(!(loadEnabled && scanActionsAvailable));
+        loadFilesItem.setDisable(!(loadEnabled && scanActionsAvailable));
+        addFolderItem.setDisable(!(appendEnabled && scanActionsAvailable));
+        addFilesItem.setDisable(!(appendEnabled && scanActionsAvailable));
+        analysisMenu.setDisable(!scanActionsAvailable);
     }
 
     private static MenuItem item(Runnable action, KeyCombination accelerator) {

@@ -8,9 +8,11 @@ import com.episort.persistence.RollbackMove;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.AppShell;
 import com.episort.ui.RoundedClip;
+import com.episort.ui.SmoothScroll;
 import com.episort.ui.TableSearchBox;
 import com.episort.ui.UiText;
 import com.episort.ui.ThemeStyles;
+import com.episort.ui.ViewTransition;
 import com.episort.workflow.LastPlanRollbackService;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -130,16 +132,15 @@ public final class HistoryScreen {
 
         heading = new Label();
         heading.getStyleClass().addAll("section-heading", "section-heading-accent");
-
-        Label bannerIcon = new Label("•");
-        bannerIcon.getStyleClass().add("banner-icon");
+        HBox headingRow = new HBox(heading);
+        headingRow.getStyleClass().add("screen-heading-row");
 
         bannerText = new Label();
         bannerText.getStyleClass().add("banner-text");
         bannerText.setWrapText(true);
         HBox.setHgrow(bannerText, Priority.ALWAYS);
 
-        banner = new HBox(10, bannerIcon, bannerText);
+        banner = new HBox(10, bannerText);
         banner.getStyleClass().addAll("banner", "banner-info");
         banner.setAlignment(Pos.CENTER_LEFT);
 
@@ -161,7 +162,7 @@ public final class HistoryScreen {
         HBox.setHgrow(table, Priority.ALWAYS);
         currentBody = initialBody;
 
-        content = new VBox(14, heading, banner, metricGrid, filterRow, currentBody);
+        content = new VBox(14, headingRow, banner, metricGrid, filterRow, currentBody);
         content.getStyleClass().add("screen-root");
         VBox.setVgrow(currentBody, Priority.ALWAYS);
 
@@ -170,6 +171,7 @@ public final class HistoryScreen {
         root.setFitToWidth(true);
         root.setFitToHeight(true);
         root.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        SmoothScroll.install(root);
 
         applyLanguage(AppLanguage.FRENCH);
         refresh();
@@ -305,6 +307,9 @@ public final class HistoryScreen {
                     return;
                 }
                 applyFilter(filter);
+                // The chip replaced the list in one gesture; the search box,
+                // which shares this predicate, deliberately does not settle.
+                ViewTransition.playContentSwap(table.lookup(".virtual-flow"));
             });
             filterButtons.put(filter, button);
             filterRow.getChildren().add(button);

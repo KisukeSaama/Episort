@@ -118,6 +118,10 @@ final class ScanTableColumns {
 
     void applyLanguage(AppLanguage language) {
         selection.setText(UiText.scanColumnSelection(language));
+        // The selection column header is a bare box: without a name of its own
+        // it is announced as "check box" and hovers with no tooltip at all.
+        selectAllCheckbox.setAccessibleText(UiText.a11ySelectAllRows(language));
+        selectAllCheckbox.setTooltip(new Tooltip(UiText.a11ySelectAllRows(language)));
         original.setText(UiText.scanColumnOriginal(language));
         arrow.setText("→");
         proposed.setText(UiText.scanColumnProposed(language));
@@ -195,6 +199,10 @@ final class ScanTableColumns {
                 }
                 checkBox.setSelected(row.isSelected());
                 checkBox.setDisable(row.isIgnored());
+                // Named with the file it acts on: twenty unnamed boxes in a
+                // column tell a screen reader nothing about which row is which.
+                checkBox.setAccessibleText(
+                        UiText.a11ySelectRow(host.language()) + " " + row.originalFilename());
                 setGraphic(checkBox);
             }
         });
