@@ -109,28 +109,49 @@ class PlanConflictResolverTest {
      * Planning it still touches nothing — the file only goes at execution.
      */
     @Test
-    void aDuplicateCannotBePlannedForDeletion() throws IOException {
+    void aDuplicateCanBePlannedForDeletionWithoutTouchingTheFileYet() throws IOException {
         Path workspace = workspace();
         Path older = file(workspace, "show.s01e01.720p.mkv", "2021-01-01T00:00:00Z");
         Path newer = file(workspace, "show.s01e01.1080p.mkv", "2026-01-01T00:00:00Z");
 
         OperationPlan plan = planner.plan(workspace, List.of(episode(older), episode(newer)));
-        assertThrows(IllegalArgumentException.class, () -> resolver.resolve(
-                plan, Map.of(plan.conflicts().getFirst().sourcePath(), ConflictResolution.DELETE_SOURCE)));
+        Path source = plan.conflicts().getFirst().sourcePath();
+        OperationPlan resolved = resolver.resolve(
+                plan, Map.of(source, ConflictResolution.DELETE_SOURCE));
+
+        assertTrue(resolved.operations().stream()
+                .anyMatch(operation -> operation.sourcePath().equals(source) && operation.deletesFile()));
         assertTrue(Files.exists(older));
         assertTrue(Files.exists(newer));
     }
 
     /** Both mutations reach the executor, in plan order. */
     @Test
-    void anApprovedPlanCannotContainDuplicateDeletion() throws IOException {
+    void anApprovedPlanCanContainDuplicateDeletion() throws IOException {
         Path workspace = workspace();
         Path older = file(workspace, "show.s01e01.720p.mkv", "2021-01-01T00:00:00Z");
         Path newer = file(workspace, "show.s01e01.1080p.mkv", "2026-01-01T00:00:00Z");
 
         OperationPlan plan = planner.plan(workspace, List.of(episode(older), episode(newer)));
-        assertThrows(IllegalArgumentException.class, () -> resolver.resolve(
-                plan, Map.of(plan.conflicts().getFirst().sourcePath(), ConflictResolution.DELETE_SOURCE)));
+        OperationPlan resolved = resolver.resolve(plan, Map.of(
+                plan.conflicts().getFirst().sourcePath(), ConflictResolution.DELETE_SOURCE));
+
+        assertEquals(1, resolved.operations().stream().filter(PlannedOperation::deletesFile).count());
+    }
+
+    @Test
+    void anOccupiedDestinationAllowsDeletingTheIncomingSource() throws IOException {
+        Path workspace = workspace();
+        Path source = file(workspace, "show.s01e01.mkv", "2026-01-10T00:00:00Z");
+        Path occupied = destination(workspace, "2024-01-01T00:00:00Z");
+
+        OperationPlan plan = planner.plan(workspace, List.of(episode(source)));
+        OperationPlan resolved = resolver.resolve(
+                plan, Map.of(source.toRealPath(), ConflictResolution.DELETE_SOURCE));
+
+        assertTrue(resolved.operations().getFirst().deletesFile());
+        assertTrue(Files.exists(source), "planning must not delete the source");
+        assertTrue(Files.exists(occupied), "planning must not touch the destination");
     }
 
     /**

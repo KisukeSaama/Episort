@@ -15,6 +15,7 @@ import com.episort.planning.OperationPlanner;
 import com.episort.planning.PlanConflictResolver;
 import com.episort.planning.PlanMediaKind;
 import com.episort.planning.PlanSourceItem;
+import com.episort.planning.PlannedOperation;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -336,9 +337,9 @@ class ExecutionServiceTest {
      * The duplicate the user chose to throw away goes, the file that won its
      * destination moves, and the run reports both without calling the deletion a
      * failure or a skip.
-     */
+    */
     @Test
-    void duplicateDeletionIsNotAnAvailableResolution() throws IOException {
+    void approvedDuplicateDeletionRemovesOnlyTheChosenSource() throws IOException {
         Path workspace = workspace();
         Path duplicate = file(workspace, "show.s01e01.720p.mkv");
         Path keeper = file(workspace, "show.s01e01.1080p.mkv");
@@ -346,10 +347,26 @@ class ExecutionServiceTest {
         OperationPlan planned = planner.plan(workspace, List.of(
                 episode(duplicate, "Show", 1, 1, "Pilot"),
                 episode(keeper, "Show", 1, 1, "Pilot")));
-        assertThrows(IllegalArgumentException.class, () -> new PlanConflictResolver().resolve(planned, Map.of(
-                duplicate.toRealPath(), ConflictResolution.DELETE_SOURCE)));
-        assertTrue(Files.exists(duplicate));
-        assertTrue(Files.exists(keeper));
+        Path discarded = planned.conflicts().getFirst().sourcePath();
+        Map<Path, ConflictResolution> decisions = planned.conflicts().stream().collect(
+                java.util.stream.Collectors.toMap(
+                        PlannedOperation::sourcePath,
+                        operation -> operation.sourcePath().equals(discarded)
+                                ? ConflictResolution.DELETE_SOURCE
+                                : ConflictResolution.REPLACE));
+        OperationPlan resolved = new PlanConflictResolver().resolve(planned, decisions);
+        PlannedOperation kept = resolved.executableOperations().getFirst();
+        Path destination = kept.destinationPath().orElseThrow();
+
+        // ApprovedPlan is the second validation gate: execution cannot receive
+        // the deletion before the exact rebuilt plan has been locked.
+        ExecutionReport report = service().execute(ApprovedPlan.lock(resolved));
+
+        assertEquals(List.of(discarded), report.deleted().stream()
+                .map(FileExecutionResult::sourcePath)
+                .toList());
+        assertFalse(Files.exists(discarded));
+        assertTrue(Files.exists(destination));
     }
 
     /**

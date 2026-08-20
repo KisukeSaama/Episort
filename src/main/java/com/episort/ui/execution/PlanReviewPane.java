@@ -585,7 +585,11 @@ public final class PlanReviewPane {
 
         decisionColumn.setCellValueFactory(data -> new SimpleObjectProperty<>(data.getValue()));
         decisionColumn.setCellFactory(column -> decisionCell());
-        decisionColumn.setPrefWidth(210);
+        // Decision labels describe both files and the resulting disk state. Give
+        // that safety-critical copy enough room to remain readable in the closed
+        // control; the table already scrolls horizontally when needed.
+        decisionColumn.setMinWidth(340);
+        decisionColumn.setPrefWidth(380);
         decisionColumn.setSortable(false);
 
         table.getColumns().setAll(List.of(
@@ -729,9 +733,11 @@ public final class PlanReviewPane {
                     @Override
                     protected void updateItem(ConflictResolution item, boolean empty) {
                         super.updateItem(item, empty);
-                        setText(empty || item == null
+                        String text = empty || item == null
                                 ? null
-                                : PlanReviewText.decisionOption(item, currentType(), language));
+                                : PlanReviewText.decisionOption(item, currentType(), language);
+                        setText(text);
+                        setTooltip(text == null ? null : new Tooltip(text));
                     }
                 };
             }
@@ -770,7 +776,7 @@ public final class PlanReviewPane {
      * would be moved to — is not offered at all: a choice that does nothing is
      * how a user ends up applying a plan three times and still seeing duplicates.
      */
-    private static List<ConflictResolution> offeredFor(PlanConflictType type) {
+    static List<ConflictResolution> offeredFor(PlanConflictType type) {
         List<ConflictResolution> offered = new ArrayList<>(3);
         if (type.resolvableByReplacement()) {
             offered.add(ConflictResolution.REPLACE);
