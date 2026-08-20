@@ -1,6 +1,7 @@
 package com.episort.matching;
 
 import com.episort.tmdb.TmdbEpisode;
+import com.episort.tmdb.TmdbEpisodeGroup;
 import com.episort.tmdb.TmdbEpisodeOrder;
 import com.episort.tmdb.TmdbSeriesDetails;
 import java.nio.file.Path;
@@ -11,6 +12,36 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 
 public final class TmdbEpisodeOrderMapper {
+    public EpisodeOrderMappingResult map(
+            TmdbSeriesDetails series,
+            TmdbEpisodeGroup sourceGroup,
+            TmdbEpisodeGroup targetGroup,
+            Path sourcePath,
+            int sourceSeason,
+            int sourceEpisode,
+            Optional<Integer> absoluteNumber) {
+        if (series == null || targetGroup == null) {
+            return EpisodeOrderMappingResult.unmapped("No TMDB series metadata.");
+        }
+        List<TmdbEpisode> targetEpisodes = series.episodesFor(targetGroup);
+        if (targetEpisodes.isEmpty() || !series.availableGroups().contains(targetGroup)) {
+            return EpisodeOrderMappingResult.unmapped("TMDB order unavailable for this series");
+        }
+        Optional<TmdbEpisode> logical = sourceGroup == null
+                ? Optional.empty()
+                : findIn(series.episodesFor(sourceGroup), sourceGroup.order(),
+                        sourceSeason, sourceEpisode, absoluteNumber);
+        if (logical.isEmpty()) {
+            logical = series.availableGroups().stream()
+                    .filter(group -> !group.equals(targetGroup))
+                    .map(group -> findIn(series.episodesFor(group), group.order(),
+                            sourceSeason, sourceEpisode, absoluteNumber))
+                    .flatMap(Optional::stream)
+                    .findFirst();
+        }
+        return mapLogicalEpisode(logical, targetEpisodes, sourcePath);
+    }
+
     public EpisodeOrderMappingResult map(
             TmdbSeriesDetails series,
             TmdbEpisodeOrder sourceOrder,
@@ -28,6 +59,11 @@ public final class TmdbEpisodeOrderMapper {
             return EpisodeOrderMappingResult.unmapped("TMDB order unavailable for this series");
         }
         Optional<TmdbEpisode> logical = findSourceEpisode(series, sourceOrder, target, sourceSeason, sourceEpisode, absoluteNumber);
+        return mapLogicalEpisode(logical, targetEpisodes, sourcePath);
+    }
+
+    private EpisodeOrderMappingResult mapLogicalEpisode(
+            Optional<TmdbEpisode> logical, List<TmdbEpisode> targetEpisodes, Path sourcePath) {
         if (logical.isEmpty()) {
             return EpisodeOrderMappingResult.unmapped("Episode not found in selected order");
         }
@@ -60,7 +96,14 @@ public final class TmdbEpisodeOrderMapper {
                 return exact;
             }
         }
-        return List.of(TmdbEpisodeOrder.AIRED, TmdbEpisodeOrder.DVD, TmdbEpisodeOrder.ABSOLUTE).stream()
+        return List.of(
+                        TmdbEpisodeOrder.AIRED,
+                        TmdbEpisodeOrder.DVD,
+                        TmdbEpisodeOrder.ABSOLUTE,
+                        TmdbEpisodeOrder.DIGITAL,
+                        TmdbEpisodeOrder.STORY_ARC,
+                        TmdbEpisodeOrder.PRODUCTION,
+                        TmdbEpisodeOrder.TV).stream()
                 .filter(order -> order != targetOrder)
                 .map(series::episodesFor)
                 .flatMap(Collection::stream)

@@ -40,7 +40,14 @@ not duplicate those layers. Its request timeout is 40 seconds, above Janus's
 The Janus TMDB connection already targets TMDB API v3, so forwarded paths are
 `/search/tv`, `/search/movie`, `/tv/{id}`, `/movie/{id}`, seasons, episode groups,
 and `/authentication`. TMDB episode
-IDs remain stable identities for aired/DVD/absolute remapping.
+IDs remain stable identities for remapping across all seven TMDB episode-group
+types: original air date, absolute, DVD, digital, story arc, production, and TV.
+The series detail panel lists the concrete groups advertised by that series,
+using each group's TMDB id, name, type, group count, and episode count. Groups
+sharing a type remain distinct — for example Bleach can expose several Digital
+orders for Crunchyroll, Hulu, Netflix, or other edits. Each selected group is
+loaded by its exact `/tv/episode_group/{id}` path and merged into the per-series
+cache, so switching groups never discards episodes already fetched.
 
 ## Request volume
 
@@ -83,4 +90,5 @@ Settings and About display the approved TMDB logo and required notice:
 
 > This product uses the TMDB API but is not endorsed or certified by TMDB.
 
-The attribution links to <https://www.themoviedb.org>.
+The attribution links to <https://www.themoviedb.org>. Each resolved match also
+links to its canonical numeric `/tv/{id}` or `/movie/{id}` TMDB page.

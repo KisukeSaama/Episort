@@ -1,4 +1,4 @@
-EPISORT 0.2.0 - PORTABLE APPLICATION
+EPISORT 0.2.1 - PORTABLE APPLICATION
 ====================================
 
 No separate Java installation is required. Linux packages install the
@@ -6,19 +6,19 @@ application and its private runtime in the normal system locations.
 
 WINDOWS
 -------
-Double-click Episort-0.2.0-windows-x64.exe. Runtime files are stored under
+Double-click Episort-0.2.1-windows-x64.exe. Runtime files are stored under
 %LOCALAPPDATA%\Episort.
 
 LINUX
 -----
 Debian/Ubuntu:
 
-    sudo apt install ./episort_0.2.0-1_amd64.deb
+    sudo apt install ./episort_0.2.1-1_amd64.deb
     episort
 
 Fedora/RHEL:
 
-    sudo dnf install ./episort-0.2.0-1.x86_64.rpm
+    sudo dnf install ./episort-0.2.1-1.x86_64.rpm
     episort
 
 The packages target x64 glibc-based desktop Linux systems with GTK 3 available.
