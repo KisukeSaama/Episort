@@ -164,7 +164,7 @@ public final class AppShell {
                 this::showAbout,
                 this::requestQuit));
 
-        scanScreen = new ScanScreen();
+        scanScreen = new ScanScreen(openExternalLink);
         scanScreen.setOnReviewStateChanged(this::refreshPrimaryAction);
         historyScreen = new HistoryScreen(
                 this.runEventStore,

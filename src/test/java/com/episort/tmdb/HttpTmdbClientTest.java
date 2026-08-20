@@ -204,6 +204,70 @@ class HttpTmdbClientTest {
     }
 
     @Test
+    void mapsEverySeriesSpecificOrderOfferedByTmdb() throws Exception {
+        FakeTmdbServer server = FakeTmdbServer.start();
+        server.enqueue("/tv/101", 200, """
+                {"id":101,"name":"Show","seasons":[],"episode_groups":{"results":[
+                  {"id":"digital","type":4},{"id":"arc","type":5},
+                  {"id":"production","type":6},{"id":"tv","type":7}]}}
+                """);
+        server.enqueue("/tv/episode_group/digital", 200, """
+                {"id":"digital","type":4,"groups":[{"order":0,"episodes":[
+                  {"id":41,"order":0,"season_number":1,"episode_number":9,"name":"Digital pilot"}]}]}
+                """);
+        try {
+            HttpTmdbClient client = new HttpTmdbClient(HttpClient.newHttpClient(), server.baseUri());
+
+            TmdbSeriesDetails details = client.seriesDetails(
+                    new TmdbIdentity("101", TmdbMediaType.SERIES, "Show"),
+                    TmdbEpisodeOrder.DIGITAL,
+                    tokenCredentials());
+
+            assertTrue(details.supportedOrders().containsAll(List.of(
+                    TmdbEpisodeOrder.DIGITAL,
+                    TmdbEpisodeOrder.STORY_ARC,
+                    TmdbEpisodeOrder.PRODUCTION,
+                    TmdbEpisodeOrder.TV)));
+            assertEquals("41", details.episodesFor(TmdbEpisodeOrder.DIGITAL).getFirst().id());
+            assertEquals(1, details.episodesFor(TmdbEpisodeOrder.DIGITAL).getFirst().episodeNumber());
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void loadsTheExactNamedGroupWhenSeveralGroupsShareOneType() throws Exception {
+        FakeTmdbServer server = FakeTmdbServer.start();
+        server.enqueue("/tv/30984", 200, """
+                {"id":30984,"name":"Bleach","seasons":[],"episode_groups":{"results":[
+                  {"id":"crunchyroll","name":"Crunchyroll Season Split","type":4,
+                   "group_count":16,"episode_count":392},
+                  {"id":"netflix","name":"Netflix","type":4,
+                   "group_count":6,"episode_count":131}]}}
+                """);
+        server.enqueue("/tv/episode_group/netflix", 200, """
+                {"id":"netflix","name":"Netflix","type":4,"groups":[{"order":0,"episodes":[
+                  {"id":91,"order":0,"season_number":1,"episode_number":1,"name":"Netflix episode"}]}]}
+                """);
+        try {
+            HttpTmdbClient client = new HttpTmdbClient(HttpClient.newHttpClient(), server.baseUri());
+            TmdbEpisodeGroup netflix = new TmdbEpisodeGroup(
+                    "netflix", "Netflix", TmdbEpisodeOrder.DIGITAL, 6, 131);
+
+            TmdbSeriesDetails details = client.seriesDetails(
+                    new TmdbIdentity("30984", TmdbMediaType.SERIES, "Bleach"),
+                    netflix,
+                    tokenCredentials());
+
+            assertEquals(List.of("Crunchyroll Season Split", "Netflix"), details.availableGroups().stream()
+                    .filter(group -> !group.isAired()).map(TmdbEpisodeGroup::name).toList());
+            assertEquals("91", details.episodesFor(netflix).getFirst().id());
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
     void mapsMovieDetailsWithEnglishTitleAndReleaseYear() throws Exception {
         FakeTmdbServer server = FakeTmdbServer.start();
         server.enqueue("/movie/202", 200,

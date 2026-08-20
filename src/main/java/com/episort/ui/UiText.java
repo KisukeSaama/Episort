@@ -314,6 +314,7 @@ public final class UiText {
     public static String scanContextResetMatch(AppLanguage language) { return t(language, "scan.context.resetMatch"); }
     public static String scanContextCopyPath(AppLanguage language) { return t(language, "scan.context.copyPath"); }
     public static String scanContextOpenFolder(AppLanguage language) { return t(language, "scan.context.openFolder"); }
+    public static String scanContextOpenFile(AppLanguage language) { return t(language, "scan.context.openFile"); }
 
     public static String filePropertiesAction(AppLanguage language) { return t(language, "file.properties.action"); }
     public static String filePropertiesTitle(AppLanguage language) { return t(language, "file.properties.title"); }
@@ -521,6 +522,20 @@ public final class UiText {
     public static String scanBatchTmdbOrderAired(AppLanguage language) { return t(language, "scan.batch.tmdb.order.aired"); }
     public static String scanBatchTmdbOrderDvd(AppLanguage language) { return t(language, "scan.batch.tmdb.order.dvd"); }
     public static String scanBatchTmdbOrderAbsolute(AppLanguage language) { return t(language, "scan.batch.tmdb.order.absolute"); }
+    public static String scanBatchTmdbOrderDigital(AppLanguage language) { return t(language, "scan.batch.tmdb.order.digital"); }
+    public static String scanBatchTmdbOrderStoryArc(AppLanguage language) { return t(language, "scan.batch.tmdb.order.storyArc"); }
+    public static String scanBatchTmdbOrderProduction(AppLanguage language) { return t(language, "scan.batch.tmdb.order.production"); }
+    public static String scanBatchTmdbOrderTv(AppLanguage language) { return t(language, "scan.batch.tmdb.order.tv"); }
+    public static String tmdbOpenExternal(AppLanguage language) { return t(language, "tmdb.openExternal"); }
+    public static String tmdbDefaultEpisodeOrder(AppLanguage language) { return t(language, "tmdb.episodeGroup.default"); }
+    public static String tmdbEpisodeGroupOption(
+            AppLanguage language, String name, String type, int groups, int episodes) {
+        return t(language, "tmdb.episodeGroup.option")
+                .replace("{name}", name)
+                .replace("{type}", type)
+                .replace("{groups}", Integer.toString(groups))
+                .replace("{episodes}", Integer.toString(episodes));
+    }
     public static String scanBatchTmdbStatusFinal(AppLanguage language) { return t(language, "scan.batch.tmdb.status.final"); }
     public static String scanBatchTmdbStatusUnresolved(AppLanguage language) { return t(language, "scan.batch.tmdb.status.unresolved"); }
 
@@ -536,6 +551,8 @@ public final class UiText {
     public static String planDialogTitle(AppLanguage language) { return t(language, "plan.dialog.title"); }
     public static String planDialogSubtitle(AppLanguage language) { return t(language, "plan.dialog.subtitle"); }
     public static String planColumnSource(AppLanguage language) { return t(language, "plan.column.source"); }
+    public static String planColumnSize(AppLanguage language) { return t(language, "plan.column.size"); }
+    public static String planColumnComparedCopy(AppLanguage language) { return t(language, "plan.column.comparedCopy"); }
     public static String planColumnDestination(AppLanguage language) { return t(language, "plan.column.destination"); }
     public static String planColumnStatus(AppLanguage language) { return t(language, "plan.column.status"); }
     public static String planStatusExecutable(AppLanguage language) { return t(language, "plan.status.executable"); }

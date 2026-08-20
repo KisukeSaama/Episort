@@ -7,6 +7,7 @@ import java.util.List;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContentDisplay;
@@ -215,6 +216,27 @@ final class ScanTableColumns {
         original.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().originalFilename()));
         original.setCellFactory(ScanTableCells.monoEllipsis());
         original.setComparator(ScanRowTableSupport.NATURAL_TEXT);
+    }
+
+    /**
+     * Detects the source-name double press before row selection refreshes the
+     * table and replaces the cell that received the first click.
+     */
+    boolean shouldOpenSourceFile(MouseEvent event) {
+        boolean originalColumn = false;
+        if (event.getTarget() instanceof Node target) {
+            for (Node node = target; node != null; node = node.getParent()) {
+                if (node instanceof TableCell<?, ?> cell) {
+                    originalColumn = cell.getTableColumn() == original;
+                    break;
+                }
+            }
+        }
+        return shouldOpenSourceFile(event.getButton(), event.getClickCount(), originalColumn);
+    }
+
+    static boolean shouldOpenSourceFile(MouseButton button, int clickCount, boolean originalColumn) {
+        return button == MouseButton.PRIMARY && clickCount == 2 && originalColumn;
     }
 
     /** A fixed separator between the before and after names. */

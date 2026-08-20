@@ -53,3 +53,23 @@ remain explicit pre-merge checks on a physical Windows desktop.
 On Linux, start Episort and repeat drag, double-click, resize, maximize, and snap
 checks where the window manager supports them. The DWM calls must be silent
 no-ops and the opaque window outline remains square.
+
+## Scan and plan interaction checklist
+
+These checks are required on a physical Windows desktop before release:
+
+- At a wide width, confirm media-kind filters sit at the table's left edge and
+  status filters stop at its right edge, before the correspondence panel; narrow
+  the window and confirm the two whole groups stack without clipping a chip.
+- Double-click a cell in `Nom actuel` and confirm Explorer opens with the exact
+  file selected. Confirm `Ouvrir la vidéo` remains a separate context-menu
+  action and no playback starts from the double-click.
+- Open a resolved movie and series TMDB link and confirm the canonical page
+  matches the numeric identity shown in the detail card.
+- For a series exposing several named episode groups of one type (Bleach has
+  multiple Digital groups), confirm each group appears separately with its
+  TMDB name and episode count, and switching among them keeps previously loaded
+  episode choices available.
+- In an exact plan containing a duplicate, compare both paths, sizes, and dates;
+  choose deletion, apply the conflict decision, then confirm the final plan
+  still requires the explicit validation step before any file is removed.

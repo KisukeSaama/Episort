@@ -8,10 +8,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import javafx.geometry.Pos;
+import javafx.geometry.Orientation;
+import javafx.scene.Node;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 
 /**
  * The chip row above the scan table: media-kind filters on the left, row-status
@@ -45,23 +47,14 @@ final class ScanFilterBar {
     };
 
     /**
-     * A FlowPane, like the History filter row (§4.13). An HBox held four kind
-     * chips, a growing spacer and seven status chips on one line: past about
-     * 1030 px of content width there was no line left, and the chips at the end
-     * were squeezed until their labels truncated. Wrapping costs a row of
-     * height only when there is no width to spend instead.
-     *
-     * <p>The eleven chips need about 850 px. The bar is laid out across the
-     * full screen width rather than inside the table column, so that budget
-     * holds on one row and the wrap only comes back on a genuinely narrow
-     * window.
-     *
-     * <p>The 16 px hgap is what separates the two groups. It is the pane's own
-     * gap rather than a padding on the second group, because a padding also
-     * applies on the row a wrap puts it on, and offset the status chips from
-     * the kind chips right above them.
+     * The two predicates stay visually separate at wide widths: kind is pinned
+     * left and status right. When their preferred widths no longer fit, the
+     * pane stacks the two complete groups instead of squeezing or splitting
+     * their chips.
      */
-    private final FlowPane root = new FlowPane(16, 8);
+    private static final double GROUP_GAP = 20;
+    private static final double ROW_GAP = 8;
+    private final Pane root;
     private final HBox kindChips = new HBox(8);
     private final HBox statusChips = new HBox(8);
     private final ToggleGroup kindGroup = new ToggleGroup();
@@ -78,8 +71,8 @@ final class ScanFilterBar {
 
     ScanFilterBar(Consumer<Change> onChanged) {
         this.onChanged = onChanged;
+        root = new ResponsiveFilterPane(kindChips, statusChips);
         root.getStyleClass().add("scan-filter-bar");
-        root.setAlignment(Pos.CENTER_LEFT);
 
         searchBox = new TableSearchBox(this::setSearchQuery);
 
@@ -97,8 +90,6 @@ final class ScanFilterBar {
         // four kind chips split across two rows would read as two questions.
         // The search box is not one of them; it hangs off the screen heading,
         // see searchRoot().
-        root.getChildren().addAll(kindChips, statusChips);
-
         // Selected before the listeners are wired: notifying mid-construction
         // would call back into an owner that has not finished assigning this
         // object yet. The defaults already match what is selected here.
@@ -132,8 +123,12 @@ final class ScanFilterBar {
         });
     }
 
-    FlowPane root() {
+    Pane root() {
         return root;
+    }
+
+    static boolean groupsFitOnOneLine(double availableWidth, double kindWidth, double statusWidth) {
+        return availableWidth >= kindWidth + statusWidth + GROUP_GAP;
     }
 
     /**
@@ -219,5 +214,53 @@ final class ScanFilterBar {
         button.getStyleClass().add("filter-chip");
         host.getChildren().add(button);
         return button;
+    }
+
+    /** Keeps the two questions at opposite edges, then stacks whole groups when space runs out. */
+    private static final class ResponsiveFilterPane extends Pane {
+        private final Node left;
+        private final Node right;
+
+        private ResponsiveFilterPane(Node left, Node right) {
+            this.left = left;
+            this.right = right;
+            getChildren().addAll(left, right);
+        }
+
+        @Override
+        protected void layoutChildren() {
+            double width = getWidth();
+            double leftWidth = left.prefWidth(-1);
+            double rightWidth = right.prefWidth(-1);
+            double leftHeight = left.prefHeight(leftWidth);
+            double rightHeight = right.prefHeight(rightWidth);
+            left.resizeRelocate(0, 0, leftWidth, leftHeight);
+            if (groupsFitOnOneLine(width, leftWidth, rightWidth)) {
+                right.resizeRelocate(width - rightWidth, 0, rightWidth, rightHeight);
+            } else {
+                right.resizeRelocate(0, leftHeight + ROW_GAP, rightWidth, rightHeight);
+            }
+        }
+
+        @Override
+        protected double computePrefHeight(double width) {
+            double leftWidth = left.prefWidth(-1);
+            double rightWidth = right.prefWidth(-1);
+            double leftHeight = left.prefHeight(leftWidth);
+            double rightHeight = right.prefHeight(rightWidth);
+            return groupsFitOnOneLine(width, leftWidth, rightWidth)
+                    ? Math.max(leftHeight, rightHeight)
+                    : leftHeight + ROW_GAP + rightHeight;
+        }
+
+        @Override
+        protected double computeMinHeight(double width) {
+            return computePrefHeight(width);
+        }
+
+        @Override
+        public Orientation getContentBias() {
+            return Orientation.HORIZONTAL;
+        }
     }
 }

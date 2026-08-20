@@ -22,7 +22,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,8 +33,6 @@ import java.util.stream.Collectors;
 public final class HttpTmdbClient implements TmdbClient {
     private static final URI IMAGE_BASE_URI = URI.create("https://image.tmdb.org/t/p/w342/");
     private static final String LANGUAGE = "en-US";
-    private static final int ABSOLUTE_GROUP_TYPE = 2;
-    private static final int DVD_GROUP_TYPE = 3;
     /** TMDB serves at most twenty appended sub-resources in one response. */
     private static final int MAX_APPENDED_RESOURCES = 20;
     private final HttpClient httpClient;
@@ -122,6 +119,23 @@ public final class HttpTmdbClient implements TmdbClient {
             TmdbIdentity identity,
             TmdbEpisodeOrder requestedOrder,
             JanusConfiguration credentials) {
+        return seriesDetails(identity, requestedOrder, null, credentials);
+    }
+
+    @Override
+    public TmdbSeriesDetails seriesDetails(
+            TmdbIdentity identity,
+            TmdbEpisodeGroup requestedGroup,
+            JanusConfiguration credentials) {
+        TmdbEpisodeGroup safeGroup = requestedGroup == null ? TmdbEpisodeGroup.aired() : requestedGroup;
+        return seriesDetails(identity, safeGroup.order(), safeGroup, credentials);
+    }
+
+    private TmdbSeriesDetails seriesDetails(
+            TmdbIdentity identity,
+            TmdbEpisodeOrder requestedOrder,
+            TmdbEpisodeGroup requestedGroup,
+            JanusConfiguration credentials) {
         Objects.requireNonNull(identity, "identity");
         TmdbEpisodeOrder safeOrder = requestedOrder == null ? TmdbEpisodeOrder.AIRED : requestedOrder;
         String id = encode(identity.id());
@@ -134,35 +148,39 @@ public final class HttpTmdbClient implements TmdbClient {
         TmdbEpisodeGroupsDto groupIndex = appended(payload, "episode_groups", TmdbEpisodeGroupsDto.class)
                 .or(() -> sendIfFound("tv/" + id + "/episode_groups", credentials, TmdbEpisodeGroupsDto.class))
                 .orElseGet(TmdbEpisodeGroupsDto::new);
-        EnumSet<TmdbEpisodeOrder> supported = supportedOrders(groupIndex);
+        List<TmdbEpisodeGroup> availableGroups = episodeGroups(groupIndex);
         TmdbIdentity resolvedIdentity = new TmdbIdentity(
                 series.id == null ? identity.id() : String.valueOf(series.id),
                 TmdbMediaType.SERIES,
                 fallback(series.name, series.original_name, identity.displayName()));
 
-        if (safeOrder == TmdbEpisodeOrder.AIRED) {
+        if (safeOrder == TmdbEpisodeOrder.AIRED && (requestedGroup == null || requestedGroup.isAired())) {
             List<TmdbEpisode> aired = loadAiredEpisodes(id, series.seasons, credentials);
-            return new TmdbSeriesDetails(resolvedIdentity, supported, aired, List.of(), List.of());
+            return TmdbSeriesDetails.forGroup(
+                    resolvedIdentity, availableGroups, TmdbEpisodeGroup.aired(), aired);
         }
 
-        int type = safeOrder == TmdbEpisodeOrder.DVD ? DVD_GROUP_TYPE : ABSOLUTE_GROUP_TYPE;
         Optional<TmdbEpisodeGroupsDto.GroupSummary> selected = summaries(groupIndex).stream()
-                .filter(group -> group.type != null && group.type == type)
+                .filter(group -> requestedGroup == null
+                        ? group.type != null && group.type == safeOrder.groupType()
+                        : requestedGroup.id().equals(group.id))
                 .filter(group -> group.id != null && !group.id.isBlank())
                 .min(Comparator.comparingInt(group -> group.order == null ? Integer.MAX_VALUE : group.order));
         if (selected.isEmpty()) {
-            return new TmdbSeriesDetails(resolvedIdentity, supported, List.of(), List.of(), List.of());
+            TmdbEpisodeGroup missing = requestedGroup == null
+                    ? TmdbEpisodeGroup.legacy(safeOrder)
+                    : requestedGroup;
+            return TmdbSeriesDetails.forGroup(resolvedIdentity, availableGroups, missing, List.of());
         }
+        TmdbEpisodeGroup selectedGroup = mapEpisodeGroup(selected.orElseThrow()).orElseThrow();
         TmdbEpisodeGroupDetailsDto group = send(
                 "tv/episode_group/" + encode(selected.orElseThrow().id),
                 credentials,
                 TmdbEpisodeGroupDetailsDto.class);
-        List<TmdbEpisode> ordered = safeOrder == TmdbEpisodeOrder.DVD
-                ? mapDvdEpisodes(group)
-                : mapAbsoluteEpisodes(group);
-        return safeOrder == TmdbEpisodeOrder.DVD
-                ? new TmdbSeriesDetails(resolvedIdentity, supported, List.of(), ordered, List.of())
-                : new TmdbSeriesDetails(resolvedIdentity, supported, List.of(), List.of(), ordered);
+        List<TmdbEpisode> ordered = safeOrder == TmdbEpisodeOrder.ABSOLUTE
+                ? mapAbsoluteEpisodes(group)
+                : mapGroupedEpisodes(group);
+        return TmdbSeriesDetails.forGroup(resolvedIdentity, availableGroups, selectedGroup, ordered);
     }
 
     @Override
@@ -309,14 +327,14 @@ public final class HttpTmdbClient implements TmdbClient {
                 Optional.empty(), fallback(episode.name, "Untitled episode"), episode.season_number == 0));
     }
 
-    private static List<TmdbEpisode> mapDvdEpisodes(TmdbEpisodeGroupDetailsDto details) {
+    private static List<TmdbEpisode> mapGroupedEpisodes(TmdbEpisodeGroupDetailsDto details) {
         List<TmdbEpisode> episodes = new ArrayList<>();
         for (TmdbEpisodeGroupDetailsDto.Group group : orderedGroups(details)) {
-            int dvdSeason = safeOrder(group.order) + 1;
+            int orderedSeason = safeOrder(group.order) + 1;
             for (TmdbEpisodeGroupDetailsDto.Episode episode : orderedEpisodes(group)) {
                 if (episode.id == null) continue;
                 boolean special = episode.season_number != null && episode.season_number == 0;
-                int season = special ? 0 : dvdSeason;
+                int season = special ? 0 : orderedSeason;
                 int number = special && episode.episode_number != null
                         ? episode.episode_number : safeOrder(episode.order) + 1;
                 episodes.add(new TmdbEpisode(
@@ -360,14 +378,24 @@ public final class HttpTmdbClient implements TmdbClient {
                 .toList();
     }
 
-    private static EnumSet<TmdbEpisodeOrder> supportedOrders(TmdbEpisodeGroupsDto dto) {
-        EnumSet<TmdbEpisodeOrder> orders = EnumSet.of(TmdbEpisodeOrder.AIRED);
-        for (TmdbEpisodeGroupsDto.GroupSummary group : summaries(dto)) {
-            if (group.type == null) continue;
-            if (group.type == DVD_GROUP_TYPE) orders.add(TmdbEpisodeOrder.DVD);
-            if (group.type == ABSOLUTE_GROUP_TYPE) orders.add(TmdbEpisodeOrder.ABSOLUTE);
+    private static List<TmdbEpisodeGroup> episodeGroups(TmdbEpisodeGroupsDto dto) {
+        List<TmdbEpisodeGroup> groups = new ArrayList<>();
+        groups.add(TmdbEpisodeGroup.aired());
+        summaries(dto).stream().map(HttpTmdbClient::mapEpisodeGroup).flatMap(Optional::stream)
+                .forEach(groups::add);
+        return List.copyOf(groups);
+    }
+
+    private static Optional<TmdbEpisodeGroup> mapEpisodeGroup(TmdbEpisodeGroupsDto.GroupSummary group) {
+        if (group == null || group.id == null || group.id.isBlank() || group.type == null) {
+            return Optional.empty();
         }
-        return orders;
+        return TmdbEpisodeOrder.fromGroupType(group.type).map(order -> new TmdbEpisodeGroup(
+                group.id,
+                fallback(group.name, order.name()),
+                order,
+                safeOrder(group.group_count),
+                safeOrder(group.episode_count)));
     }
 
     private static List<TmdbEpisodeGroupsDto.GroupSummary> summaries(TmdbEpisodeGroupsDto dto) {

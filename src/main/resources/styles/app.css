@@ -2008,16 +2008,12 @@
 
 /* ---- 19. Filter chips -------------------------------------------------- */
 
-/* The two predicates read as two questions: 8 inside a group, 16 between them.
-   The gap belongs to the FlowPane, which spends it only between the groups it
-   lays out side by side. A left padding on the status group did the same job
-   until the row wrapped: padding survives the wrap, so the status chips started
-   8 px to the right of the kind chips above them. */
+/* The two predicates read as two questions. ResponsiveFilterPane pins the kind
+   group left and the status group right while both fit, then stacks the two
+   intact groups from the left. ScanScreen bounds this bar to the live table
+   width, never across the adjacent correspondence panel. */
 .scan-filter-bar {
     -fx-padding: 0 0 2 0;
-    -fx-hgap: 16;
-    -fx-vgap: 8;
-    -fx-alignment: center-left;
 }
 
 .scan-status-filter-group {
