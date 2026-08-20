@@ -107,6 +107,7 @@ public final class PlanReviewPane {
     private final TableView<PlanRow> table = new TableView<>();
     private final TableColumn<PlanRow, Boolean> selectionColumn = new TableColumn<>();
     private final TableColumn<PlanRow, String> datesColumn;
+    private final TableColumn<PlanRow, String> comparedCopyColumn;
     private final TableColumn<PlanRow, PlanRow> decisionColumn;
     private final Label notice = new Label();
     private final VBox body;
@@ -171,6 +172,7 @@ public final class PlanReviewPane {
         subtitle.setWrapText(true);
 
         datesColumn = new TableColumn<>(UiText.conflictColumnDates(language));
+        comparedCopyColumn = new TableColumn<>(UiText.planColumnComparedCopy(language));
         decisionColumn = new TableColumn<>(UiText.conflictColumnDecision(language));
         buildTable();
         conflictToolbar = buildConflictToolbar();
@@ -255,7 +257,10 @@ public final class PlanReviewPane {
         oldestDecisions = resolver.oldestWins(plan);
         List<PlanRow> rows = new ArrayList<>(plan.operations().size());
         for (PlannedOperation operation : plan.operations()) {
-            rows.add(new PlanRow(operation));
+            rows.add(new PlanRow(
+                    operation,
+                    FileSizeText.forPath(operation.sourcePath(), language),
+                    comparedCopyText(operation)));
         }
         table.getItems().setAll(rows);
         selectionAnchor = -1;
@@ -273,6 +278,7 @@ public final class PlanReviewPane {
         setVisible(conflictToolbar, blocked);
         selectionColumn.setVisible(blocked);
         datesColumn.setVisible(blocked);
+        comparedCopyColumn.setVisible(blocked);
         decisionColumn.setVisible(blocked);
 
         subtitle.setText(blocked
@@ -550,6 +556,13 @@ public final class PlanReviewPane {
         source.setCellFactory(column -> monoCell());
         source.setPrefWidth(340);
 
+        TableColumn<PlanRow, String> sourceSize = new TableColumn<>(UiText.planColumnSize(language));
+        sourceSize.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().sourceSize));
+        sourceSize.setCellFactory(column -> monoCell());
+        sourceSize.setMinWidth(92);
+        sourceSize.setPrefWidth(104);
+        sourceSize.setMaxWidth(132);
+
         TableColumn<PlanRow, String> destination = new TableColumn<>(UiText.planColumnDestination(language));
         destination.setCellValueFactory(data -> new SimpleStringProperty(
                 data.getValue().operation.destinationPath()
@@ -566,18 +579,23 @@ public final class PlanReviewPane {
         datesColumn.setCellValueFactory(data -> new SimpleStringProperty(datesText(data.getValue())));
         datesColumn.setPrefWidth(220);
 
+        comparedCopyColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().comparedCopy));
+        comparedCopyColumn.setCellFactory(column -> monoCell());
+        comparedCopyColumn.setPrefWidth(320);
+
         decisionColumn.setCellValueFactory(data -> new SimpleObjectProperty<>(data.getValue()));
         decisionColumn.setCellFactory(column -> decisionCell());
         decisionColumn.setPrefWidth(210);
         decisionColumn.setSortable(false);
 
         table.getColumns().setAll(List.of(
-                selectionColumn, source, destination, status, datesColumn, decisionColumn));
+                selectionColumn, source, sourceSize, destination, status,
+                comparedCopyColumn, datesColumn, decisionColumn));
 
         // Same deal as the scan table: paths keep their readable widths and the
         // table scrolls horizontally when the pane is too narrow, instead of
         // squeezing the two path columns into unreadable stubs.
-        HorizontalScrollTable.install(table, List.of(source, destination));
+        HorizontalScrollTable.install(table, List.of(source, destination, comparedCopyColumn));
     }
 
     /**
@@ -665,7 +683,7 @@ public final class PlanReviewPane {
             return UiText.EMPTY;
         }
         String sourceDate = format(PlanConflictResolver.lastModified(row.operation.sourcePath()));
-        String destinationDate = row.operation.destinationPath()
+        String destinationDate = comparedPath(row.operation)
                 .map(PlanConflictResolver::lastModified)
                 .map(this::format)
                 .orElse(UiText.EMPTY);
@@ -674,6 +692,18 @@ public final class PlanReviewPane {
 
     private String format(Optional<Instant> instant) {
         return instant.map(dateFormat::format).orElse(UiText.EMPTY);
+    }
+
+    private String comparedCopyText(PlannedOperation operation) {
+        return comparedPath(operation)
+                .map(path -> insideWorkspace(path) + " · " + FileSizeText.forPath(path, language))
+                .orElse(UiText.EMPTY);
+    }
+
+    private static Optional<Path> comparedPath(PlannedOperation operation) {
+        return operation.conflict()
+                .flatMap(PlanConflict::duplicateOf)
+                .or(operation::destinationPath);
     }
 
     private TableCell<PlanRow, PlanRow> decisionCell() {
@@ -835,9 +865,13 @@ public final class PlanReviewPane {
         private final PlannedOperation operation;
         private final SimpleBooleanProperty selected = new SimpleBooleanProperty(false);
         private final SimpleObjectProperty<ConflictResolution> choice;
+        private final String sourceSize;
+        private final String comparedCopy;
 
-        private PlanRow(PlannedOperation operation) {
+        private PlanRow(PlannedOperation operation, String sourceSize, String comparedCopy) {
             this.operation = operation;
+            this.sourceSize = sourceSize;
+            this.comparedCopy = comparedCopy;
             this.choice = new SimpleObjectProperty<>(defaultDecision(operation));
         }
 

@@ -21,6 +21,14 @@ class ScanSelectionInteractionTest {
     }
 
     @Test
+    void onlyAPrimaryDoublePressOnTheOriginalNameOpensTheSourceFile() {
+        assertTrue(ScanTableColumns.shouldOpenSourceFile(MouseButton.PRIMARY, 2, true));
+        assertFalse(ScanTableColumns.shouldOpenSourceFile(MouseButton.PRIMARY, 1, true));
+        assertFalse(ScanTableColumns.shouldOpenSourceFile(MouseButton.SECONDARY, 2, true));
+        assertFalse(ScanTableColumns.shouldOpenSourceFile(MouseButton.PRIMARY, 2, false));
+    }
+
+    @Test
     void controlASelectsTheTableExceptWhileEditingText() {
         assertTrue(ScanSelectionController.shouldSelectAllRows(KeyCode.A, true, false));
         assertFalse(ScanSelectionController.shouldSelectAllRows(KeyCode.A, false, false));

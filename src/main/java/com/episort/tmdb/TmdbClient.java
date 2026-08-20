@@ -19,5 +19,13 @@ public interface TmdbClient {
         return seriesDetails(identity, credentials);
     }
 
+    /** Loads one concrete named episode group advertised by TMDB. */
+    default TmdbSeriesDetails seriesDetails(
+            TmdbIdentity identity,
+            TmdbEpisodeGroup group,
+            JanusConfiguration credentials) {
+        return seriesDetails(identity, group == null ? TmdbEpisodeOrder.AIRED : group.order(), credentials);
+    }
+
     TmdbMovieDetails movieDetails(TmdbIdentity identity, JanusConfiguration credentials);
 }

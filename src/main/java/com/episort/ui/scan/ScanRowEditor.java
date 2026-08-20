@@ -120,6 +120,7 @@ final class ScanRowEditor {
             row.setTmdbCandidate(Optional.empty());
             row.setTmdbSelectedByUser(false);
             row.setAppliedTmdbOrder(Optional.empty());
+            row.setAppliedTmdbGroup(Optional.empty());
             row.setOrder(Optional.empty());
             row.setProposedFilename(Optional.empty());
             row.setDestination(Optional.empty());

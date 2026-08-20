@@ -2,7 +2,9 @@ package com.episort.ui.scan;
 
 import com.episort.tmdb.TmdbCandidate;
 import com.episort.tmdb.TmdbEpisode;
+import com.episort.tmdb.TmdbEpisodeGroup;
 import com.episort.tmdb.TmdbEpisodeOrder;
+import com.episort.tmdb.TmdbIdentity;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.SmoothScroll;
 import com.episort.ui.UiText;
@@ -15,7 +17,9 @@ import java.util.function.Consumer;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
@@ -62,10 +66,12 @@ public final class RowDetailPanel {
     private final Label tmdbMatchMeta = new Label();
     private final Label tmdbMatchId = new Label();
     private final Label tmdbMatchOverview = new Label();
+    private final Hyperlink tmdbExternalLink = new Hyperlink();
     private final Label tmdbTargetHint = new Label();
     private final VBox tmdbMatchCard;
     private final ComboBox<String> tmdbCandidate = new ComboBox<>();
-    private final ComboBox<String> tmdbOrder = new ComboBox<>();
+    private final ComboBox<TmdbEpisodeGroup> tmdbOrder = new ComboBox<>();
+    private List<TmdbEpisodeGroup> availableTmdbGroups = List.of(TmdbEpisodeGroup.aired());
     private final Label tmdbFirstEpisodeLabel;
     private final MenuButton tmdbFirstEpisode = new MenuButton();
     private TmdbEpisode selectedFirstEpisode;
@@ -118,10 +124,11 @@ public final class RowDetailPanel {
     private boolean tmdbBusyActive;
     private BiConsumer<ScanRow, String> onApplyCandidate = (r, c) -> {};
     private BiConsumer<ScanRow, String> onApplyInputPattern = (r, p) -> {};
-    private BiConsumer<ScanRow, TmdbEpisodeOrder> onApplySelectedMatch = (r, o) -> {};
+    private BiConsumer<ScanRow, TmdbEpisodeGroup> onApplySelectedMatch = (r, o) -> {};
     private BiConsumer<ScanRow, TmdbEpisode> onApplyEpisodeSequence = (r, e) -> {};
     private Consumer<ScanRow> onSearchMatch = r -> {};
     private Consumer<ScanRow> onResetMatch = r -> {};
+    private Consumer<TmdbIdentity> onOpenTmdbLink = identity -> {};
 
     public RowDetailPanel() {
         Label emptyIcon = new Label("◌");
@@ -227,9 +234,16 @@ public final class RowDetailPanel {
         tmdbMatchOverview.getStyleClass().add("tmdb-match-overview");
         tmdbMatchOverview.setWrapText(true);
         tmdbMatchOverview.setMaxHeight(62);
+        tmdbExternalLink.getStyleClass().add("tmdb-attribution-link");
+        tmdbExternalLink.setOnAction(event -> {
+            if (currentRow != null) currentRow.tmdbCandidate()
+                    .map(TmdbCandidate::identity)
+                    .ifPresent(onOpenTmdbLink);
+        });
         tmdbTargetHint.getStyleClass().add("tmdb-match-meta");
         tmdbTargetHint.setWrapText(true);
-        VBox matchText = new VBox(6, tmdbMatchTitle, tmdbMatchMeta, tmdbMatchId, tmdbMatchOverview);
+        VBox matchText = new VBox(6,
+                tmdbMatchTitle, tmdbMatchMeta, tmdbMatchId, tmdbMatchOverview, tmdbExternalLink);
         HBox.setHgrow(matchText, Priority.ALWAYS);
         StackPane posterHost = new StackPane(posterPane);
         posterHost.getStyleClass().add("tmdb-detail-poster-host");
@@ -241,6 +255,8 @@ public final class RowDetailPanel {
         tmdbCandidate.setMaxWidth(Double.MAX_VALUE);
         tmdbCandidate.setVisible(false);
         tmdbCandidate.setManaged(false);
+        tmdbOrder.setCellFactory(list -> orderCell());
+        tmdbOrder.setButtonCell(orderCell());
         tmdbSearch.getStyleClass().add("ghost");
         tmdbSearch.setOnAction(e -> {
             if (currentRow != null) {
@@ -390,7 +406,7 @@ public final class RowDetailPanel {
         this.onApplyInputPattern = handler == null ? (r, p) -> {} : handler;
     }
 
-    public void setOnApplySelectedMatch(BiConsumer<ScanRow, TmdbEpisodeOrder> handler) {
+    public void setOnApplySelectedMatch(BiConsumer<ScanRow, TmdbEpisodeGroup> handler) {
         this.onApplySelectedMatch = handler == null ? (r, o) -> {} : handler;
     }
 
@@ -398,10 +414,25 @@ public final class RowDetailPanel {
         this.onApplyEpisodeSequence = handler == null ? (r, e) -> {} : handler;
     }
 
+    public void setOnOpenTmdbLink(Consumer<TmdbIdentity> handler) {
+        onOpenTmdbLink = handler == null ? identity -> {} : handler;
+    }
+
+    public void setAvailableTmdbGroups(List<TmdbEpisodeGroup> groups) {
+        availableTmdbGroups = groups == null || groups.isEmpty()
+                ? List.of(TmdbEpisodeGroup.aired())
+                : List.copyOf(groups);
+        refreshOrderItems();
+    }
+
     public void setTmdbEpisodeOptions(
-            List<TmdbEpisode> episodes, String selectedEpisodeId, TmdbEpisodeOrder order) {
+            List<TmdbEpisode> episodes, String selectedEpisodeId, TmdbEpisodeGroup group) {
         availableFirstEpisodes = episodes == null ? List.of() : List.copyOf(episodes);
-        firstEpisodeOrder = order == null ? TmdbEpisodeOrder.AIRED : order;
+        TmdbEpisodeGroup safeGroup = group == null ? TmdbEpisodeGroup.aired() : group;
+        firstEpisodeOrder = safeGroup.order();
+        tmdbOrder.setValue(availableTmdbGroups.contains(safeGroup)
+                ? safeGroup
+                : TmdbEpisodeGroup.aired());
         selectedFirstEpisode = availableFirstEpisodes.stream()
                 .filter(episode -> episode.id().equals(selectedEpisodeId))
                 .findFirst()
@@ -481,10 +512,8 @@ public final class RowDetailPanel {
         tmdbCandidate.setPromptText(UiText.scanBatchTmdbCandidatePlaceholder(language));
         tmdbSearch.setText(UiText.tmdbSearchForMatch(language));
         tmdbOrder.setPromptText(UiText.scanBatchTmdbOrderPlaceholder(language));
-        tmdbOrder.getItems().setAll(
-                UiText.scanBatchTmdbOrderAired(language),
-                UiText.scanBatchTmdbOrderDvd(language),
-                UiText.scanBatchTmdbOrderAbsolute(language));
+        refreshOrderItems();
+        tmdbExternalLink.setText(UiText.tmdbOpenExternal(language));
         tmdbApply.setText(UiText.tmdbApply(language));
         tmdbReset.setText(UiText.detailResetButton(language));
         rebuildEpisodeMenu();
@@ -540,7 +569,8 @@ public final class RowDetailPanel {
             tmdbCandidate.getItems().add(currentMatch);
         }
         tmdbCandidate.setValue(currentMatch);
-        tmdbOrder.setValue(orderLabel(row.appliedTmdbOrder().orElse(TmdbEpisodeOrder.AIRED)));
+        TmdbEpisodeGroup rowGroup = row.appliedTmdbGroup().orElse(TmdbEpisodeGroup.aired());
+        tmdbOrder.setValue(availableTmdbGroups.contains(rowGroup) ? rowGroup : TmdbEpisodeGroup.aired());
         tmdbReset.setDisable(row.tmdbMatch().isEmpty());
         updateTmdbCard(row);
         // Recompute both enabled and disabled states. A panel that previously
@@ -569,6 +599,7 @@ public final class RowDetailPanel {
             tmdbMatchMeta.setText(UiText.EMPTY);
             tmdbMatchId.setText(UiText.EMPTY);
             tmdbMatchOverview.setText("");
+            tmdbExternalLink.setDisable(true);
             tmdbReset.setDisable(true);
             tmdbApply.setDisable(true);
             return;
@@ -581,6 +612,7 @@ public final class RowDetailPanel {
         tmdbMatchId.setText(UiText.tmdbIdLabel(currentLanguage) + ": " + value.identity().id());
         tmdbMatchOverview.setText(shortOverview(localizedOverview(value).filter(v -> !v.isBlank())
                 .orElseGet(() -> UiText.tmdbNoDescription(currentLanguage))));
+        tmdbExternalLink.setDisable(!value.identity().id().matches("[0-9]+"));
         tmdbPosterPlaceholder.setText("TMDB");
         tmdbPoster.setVisible(false);
         tmdbPoster.setImage(null);
@@ -620,18 +652,8 @@ public final class RowDetailPanel {
         return primary.or(() -> secondary).or(candidate::overview);
     }
 
-    private TmdbEpisodeOrder selectedOrder() {
-        String value = tmdbOrder.getValue();
-        if (value == null || value.isBlank()) {
-            return TmdbEpisodeOrder.AIRED;
-        }
-        if (value.equals(UiText.scanBatchTmdbOrderDvd(currentLanguage))) {
-            return TmdbEpisodeOrder.DVD;
-        }
-        if (value.equals(UiText.scanBatchTmdbOrderAbsolute(currentLanguage))) {
-            return TmdbEpisodeOrder.ABSOLUTE;
-        }
-        return TmdbEpisodeOrder.AIRED;
+    private TmdbEpisodeGroup selectedOrder() {
+        return tmdbOrder.getValue() == null ? TmdbEpisodeGroup.aired() : tmdbOrder.getValue();
     }
 
     private void rebuildEpisodeMenu() {
@@ -680,8 +702,45 @@ public final class RowDetailPanel {
         return switch (order) {
             case DVD -> UiText.scanBatchTmdbOrderDvd(currentLanguage);
             case ABSOLUTE -> UiText.scanBatchTmdbOrderAbsolute(currentLanguage);
+            case DIGITAL -> UiText.scanBatchTmdbOrderDigital(currentLanguage);
+            case STORY_ARC -> UiText.scanBatchTmdbOrderStoryArc(currentLanguage);
+            case PRODUCTION -> UiText.scanBatchTmdbOrderProduction(currentLanguage);
+            case TV -> UiText.scanBatchTmdbOrderTv(currentLanguage);
             case AIRED -> UiText.scanBatchTmdbOrderAired(currentLanguage);
         };
+    }
+
+    private void refreshOrderItems() {
+        TmdbEpisodeGroup current = tmdbOrder.getValue();
+        tmdbOrder.getItems().setAll(availableTmdbGroups);
+        tmdbOrder.setValue(current != null && availableTmdbGroups.contains(current)
+                ? current
+                : TmdbEpisodeGroup.aired());
+        tmdbOrder.setButtonCell(orderCell());
+    }
+
+    private ListCell<TmdbEpisodeGroup> orderCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(TmdbEpisodeGroup group, boolean empty) {
+                super.updateItem(group, empty);
+                String label = empty || group == null ? null : episodeGroupLabel(group);
+                setText(label);
+                setTooltip(label == null ? null : new Tooltip(label));
+            }
+        };
+    }
+
+    private String episodeGroupLabel(TmdbEpisodeGroup group) {
+        if (group.isAired()) {
+            return UiText.tmdbDefaultEpisodeOrder(currentLanguage);
+        }
+        return UiText.tmdbEpisodeGroupOption(
+                currentLanguage,
+                group.name(),
+                orderLabel(group.order()),
+                group.groupCount(),
+                group.episodeCount());
     }
 
     private void updateTmdbTargetHint() {

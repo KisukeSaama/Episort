@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.episort.tmdb.TmdbEpisode;
+import com.episort.tmdb.TmdbEpisodeGroup;
 import com.episort.tmdb.TmdbEpisodeOrder;
 import com.episort.tmdb.TmdbIdentity;
 import com.episort.tmdb.TmdbMediaType;
@@ -63,6 +64,29 @@ class TmdbEpisodeOrderMapperTest {
 
         assertTrue(result.proposal().isEmpty());
         assertEquals(Optional.of("TMDB order unavailable for this series"), result.error());
+    }
+
+    @Test
+    void remapsBetweenTwoNamedDigitalGroupsByStableEpisodeId() {
+        TmdbIdentity identity = new TmdbIdentity("30984", TmdbMediaType.SERIES, "Bleach");
+        TmdbEpisodeGroup crunchyroll = new TmdbEpisodeGroup(
+                "crunchyroll", "Crunchyroll", TmdbEpisodeOrder.DIGITAL, 16, 392);
+        TmdbEpisodeGroup netflix = new TmdbEpisodeGroup(
+                "netflix", "Netflix", TmdbEpisodeOrder.DIGITAL, 6, 131);
+        TmdbSeriesDetails details = TmdbSeriesDetails.forGroup(
+                        identity, List.of(crunchyroll, netflix), crunchyroll,
+                        List.of(new TmdbEpisode("same-episode", 2, 8, Optional.empty(), "Episode", false)))
+                .merge(TmdbSeriesDetails.forGroup(
+                        identity, List.of(crunchyroll, netflix), netflix,
+                        List.of(
+                                new TmdbEpisode("different-episode", 2, 8, Optional.empty(), "Decoy", false),
+                                new TmdbEpisode("same-episode", 1, 15, Optional.empty(), "Episode", false))));
+
+        var result = mapper.map(details, crunchyroll, netflix,
+                Path.of("Bleach.S02E08.mkv"), 2, 8, Optional.empty());
+
+        assertEquals(Optional.of(1), result.proposal().orElseThrow().seasonNumber());
+        assertEquals(Optional.of(15), result.proposal().orElseThrow().episodeNumber());
     }
 
     private static TmdbSeriesDetails details() {

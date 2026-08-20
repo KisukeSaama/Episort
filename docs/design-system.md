@@ -787,15 +787,23 @@ section of Settings.
     fields. Use `-` everywhere data is absent.
   - The TMDB-correction sub-panel uses the shared combo-box and button
     vocabulary for identity search, episode order and Apply / Reset.
+  - A resolved match exposes `Voir sur TMDB ↗` / `View on TMDB ↗` through the
+    existing `.tmdb-attribution-link`. The URL is built only from a numeric
+    TMDB identity and opens through the shell's external-link handler.
   - While a TMDB lookup runs, the panel names the work and reports it with the
     shared `.episort-progress` bar, indeterminate, under the sentence — the
     loader card's own order (§ addendum). It carried a bare Modena
     `ProgressIndicator` arc, the one control in the shell drawn by another
     toolkit outside the workflow strip.
-  - Once real series metadata is loaded, `Premier épisode` / `First episode`
-    opens a hierarchical `.tmdb-episode-picker`: Diffusion and DVD group the
-    non-special episodes into retractable seasons; Absolu groups them into
-    retractable ranges of 50 and displays their absolute number. Its adjacent default button
+  - Once real series metadata is loaded, the order selector lists every
+    **concrete named episode group** advertised by TMDB, not one option per
+    category. Two Digital groups such as `Crunchyroll Season Split` and
+    `Netflix` remain separate choices, labelled with their category, group count,
+    and episode count. Long labels keep a tooltip. `Premier épisode` / `First episode` then opens a hierarchical
+    `.tmdb-episode-picker` for the selected group: season-like groups become
+    retractable seasons, while Absolute uses ranges of 50 and displays the
+    absolute number.
+    Its adjacent default button
     applies that episode to one row or a consecutive sequence to the checked
     rows in current table order. Disable both controls when no series metadata
     or starting episode is available; do not hide them.
@@ -805,15 +813,14 @@ section of Settings.
 
 ### 4.13 Filter chip
 
-- **Scan filters:** the Scan screen's filter row is a `FlowPane`, like
-  History's, holding three groups: the search box, the four kind chips, the
-  seven status chips. The two predicates combine, and they read as two
-  questions through spacing (8 inside a group, 16 between). An `HBox` with a
-  growing spacer held them on one line until about 1030 px of content width,
-  past which the chips at the end truncated their own labels; a spacer cannot
-  survive a wrap, so the separation is padding instead. A wrap breaks between
-  groups and never inside one, because four kind chips split across two rows
-  read as two questions rather than one.
+- **Scan filters:** the search box belongs to the heading row. Below the metric
+  cards, `ResponsiveFilterPane` keeps the four media-kind chips as a left block
+  and the seven status chips as a right block whenever their preferred widths
+  plus a 20px separation fit. Its maximum width is bound to the scan table, so
+  the right block stops at the table edge and never extends above the adjacent
+  correspondence panel. When that panel stacks below, the table and filter bar
+  expand together. At narrower widths it stacks both intact groups, left-aligned
+  with an 8px row gap. Never split the chips inside either group.
 - Ignored rows remain discoverable through the Ignored status filter but are
   excluded from active selection and batch operations.
 - **Anatomy:** `ToggleButton` arranged in an `HBox`. Exactly one button
@@ -884,16 +891,17 @@ section of Settings.
 
 - **Anatomy:** in-window pane replacing the content area (no second `Stage`) →
   header → subtitle → metric chip row → conflict batch toolbar (only while
-  conflicts remain) → banner → `TableView` (selection, source, destination,
-  status, dates, decision) → notice → right-aligned action row (`Fermer` ghost,
+  conflicts remain) → banner → `TableView` (selection, source, source size,
+  destination, status, compared copy, dates, decision) → notice → right-aligned action row (`Fermer` ghost,
   `Appliquer` / `Valider et exécuter` primary).
 - **Entry point:** the top-bar primary action (`Voir le plan`) is the single
   route in. It closes the pattern gate on the way, so reaching the plan costs
   one click from a loaded folder.
 - **Conflicts are resolved inline:** a blocking row carries its own decision
   `ComboBox` and its source/destination dates in the very list being validated.
-  The selection, dates, and decision columns — and the batch toolbar — are
-  hidden as soon as no conflict remains. There is no separate conflict window.
+  The selection, compared-copy, dates, and decision columns — and the batch
+  toolbar — are hidden as soon as no conflict remains. There is no separate
+  conflict window.
 - **Classes:** reuses `.screen-root`, `.tmdb-dialog-header`,
   `.tmdb-dialog-title`, `.tmdb-dialog-message`, `.selection-column` /
   `.selection-header` / `.selection-cell` / `.row-checkbox`,
@@ -909,8 +917,14 @@ section of Settings.
   - A planned deletion keeps a class no other state uses (`#ff4d4d`), so the
     row that destroys a file never reads like the rows around it. Enforced by
     `PlanReviewTextTest.aPlannedDeletionGetsAPillOfItsOwn`.
-  - Every row shows a real source path; a missing destination renders `-`
+  - Every row shows a real source path; a missing destination renders `—`
     with `.cell-muted`. Never invent a destination for an excluded item.
+  - Source size is computed once when the plan view is refreshed. While a
+    conflict is blocking, `Copie comparée` / `Compared copy` names the existing
+    destination or duplicate and shows its size; the dates column compares the
+    same two files. Missing/unreadable sizes render `—`.
+  - Duplicate rows may offer `DELETE_SOURCE`, but deletion remains only a row
+    decision until the exact plan is applied and then explicitly validated.
   - The primary action never disappears: while
     `OperationPlan.hasBlockingConflicts()` is true it reads `Appliquer` and only
     rebuilds the plan from the row decisions; once no conflict remains it

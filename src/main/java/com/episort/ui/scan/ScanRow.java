@@ -1,6 +1,7 @@
 package com.episort.ui.scan;
 
 import com.episort.tmdb.TmdbCandidate;
+import com.episort.tmdb.TmdbEpisodeGroup;
 import com.episort.tmdb.TmdbEpisodeOrder;
 import java.nio.file.Path;
 import java.util.List;
@@ -33,6 +34,7 @@ public final class ScanRow {
     private Optional<String> tmdbMatch;
     private Optional<TmdbCandidate> tmdbCandidate;
     private Optional<TmdbEpisodeOrder> appliedTmdbOrder;
+    private Optional<TmdbEpisodeGroup> appliedTmdbGroup;
     private boolean tmdbSelectedByUser;
     private Optional<String> order;
     private Optional<Path> destination;
@@ -62,6 +64,7 @@ public final class ScanRow {
         this.tmdbMatch = Optional.empty();
         this.tmdbCandidate = Optional.empty();
         this.appliedTmdbOrder = Optional.empty();
+        this.appliedTmdbGroup = Optional.empty();
         this.tmdbSelectedByUser = false;
         this.order = Optional.empty();
         this.destination = Optional.empty();
@@ -204,6 +207,15 @@ public final class ScanRow {
 
     public void setAppliedTmdbOrder(Optional<TmdbEpisodeOrder> appliedTmdbOrder) {
         this.appliedTmdbOrder = Objects.requireNonNull(appliedTmdbOrder, "appliedTmdbOrder");
+    }
+
+    public Optional<TmdbEpisodeGroup> appliedTmdbGroup() {
+        return appliedTmdbGroup;
+    }
+
+    public void setAppliedTmdbGroup(Optional<TmdbEpisodeGroup> appliedTmdbGroup) {
+        this.appliedTmdbGroup = Objects.requireNonNull(appliedTmdbGroup, "appliedTmdbGroup");
+        this.appliedTmdbOrder = appliedTmdbGroup.map(TmdbEpisodeGroup::order);
     }
 
     public boolean tmdbSelectedByUser() {

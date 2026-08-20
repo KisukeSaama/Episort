@@ -23,6 +23,7 @@ import com.episort.tmdb.TmdbCandidate;
 import com.episort.tmdb.TmdbCandidateScorer;
 import com.episort.tmdb.TmdbClient;
 import com.episort.tmdb.TmdbEpisode;
+import com.episort.tmdb.TmdbEpisodeGroup;
 import com.episort.tmdb.TmdbEpisodeOrder;
 import com.episort.tmdb.TmdbException;
 import com.episort.tmdb.TmdbIdentity;
@@ -30,16 +31,17 @@ import com.episort.tmdb.TmdbMediaType;
 import com.episort.tmdb.TmdbMovieDetails;
 import com.episort.tmdb.TmdbSearchResult;
 import com.episort.tmdb.TmdbSeriesDetails;
+import com.episort.tmdb.TmdbWebUrl;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.RoundedClip;
 import com.episort.ui.UiText;
 import com.episort.ui.ViewTransition;
 import com.episort.ui.WorkflowPhase;
 import com.episort.ui.WorkflowStepper;
+import com.episort.ui.platform.DesktopFileActions;
 import com.episort.workflow.ReviewSession;
 import com.episort.workflow.ReviewValidationSnapshot;
 import com.episort.workflow.TmdbBatchMatchResult;
-import java.awt.Desktop;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -55,6 +57,7 @@ import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
@@ -71,8 +74,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -127,8 +128,14 @@ public final class ScanScreen {
     private TmdbClient tmdbClient;
     private Supplier<Optional<JanusConfiguration>> tmdbCredentialsSupplier = Optional::empty;
     private Runnable reviewStateChanged = () -> {};
+    private final Consumer<String> openExternalLink;
 
     public ScanScreen() {
+        this(null);
+    }
+
+    public ScanScreen(Consumer<String> openExternalLink) {
+        this.openExternalLink = openExternalLink;
         selection = new ScanSelectionController(table, rows, filtered, sorted, new SelectionHost());
         heading = new Label();
         heading.getStyleClass().addAll("section-heading", "section-heading-accent");
@@ -149,6 +156,9 @@ public final class ScanScreen {
         detailPanel.setOnResetMatch(this::resetTmdbMatch);
         detailPanel.setOnApplyInputPattern(this::applyInputPatternToSelection);
         detailPanel.setOnSearchMatch(this::openTmdbManualMatchDialog);
+        detailPanel.setOnOpenTmdbLink(identity -> TmdbWebUrl.forIdentity(identity)
+                .filter(url -> openExternalLink != null)
+                .ifPresent(openExternalLink));
         detailRoot = detailPanel.root();
         detailRoot.setMinWidth(320);
         detailRoot.setPrefWidth(380);
@@ -173,9 +183,13 @@ public final class ScanScreen {
         HBox headingRow = new HBox(12, heading, headingSpacer, filterBar.searchRoot());
         headingRow.getStyleClass().add("screen-heading-row");
 
-        // The filter bar sits above the body, not inside the table column, so it
-        // measures against the whole screen instead of the width left over by the
-        // detail panel. Same placement as the history filter row (§4.13).
+        // The bar remains above the body, but its right edge belongs to the
+        // table rather than the whole screen. Binding its maximum width to the
+        // live table width keeps the status group out of the correspondence
+        // column; when that column stacks below, the table and filters both
+        // expand to the same full width automatically.
+        filterBar.root().setMinWidth(0);
+        filterBar.root().maxWidthProperty().bind(table.widthProperty());
         root = new VBox(14, headingRow, workflow, metricCards.root(), filterBar.root(), currentBody);
         root.getStyleClass().add("screen-root");
         VBox.setVgrow(currentBody, Priority.ALWAYS);
@@ -464,7 +478,7 @@ public final class ScanScreen {
                 TmdbQueryCleaner.clean(groupName),
                 new ArrayList<>(tmdbCandidatesByLabel.values()));
         dialog.showAndWait().ifPresent(candidate ->
-                applyTmdbCandidateTo(members, members.getFirst(), candidate, TmdbEpisodeOrder.AIRED));
+                applyTmdbCandidateTo(members, members.getFirst(), candidate, TmdbEpisodeGroup.aired()));
     }
 
     private void applyBatchGroupMatchToRow(ScanRow row, TmdbBatchMatchResult.GroupMatch match) {
@@ -543,6 +557,7 @@ public final class ScanScreen {
                     String.format("%02d", episode),
                     episodeTitle)));
             row.setAppliedTmdbOrder(Optional.of(TmdbEpisodeOrder.AIRED));
+            row.setAppliedTmdbGroup(Optional.of(TmdbEpisodeGroup.aired()));
             row.setAlertText(Optional.empty());
             ScanTrace.publishAlert(row, "CLEARED", "TMDB", "", "Series metadata produced a match");
             row.setNoteText(Optional.of(UiText.tmdbAutomaticMatch(currentLanguage) + "."));
@@ -700,6 +715,13 @@ public final class ScanScreen {
                 selection.anchorOn(item);
             });
             row.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+                if (row.isEmpty() || !columns.shouldOpenSourceFile(event)) {
+                    return;
+                }
+                openSourceFile(row.getItem());
+                event.consume();
+            });
+            row.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
                 if (row.isEmpty() || !ScanSelectionController.shouldFocusRow(event)) {
                     return;
                 }
@@ -837,17 +859,20 @@ public final class ScanScreen {
 
     private void configureEpisodeSequenceOptions(ScanRow row) {
         if (row == null || row.tmdbCandidate().isEmpty()) {
-            detailPanel.setTmdbEpisodeOptions(List.of(), "", TmdbEpisodeOrder.AIRED);
+            detailPanel.setAvailableTmdbGroups(List.of(TmdbEpisodeGroup.aired()));
+            detailPanel.setTmdbEpisodeOptions(List.of(), "", TmdbEpisodeGroup.aired());
             return;
         }
         TmdbSeriesDetails details = tmdbSeriesDetailsById.get(row.tmdbCandidate().orElseThrow().identity().id());
         if (details == null) {
-            detailPanel.setTmdbEpisodeOptions(List.of(), "", TmdbEpisodeOrder.AIRED);
+            detailPanel.setAvailableTmdbGroups(List.of(TmdbEpisodeGroup.aired()));
+            detailPanel.setTmdbEpisodeOptions(List.of(), "", TmdbEpisodeGroup.aired());
             return;
         }
-        TmdbEpisodeOrder order = row.appliedTmdbOrder().orElse(TmdbEpisodeOrder.AIRED);
-        String selectedId = episodeForRow(details.episodesFor(order), row).map(TmdbEpisode::id).orElse("");
-        detailPanel.setTmdbEpisodeOptions(details.episodesFor(order), selectedId, order);
+        detailPanel.setAvailableTmdbGroups(details.availableGroups());
+        TmdbEpisodeGroup group = row.appliedTmdbGroup().orElse(TmdbEpisodeGroup.aired());
+        String selectedId = episodeForRow(details.episodesFor(group), row).map(TmdbEpisode::id).orElse("");
+        detailPanel.setTmdbEpisodeOptions(details.episodesFor(group), selectedId, group);
     }
 
     private void applyTmdbCandidate(ScanRow row, String candidate) {
@@ -904,10 +929,10 @@ public final class ScanScreen {
     }
 
     private void applyManualTmdbCandidate(ScanRow row, TmdbCandidate candidate) {
-        applyManualTmdbCandidate(row, candidate, TmdbEpisodeOrder.AIRED);
+        applyManualTmdbCandidate(row, candidate, TmdbEpisodeGroup.aired());
     }
 
-    private void applyManualTmdbCandidate(ScanRow row, TmdbCandidate candidate, TmdbEpisodeOrder order) {
+    private void applyManualTmdbCandidate(ScanRow row, TmdbCandidate candidate, TmdbEpisodeGroup group) {
         List<ScanRow> targets = tmdbTargetRows(row);
         if (targets.isEmpty()) {
             row.setNoteText(Optional.of(UiText.tmdbNoFileSelected(currentLanguage)));
@@ -919,7 +944,7 @@ public final class ScanScreen {
         if (confirmed.isEmpty()) {
             return;
         }
-        applyTmdbCandidateTo(confirmed.orElseThrow(), row, candidate, order);
+        applyTmdbCandidateTo(confirmed.orElseThrow(), row, candidate, group);
     }
 
     /**
@@ -950,7 +975,7 @@ public final class ScanScreen {
     }
 
     private void applyTmdbCandidateTo(
-            List<ScanRow> targets, ScanRow row, TmdbCandidate candidate, TmdbEpisodeOrder order) {
+            List<ScanRow> targets, ScanRow row, TmdbCandidate candidate, TmdbEpisodeGroup group) {
         String label = candidateLabel(candidate);
         tmdbCandidatesByLabel.put(label, candidate);
         for (ScanRow target : targets) {
@@ -958,7 +983,7 @@ public final class ScanScreen {
             target.setNoteText(Optional.of(UiText.scanNoteTmdbIdentitySelected(currentLanguage)));
         }
         detailPanel.setTmdbBusy(true, UiText.tmdbApplyingOrder(currentLanguage));
-        loadSelectedTmdbMetadata(targets, candidate.identity(), tmdbCredentialsSupplier.get().orElseThrow(), order);
+        loadSelectedTmdbMetadata(targets, candidate.identity(), tmdbCredentialsSupplier.get().orElseThrow(), group);
         table.refresh();
         updateManualMatchNotice();
         if (selection.focused() != null) {
@@ -967,7 +992,7 @@ public final class ScanScreen {
         }
     }
 
-    private void applySelectedTmdbMatchToSelection(ScanRow anchor, TmdbEpisodeOrder order) {
+    private void applySelectedTmdbMatchToSelection(ScanRow anchor, TmdbEpisodeGroup group) {
         if (anchor == null || anchor.tmdbCandidate().isEmpty()) {
             if (anchor != null) {
                 anchor.setNoteText(Optional.of(UiText.tmdbNoResultSelected(currentLanguage)));
@@ -983,7 +1008,7 @@ public final class ScanScreen {
             showDetail(anchor);
             return;
         }
-        applyManualTmdbCandidate(anchor, anchor.tmdbCandidate().orElseThrow(), order);
+        applyManualTmdbCandidate(anchor, anchor.tmdbCandidate().orElseThrow(), group);
     }
 
     private void setManualTmdbCandidate(ScanRow row, TmdbCandidate candidate, String label) {
@@ -1123,26 +1148,27 @@ public final class ScanScreen {
             List<ScanRow> targetRows,
             TmdbIdentity identity,
             JanusConfiguration credentials,
-            TmdbEpisodeOrder order) {
+            TmdbEpisodeGroup group) {
         List<ScanRow> targets = List.copyOf(targetRows);
         CompletableFuture
                 .supplyAsync(() -> identity.mediaType() == TmdbMediaType.MOVIE
                         ? tmdbClient.movieDetails(identity, credentials)
-                        : tmdbClient.seriesDetails(identity, order, credentials))
-                .thenAccept(details -> Platform.runLater(() -> applySelectedTmdbMetadata(targets, details, order)))
+                        : tmdbClient.seriesDetails(identity, group, credentials))
+                .thenAccept(details -> Platform.runLater(() -> applySelectedTmdbMetadata(targets, details, group)))
                 .exceptionally(throwable -> {
                     Platform.runLater(() -> applyTmdbLookupFailure(targets, throwable));
                     return null;
                 });
     }
 
-    private void applySelectedTmdbMetadata(List<ScanRow> targetRows, Object details, TmdbEpisodeOrder order) {
+    private void applySelectedTmdbMetadata(List<ScanRow> targetRows, Object details, TmdbEpisodeGroup group) {
         if (details instanceof TmdbSeriesDetails series) {
-            tmdbSeriesDetailsById.put(series.identity().id(), series);
+            details = tmdbSeriesDetailsById.merge(
+                    series.identity().id(), series, TmdbSeriesDetails::merge);
         }
         int updated = 0;
         for (ScanRow row : targetRows) {
-            applySelectedTmdbMetadataToRow(row, details, order);
+            applySelectedTmdbMetadataToRow(row, details, group);
             updated++;
         }
         groups.rebuild(rows);
@@ -1180,11 +1206,11 @@ public final class ScanScreen {
             int index = sorted.indexOf(row);
             return index < 0 ? Integer.MAX_VALUE : index;
         }));
-        TmdbEpisodeOrder order = anchor.appliedTmdbOrder().orElse(TmdbEpisodeOrder.AIRED);
+        TmdbEpisodeGroup group = anchor.appliedTmdbGroup().orElse(TmdbEpisodeGroup.aired());
         List<TmdbEpisode> sequence = TmdbEpisodeSequence.startingAt(
-                series.episodesFor(order), firstEpisode.id(), targets.size());
+                series.episodesFor(group), firstEpisode.id(), targets.size());
         for (int index = 0; index < sequence.size(); index++) {
-            applyTmdbEpisode(targets.get(index), series, order, sequence.get(index));
+            applyTmdbEpisode(targets.get(index), series, group, sequence.get(index));
         }
         groups.rebuild(rows);
         String message = sequence.size() == targets.size()
@@ -1199,7 +1225,7 @@ public final class ScanScreen {
     }
 
     private void applyTmdbEpisode(
-            ScanRow row, TmdbSeriesDetails series, TmdbEpisodeOrder order, TmdbEpisode episode) {
+            ScanRow row, TmdbSeriesDetails series, TmdbEpisodeGroup group, TmdbEpisode episode) {
         row.setMediaType(ScanMediaType.SERIES);
         row.setStatus(ScanRowStatus.TMDB);
         row.setOrder(Optional.of(String.format("S%02dE%02d",
@@ -1210,7 +1236,8 @@ public final class ScanScreen {
                 String.format("%02d", episode.episodeNumber()),
                 episode.title())));
         ScanRowEditor.recomputeProposedName(row);
-        row.setAppliedTmdbOrder(Optional.of(order));
+        row.setAppliedTmdbOrder(Optional.of(group.order()));
+        row.setAppliedTmdbGroup(Optional.of(group));
         row.setTmdbSelectedByUser(true);
         row.setConfidence(OptionalDouble.of(1.0));
         row.setAlertText(Optional.empty());
@@ -1230,16 +1257,18 @@ public final class ScanScreen {
                 .findFirst();
     }
 
-    private void applySelectedTmdbMetadataToRow(ScanRow row, Object details, TmdbEpisodeOrder order) {
+    private void applySelectedTmdbMetadataToRow(ScanRow row, Object details, TmdbEpisodeGroup group) {
         if (details instanceof TmdbMovieDetails movie) {
             applyMovieMetadata(row, movie);
         } else if (details instanceof TmdbSeriesDetails series) {
-            applySeriesMetadata(row, series, order);
+            applySeriesMetadata(row, series, group);
         }
     }
 
     private void applyMovieMetadata(ScanRow row, TmdbMovieDetails movie) {
         row.setMediaType(ScanMediaType.MOVIE);
+        row.setAppliedTmdbOrder(Optional.empty());
+        row.setAppliedTmdbGroup(Optional.empty());
         applyTmdbParseUnlessUserOwned(row, tmdbMovieParse(
                 movie.identity().displayName(),
                 movie.releaseYear().map(Object::toString).orElse("")));
@@ -1254,27 +1283,36 @@ public final class ScanScreen {
         row.setAlertText(TmdbMovieAlertPolicy.blockingAlert(row.tmdbSelectedByUser(), proposal));
     }
 
-    private void applySeriesMetadata(ScanRow row, TmdbSeriesDetails series, TmdbEpisodeOrder order) {
-        if (!series.supportedOrders().contains(order)) {
+    private void applySeriesMetadata(ScanRow row, TmdbSeriesDetails series, TmdbEpisodeGroup group) {
+        if (!series.availableGroups().contains(group)) {
             row.setAlertText(Optional.of(UiText.scanAlertTmdbOrderUnavailable(currentLanguage)));
             row.setNoteText(Optional.of(UiText.scanNoteTmdbOrderUnavailable(currentLanguage)));
             return;
         }
+        Optional<TmdbEpisodeGroup> sourceGroup = row.appliedTmdbGroup()
+                .filter(applied -> !applied.equals(group));
+        // The chosen group describes the numbering already carried by the
+        // user's files. Try those coordinates in that group first. Only fall
+        // back to a stable-id conversion when the filename cannot be interpreted
+        // there; this is essential for alternate cuts such as Bleach Kaï.
         List<MediaMatchProposal> proposals = matchService.proposeSeriesMatches(
                 List.of(inventoryItemFor(row)),
                 new TmdbSeriesMetadata(
                         series.identity().id(),
                         series.identity().displayName(),
-                        series.episodesFor(order).stream().map(ScanScreen::toMatchingEpisode).toList()));
+                        series.episodesFor(group).stream().map(ScanScreen::toMatchingEpisode).toList()));
         MediaMatchProposal proposal = proposals.isEmpty()
                 ? MediaMatchProposal.unmatched(row.sourcePath(), "No TMDB episode proposal.")
                 : proposals.getFirst();
-        if (proposal.type() == MediaMatchType.UNMATCHED) {
-            TmdbEpisodeOrderMapper.EpisodeOrderMappingResult mapped = remapAcrossTmdbOrders(row, series, order);
+        if (proposal.type() == MediaMatchType.UNMATCHED && sourceGroup.isPresent()) {
+            TmdbEpisodeOrderMapper.EpisodeOrderMappingResult mapped = remapAcrossTmdbOrders(row, series, group);
             proposal = mapped.proposal().orElse(proposal);
-            mapped.error().ifPresent(error -> row.setAlertText(Optional.of(error)));
         }
         if (proposal.type() == MediaMatchType.UNMATCHED) {
+            // Loading the group succeeded even when automatic episode matching
+            // did not. Keep the user's choice so the episode picker now shows
+            // that group's contents and lets them choose a starting episode.
+            row.setAppliedTmdbGroup(Optional.of(group));
             row.setAlertText(Optional.of(proposal.reason()));
             row.setNoteText(Optional.of(UiText.scanNoteTmdbNoEpisodeMatch(currentLanguage)));
             return;
@@ -1290,7 +1328,7 @@ public final class ScanScreen {
                 proposal.title().orElse("Untitled episode")));
         ScanRowEditor.recomputeProposedName(row);
         row.setConfidence(proposal.confidence());
-        row.setAppliedTmdbOrder(Optional.of(order));
+        row.setAppliedTmdbGroup(Optional.of(group));
         row.setAlertText(Optional.empty());
         row.setNoteText(Optional.of(UiText.scanNoteTmdbEpisodeApplied(
                 currentLanguage, series.identity().displayName())));
@@ -1323,27 +1361,38 @@ public final class ScanScreen {
     }
 
     private TmdbEpisodeOrderMapper.EpisodeOrderMappingResult remapAcrossTmdbOrders(
-            ScanRow row, TmdbSeriesDetails series, TmdbEpisodeOrder targetOrder) {
-        Optional<int[]> parsed = parsedSeasonEpisode(row);
+            ScanRow row, TmdbSeriesDetails series, TmdbEpisodeGroup targetGroup) {
+        Optional<int[]> parsed = currentSeasonEpisode(row);
         if (parsed.isEmpty()) {
             return new TmdbEpisodeOrderMapper.EpisodeOrderMappingResult(
                     Optional.empty(), Optional.of("Episode not found in selected order"));
         }
         int season = parsed.orElseThrow()[0];
         int episode = parsed.orElseThrow()[1];
-        return orderMapper.map(series, row.appliedTmdbOrder().orElse(null), targetOrder, row.sourcePath(),
+        return orderMapper.map(series, row.appliedTmdbGroup().orElse(null), targetGroup, row.sourcePath(),
                 season, episode, Optional.empty());
     }
 
-    private Optional<int[]> parsedSeasonEpisode(ScanRow row) {
-        Matcher matcher = SeasonEpisodePattern.LENIENT.matcher(row.originalFilename());
-        if (matcher.find()) {
-            return Optional.of(new int[] {Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2))});
+    static Optional<int[]> currentSeasonEpisode(ScanRow row) {
+        Optional<int[]> applied = row.order().flatMap(ScanScreen::seasonEpisodeFromText);
+        if (applied.isPresent()) {
+            return applied;
         }
-        return row.inputParse()
+        Optional<int[]> parsed = row.inputParse()
                 .flatMap(parse -> parse.tokenValue(ScanInputRole.SEASON)
                         .flatMap(season -> parse.tokenValue(ScanInputRole.EPISODE)
                                 .map(episode -> new int[] {safeInt(season), safeInt(episode)})));
+        return parsed.or(() -> seasonEpisodeFromText(row.originalFilename()));
+    }
+
+    private static Optional<int[]> seasonEpisodeFromText(String value) {
+        Matcher matcher = SeasonEpisodePattern.LENIENT.matcher(value == null ? "" : value);
+        if (!matcher.find()) {
+            return Optional.empty();
+        }
+        return Optional.of(new int[] {
+                Integer.parseInt(matcher.group(1)),
+                Integer.parseInt(matcher.group(2))});
     }
 
     private static int safeInt(String value) {
@@ -1432,6 +1481,7 @@ public final class ScanScreen {
             row.setTmdbCandidate(Optional.empty());
             row.setTmdbSelectedByUser(false);
             row.setAppliedTmdbOrder(Optional.empty());
+            row.setAppliedTmdbGroup(Optional.empty());
             row.setOrder(Optional.empty());
             row.setProposedFilename(Optional.empty());
             row.setDestination(Optional.empty());
@@ -1441,28 +1491,22 @@ public final class ScanScreen {
             }
         });
 
-        MenuItem copyPath = new MenuItem(UiText.scanContextCopyPath(currentLanguage));
-        copyPath.setOnAction(event -> {
-            ClipboardContent content = new ClipboardContent();
-            content.putString(row.sourcePath().toAbsolutePath().normalize().toString());
-            Clipboard.getSystemClipboard().setContent(content);
-        });
+        MenuItem openFile = new MenuItem(UiText.scanContextOpenFile(currentLanguage));
+        openFile.setDisable(!DesktopFileActions.canOpenFile());
+        openFile.setOnAction(event -> openSourceFile(row));
 
         MenuItem openFolder = new MenuItem(UiText.scanContextOpenFolder(currentLanguage));
         Path parent = row.sourcePath().getParent();
-        openFolder.setDisable(parent == null || !Desktop.isDesktopSupported());
+        openFolder.setDisable(parent == null);
         openFolder.setOnAction(event -> {
-            if (parent == null) {
-                return;
-            }
             try {
-                Desktop.getDesktop().open(parent.toFile());
+                DesktopFileActions.openParent(row.sourcePath());
             } catch (IOException | UnsupportedOperationException ignored) {
                 // Best-effort; if the desktop integration is unavailable, do nothing.
             }
         });
 
-        menu.getItems().setAll(properties, ignore, reset, copyPath, openFolder);
+        menu.getItems().setAll(properties, ignore, reset, openFolder, openFile);
         return menu;
     }
 
@@ -1479,6 +1523,14 @@ public final class ScanScreen {
             }
         });
         menu.show(owner, screenX, screenY);
+    }
+
+    private void openSourceFile(ScanRow row) {
+        try {
+            DesktopFileActions.openFile(row.sourcePath());
+        } catch (IOException | IllegalArgumentException | UnsupportedOperationException ignored) {
+            // Best-effort desktop integration; it never changes the media file.
+        }
     }
 
     private void updateMetricsFromRows() {
