@@ -632,6 +632,9 @@ public final class UiText {
     public static String conflictOptionKeepExisting(AppLanguage language) { return t(language, "conflict.option.keepExisting"); }
     public static String conflictOptionIgnore(AppLanguage language) { return t(language, "conflict.option.ignore"); }
     public static String conflictOptionDeleteSource(AppLanguage language) { return t(language, "conflict.option.deleteSource"); }
+    public static String conflictOptionDeleteSourceKeepExisting(AppLanguage language) {
+        return t(language, "conflict.option.deleteSourceKeepExisting");
+    }
     public static String conflictOptionDrop(AppLanguage language) { return t(language, "conflict.option.drop"); }
     public static String conflictApply(AppLanguage language) { return t(language, "conflict.apply"); }
     public static String conflictStillBlocked(AppLanguage language) { return t(language, "conflict.stillBlocked"); }

@@ -47,15 +47,20 @@ public enum PlanConflictType {
     }
 
     /**
-     * True when removing the source file is a sensible answer: the conflict is
-     * that the same episode exists twice, so throwing the extra copy away settles
-     * it for good instead of leaving it to block the next run.
+     * True when removing the source file is a meaningful explicit answer: another
+     * real file either occupies its destination or represents the same media, so
+     * discarding the incoming source settles the conflict.
      *
-     * <p>Deliberately the same set as {@link #resolvableByReplacement()}: a path
-     * problem is never a reason to destroy the user's file, so those conflicts can
-     * only be dropped from the plan.
+     * <p>This includes every conflict that identifies another real file as the
+     * competing copy. A path problem is never a reason to destroy the user's
+     * file, so structural conflicts can only be dropped from the plan.
      */
     public boolean deletableSource() {
-        return false;
+        return switch (this) {
+            case DUPLICATE_DESTINATION, DUPLICATE_MEDIA,
+                    MEDIA_ALREADY_IN_LIBRARY, DESTINATION_FILE_EXISTS -> true;
+            case SOURCE_OUTSIDE_WORKSPACE, DESTINATION_OUTSIDE_WORKSPACE,
+                    PATH_TOO_LONG, DESTINATION_FOLDER_BLOCKED -> false;
+        };
     }
 }
