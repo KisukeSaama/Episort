@@ -64,6 +64,9 @@ public final class HorizontalScrollTable {
             table.skinProperty().addListener((observable, oldValue, newValue) -> redistribute());
 
             installShiftWheelScrolling();
+            // Every table in the application comes through here, so this is the
+            // one place vertical wheel scrolling has to be smoothed.
+            SmoothScroll.install(table);
             redistribute();
         }
 

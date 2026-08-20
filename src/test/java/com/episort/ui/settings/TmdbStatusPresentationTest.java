@@ -18,7 +18,7 @@ class TmdbStatusPresentationTest {
                 AppLanguage.FRENCH);
 
         assertTrue(status.active());
-        assertEquals("Actif — la connexion TMDB a été vérifiée au démarrage.", status.text());
+        assertEquals("Actif : la connexion TMDB a été vérifiée au démarrage.", status.text());
         assertEquals("dot-good", status.dotStyleClass());
     }
 
@@ -34,7 +34,7 @@ class TmdbStatusPresentationTest {
         TmdbStatusPresentation status = TmdbStatusPresentation.from(result, AppLanguage.ENGLISH);
 
         assertFalse(status.active());
-        assertEquals("Inactive — the Janus TMDB route is unavailable.", status.text());
+        assertEquals("Inactive: TMDB cannot be reached right now.", status.text());
         assertEquals("dot-error", status.dotStyleClass());
         assertFalse(status.text().contains("secret-key"));
         assertFalse(status.text().contains("secret-token"));

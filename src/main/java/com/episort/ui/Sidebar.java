@@ -7,8 +7,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
@@ -18,13 +20,20 @@ import javafx.scene.layout.VBox;
 
 public final class Sidebar {
     private static final String STYLE_CLASS = "sidebar";
+    private static final String COLLAPSED_CLASS = "collapsed";
+    static final double EXPANDED_WIDTH = 230;
+    /** Wide enough for a 17 px glyph in a 36 px row plus the rail's padding. */
+    static final double COLLAPSED_WIDTH = 64;
 
     private final VBox root;
+    private final HBox brandRow;
+    private final HBox sectionHeading;
     private final Label brandName;
     private final Label sectionLabel;
     private final StorageUsageIndicator storageUsage;
     private final Map<AppView, NavItem> navItems = new EnumMap<>(AppView.class);
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
+    private boolean collapsed;
 
     public Sidebar(Image logo, Consumer<AppView> onSelect) {
         Objects.requireNonNull(onSelect, "onSelect");
@@ -37,7 +46,7 @@ public final class Sidebar {
         brandName = new Label("Episort");
         brandName.getStyleClass().add("sidebar-brand-name");
 
-        HBox brandRow = new HBox(10, logoView, brandName);
+        this.brandRow = new HBox(10, logoView, brandName);
         brandRow.setAlignment(Pos.CENTER_LEFT);
         brandRow.getStyleClass().add("sidebar-brand");
 
@@ -45,7 +54,7 @@ public final class Sidebar {
         sectionLabel.getStyleClass().add("sidebar-section-label");
         Region sectionMarker = new Region();
         sectionMarker.getStyleClass().add("sidebar-section-marker");
-        HBox sectionHeading = new HBox(8, sectionMarker, sectionLabel);
+        this.sectionHeading = new HBox(8, sectionMarker, sectionLabel);
         sectionHeading.setAlignment(Pos.CENTER_LEFT);
         sectionHeading.getStyleClass().add("sidebar-section-heading");
 
@@ -78,6 +87,43 @@ public final class Sidebar {
         return root;
     }
 
+    /**
+     * Drops the rail to its glyphs when the window can no longer spare 230 px
+     * for three words.
+     *
+     * <p>Nothing is removed: each nav item keeps the accessible text it
+     * already had and gains the tooltip that stands in for the label it lost,
+     * and the storage readout keeps reporting through the indicator's own
+     * compact form. The brand name and the section heading go because a rail
+     * this narrow has no room for a heading over three icons.
+     */
+    public void setCollapsed(boolean collapsed) {
+        if (this.collapsed == collapsed) {
+            return;
+        }
+        this.collapsed = collapsed;
+        root.getStyleClass().remove(COLLAPSED_CLASS);
+        if (collapsed) {
+            root.getStyleClass().add(COLLAPSED_CLASS);
+        }
+        double width = collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH;
+        root.setMinWidth(width);
+        root.setPrefWidth(width);
+        root.setMaxWidth(width);
+        show(brandName, !collapsed);
+        show(sectionHeading, !collapsed);
+        brandRow.setAlignment(collapsed ? Pos.CENTER : Pos.CENTER_LEFT);
+        for (NavItem item : navItems.values()) {
+            item.setCollapsed(collapsed);
+        }
+        storageUsage.setCollapsed(collapsed);
+    }
+
+    private static void show(Node node, boolean visible) {
+        node.setVisible(visible);
+        node.setManaged(visible);
+    }
+
     public void applyLanguage(AppLanguage language) {
         currentLanguage = language;
         sectionLabel.setText(UiText.sidebarSectionNavigation(language));
@@ -106,13 +152,14 @@ public final class Sidebar {
         private final Button button;
         private final Label icon;
         private final Label label;
+        private final HBox content;
 
         NavItem(AppView view, String iconText, Consumer<AppView> onSelect) {
             icon = new Label(iconText);
             icon.getStyleClass().add("nav-item-icon");
             label = new Label();
             label.getStyleClass().add("nav-item-label");
-            HBox content = new HBox(10, icon, label);
+            content = new HBox(10, icon, label);
             content.setAlignment(Pos.CENTER_LEFT);
             button = new Button();
             button.setGraphic(content);
@@ -130,6 +177,16 @@ public final class Sidebar {
             // The button's own text is empty (the label lives in its graphic),
             // so without this a screen reader announces an unnamed button.
             button.setAccessibleText(text);
+            // Installed whatever the width: collapsing must not be the moment a
+            // control first acquires a name, or the name is only ever as fresh
+            // as the last resize.
+            button.setTooltip(new Tooltip(text));
+        }
+
+        void setCollapsed(boolean collapsed) {
+            label.setVisible(!collapsed);
+            label.setManaged(!collapsed);
+            content.setAlignment(collapsed ? Pos.CENTER : Pos.CENTER_LEFT);
         }
 
         void setActive(boolean active) {

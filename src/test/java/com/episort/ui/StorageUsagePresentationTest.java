@@ -18,6 +18,7 @@ class StorageUsagePresentationTest {
                 Optional.of(space), AppLanguage.FRENCH);
 
         assertEquals("38 % utilisé", presentation.percentage());
+        assertEquals("38 %", presentation.percentageValue());
         assertEquals("1,5 To / 4 To", presentation.capacity());
         assertEquals("2,5 To disponibles", presentation.available());
         assertEquals(0.375, presentation.progress(), 0.0001);
@@ -29,6 +30,7 @@ class StorageUsagePresentationTest {
                 Optional.empty(), AppLanguage.ENGLISH);
 
         assertEquals(UiText.EMPTY, presentation.percentage());
+        assertEquals(UiText.EMPTY, presentation.percentageValue());
         assertEquals(UiText.EMPTY, presentation.capacity());
         assertEquals(UiText.EMPTY, presentation.available());
         assertEquals(0, presentation.progress());

@@ -12,7 +12,7 @@ public final class UiText {
      * fabricated state: a label with nothing real behind it reads as this
      * em dash, never as a guess, a zero or a blank.
      */
-    public static final String EMPTY = "—";
+    public static final String EMPTY = "-";
 
     private static final String BUNDLE_BASE = "i18n.messages";
     private static final ResourceBundle.Control NO_FALLBACK_CONTROL =
@@ -132,6 +132,17 @@ public final class UiText {
         return t(language, "sidebar.storage.used").replace("{0}", Long.toString(percentage));
     }
 
+    /**
+     * The figure alone. The readout draws it at the heading step with the word
+     * that qualifies it beside it, so the phrase and its two parts are three
+     * keys: a translation that reorders them keeps the reordering.
+     */
+    public static String storageUsedPercentageValue(AppLanguage language, long percentage) {
+        return t(language, "sidebar.storage.used.value").replace("{0}", Long.toString(percentage));
+    }
+
+    public static String storageUsedSuffix(AppLanguage language) { return t(language, "sidebar.storage.used.suffix"); }
+
     public static String storageCapacity(AppLanguage language, String used, String total) {
         return t(language, "sidebar.storage.capacity").replace("{0}", used).replace("{1}", total);
     }
@@ -155,6 +166,8 @@ public final class UiText {
     public static String workspaceExplorerCollapse(AppLanguage language) { return t(language, "workspace.explorer.collapse"); }
     public static String workspaceExplorerExpand(AppLanguage language) { return t(language, "workspace.explorer.expand"); }
     public static String a11yClearSearch(AppLanguage language) { return t(language, "a11y.clearSearch"); }
+    public static String a11ySelectAllRows(AppLanguage language) { return t(language, "a11y.selectAllRows"); }
+    public static String a11ySelectRow(AppLanguage language) { return t(language, "a11y.selectRow"); }
     public static String a11yCloseWindow(AppLanguage language) { return t(language, "a11y.closeWindow"); }
     public static String workspaceValueEmpty(AppLanguage language) { return t(language, "workspace.value.empty"); }
     public static String workspaceSelectedPrefix(AppLanguage language) { return t(language, "workspace.configured.prefix"); }
@@ -171,7 +184,7 @@ public final class UiText {
 
     public static String scanNoteTmdbIdentityNoEpisode(AppLanguage language, String identity) { return note(language, "scan.note.tmdbIdentityNoEpisode", identity); }
     public static String scanNoteTmdbIdentityApplied(AppLanguage language, String identity) { return note(language, "scan.note.tmdbIdentityApplied", identity); }
-    public static String scanNoteJanusConfigurationMissing(AppLanguage language) { return t(language, "scan.note.tmdbCredentialsMissing"); }
+    public static String scanNoteTmdbUnavailable(AppLanguage language) { return t(language, "scan.note.tmdbCredentialsMissing"); }
     public static String scanNoteTmdbNoCandidates(AppLanguage language, String query) { return note(language, "scan.note.tmdbNoCandidates", query); }
     public static String scanNoteTmdbCandidatesLoaded(AppLanguage language) { return t(language, "scan.note.tmdbCandidatesLoaded"); }
     public static String scanNoteTmdbMovieApplied(AppLanguage language, String title) { return note(language, "scan.note.tmdbMovieApplied", title); }
@@ -445,7 +458,6 @@ public final class UiText {
     /* ---- Settings page ---------------------------------------------- */
 
     public static String settingsHeading(AppLanguage language) { return t(language, "settings.heading"); }
-    public static String settingsPageTitle(AppLanguage language) { return t(language, "settings.page.title"); }
     public static String settingsPageSubtitle(AppLanguage language) { return t(language, "settings.page.subtitle"); }
     public static String preferencesSectionTitle(AppLanguage language) { return t(language, "preferences.section.title"); }
     public static String preferencesSectionDescription(AppLanguage language) { return t(language, "preferences.section.description"); }
@@ -495,6 +507,7 @@ public final class UiText {
     public static String rollbackProgressLabel(AppLanguage language) { return t(language, "rollback.progress.label"); }
     public static String rollbackRecapLabel(AppLanguage language) { return t(language, "rollback.recap.label"); }
     public static String rollbackRecapDisk(AppLanguage language) { return t(language, "rollback.recap.disk"); }
+    public static String rollbackEmpty(AppLanguage language) { return t(language, "rollback.empty"); }
     public static String rollbackCompletedCount(AppLanguage language, int count) {
         return t(language, "rollback.completed.count").replace("{count}", Integer.toString(count));
     }
@@ -613,7 +626,7 @@ public final class UiText {
                 .replace("{1}", Integer.toString(total));
     }
 
-    /** "Source: {date} — Destination: {date}", the basis of the most-recent-wins rule. */
+    /** "Source: {date} • Destination: {date}", the basis of the most-recent-wins rule. */
     public static String conflictDatesLabel(AppLanguage language, String sourceDate, String destinationDate) {
         return t(language, "conflict.dates.source") + " " + sourceDate
                 + "  •  " + t(language, "conflict.dates.destination") + " " + destinationDate;

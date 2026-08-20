@@ -10,6 +10,8 @@ import com.episort.ui.ThemeStyles;
 final class WindowSnapPreview {
     private final Popup popup = new Popup();
     private final Region surface = new Region();
+    /** What the popup currently shows, so an unchanged frame costs nothing. */
+    private WindowBounds shown;
 
     WindowSnapPreview() {
         surface.getStyleClass().add("window-snap-preview");
@@ -24,6 +26,10 @@ final class WindowSnapPreview {
     }
 
     void show(Stage owner, WindowBounds bounds) {
+        if (bounds.equals(shown)) {
+            return;
+        }
+        shown = bounds;
         surface.setPrefSize(bounds.width(), bounds.height());
         surface.setMinSize(bounds.width(), bounds.height());
         surface.setMaxSize(bounds.width(), bounds.height());
@@ -36,6 +42,10 @@ final class WindowSnapPreview {
     }
 
     void hide() {
+        if (shown == null) {
+            return;
+        }
+        shown = null;
         popup.hide();
     }
 }

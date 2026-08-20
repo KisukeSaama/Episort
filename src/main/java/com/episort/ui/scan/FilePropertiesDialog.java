@@ -2,6 +2,7 @@ package com.episort.ui.scan;
 
 import com.episort.tmdb.TmdbCandidate;
 import com.episort.ui.AppLanguage;
+import com.episort.ui.SmoothScroll;
 import com.episort.ui.UiText;
 import com.episort.ui.ThemeStyles;
 import java.io.IOException;
@@ -96,6 +97,7 @@ final class FilePropertiesDialog {
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
         scroll.getStyleClass().addAll("file-properties-scroll", "detail-scroll");
+        SmoothScroll.install(scroll);
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         copiedFeedback.getStyleClass().add("file-properties-feedback");
@@ -122,6 +124,7 @@ final class FilePropertiesDialog {
         });
         scene.getStylesheets().add(FilePropertiesDialog.class.getResource("/styles/app.css").toExternalForm());
         ThemeStyles.register(root);
+        ThemeStyles.registerScene(scene);
         return scene;
     }
 

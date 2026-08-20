@@ -39,6 +39,8 @@ public final class TopBar {
     private final Button primaryAction;
     private AppLanguage currentLanguage = AppLanguage.FRENCH;
     private Tooltip workspaceTooltip;
+    private boolean scanActionsVisible = true;
+    private boolean compact;
 
     public TopBar(TopBarActions actions) {
         Objects.requireNonNull(actions, "actions");
@@ -52,6 +54,10 @@ public final class TopBar {
         workspaceChipValue = new Label();
         workspaceChipValue.getStyleClass().add("workspace-chip-label");
         workspaceChipValue.setMaxWidth(280);
+        // A path is the one thing here that can lose characters without losing
+        // meaning — it ends in an ellipsis and keeps its tooltip — so it is what
+        // gives way first when the row runs out of width.
+        workspaceChipValue.setMinWidth(0);
 
         workspaceChip = new HBox(workspaceChipPrefix, workspaceChipValue);
         workspaceChip.getStyleClass().add("workspace-chip");
@@ -107,6 +113,11 @@ public final class TopBar {
         content.getStyleClass().add("top-bar-content");
         content.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(content, Priority.ALWAYS);
+        // Without this the row refuses to be narrower than everything it holds,
+        // and a window narrower than that pushes what comes after it — the
+        // window buttons — off the right-hand edge. Which is the one thing the
+        // grouping above exists to prevent.
+        content.setMinWidth(0);
 
         root = new HBox(12, content, windowControls.root());
         root.getStyleClass().addAll("top-bar", "window-drag-region");
@@ -178,13 +189,36 @@ public final class TopBar {
     }
 
     public void setScanActionsVisible(boolean visible) {
-        menuBar.setScanActionsVisible(visible);
+        this.scanActionsVisible = visible;
+        menuBar.setScanActionsAvailable(visible);
+        loadAction.setVisible(visible);
+        loadAction.setManaged(visible);
+        refreshMirrorActions();
+    }
+
+    /**
+     * Folds the two mirror actions away when the row runs out of width.
+     *
+     * <p>{@code Réanalyser} and {@code Réinitialiser} are the only controls in
+     * the bar that exist twice: they are the Analyse menu's own entries and
+     * share its enabled state (§4.7). Folding them costs a click, not an
+     * action. {@code Charger} and the screen's primary action exist nowhere
+     * else and are never folded, whatever the width.
+     */
+    public void setCompact(boolean compact) {
+        if (this.compact == compact) {
+            return;
+        }
+        this.compact = compact;
+        refreshMirrorActions();
+    }
+
+    private void refreshMirrorActions() {
+        boolean visible = scanActionsVisible && !compact;
         rescanAction.setVisible(visible);
         rescanAction.setManaged(visible);
         resetAction.setVisible(visible);
         resetAction.setManaged(visible);
-        loadAction.setVisible(visible);
-        loadAction.setManaged(visible);
     }
 
     public void setActiveView(AppView view) {

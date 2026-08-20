@@ -9,6 +9,7 @@ import com.episort.tmdb.TmdbException;
 import com.episort.tmdb.TmdbSearchCriteria;
 import com.episort.tmdb.TmdbSearchResult;
 import com.episort.ui.AppLanguage;
+import com.episort.ui.FocusRelease;
 import com.episort.ui.UiText;
 import com.episort.ui.ThemeStyles;
 import java.util.ArrayList;
@@ -94,7 +95,10 @@ final class TmdbManualMatchDialog {
         searchButton.setText(UiText.tmdbSearch(language));
         searchButton.getStyleClass().add("primary");
         clearSearchButton.getStyleClass().addAll("episort-search-clear", "tmdb-search-clear");
-        clearSearchButton.setTooltip(new Tooltip(UiText.tmdbSearch(language)));
+        // The clear glyph is not a second search button: it wore the search
+        // label, so hovering it promised the opposite of what it does.
+        clearSearchButton.setTooltip(new Tooltip(UiText.a11yClearSearch(language)));
+        clearSearchButton.setAccessibleText(UiText.a11yClearSearch(language));
         clearSearchButton.setVisible(!queryField.getText().isBlank());
         clearSearchButton.setManaged(!queryField.getText().isBlank());
         ignoreButton.setText(UiText.tmdbIgnore(language));
@@ -142,6 +146,7 @@ final class TmdbManualMatchDialog {
         Button closeButton = new Button("×");
         closeButton.getStyleClass().addAll("icon-button", "tmdb-dialog-close");
         closeButton.setTooltip(new Tooltip(UiText.tmdbClose(language)));
+        closeButton.setAccessibleText(UiText.tmdbClose(language));
         closeButton.setOnAction(event -> stage.close());
         Region headerSpacer = new Region();
         HBox.setHgrow(headerSpacer, Priority.ALWAYS);
@@ -182,6 +187,8 @@ final class TmdbManualMatchDialog {
         String css = TmdbManualMatchDialog.class.getResource("/styles/app.css").toExternalForm();
         scene.getStylesheets().add(css);
         ThemeStyles.register(body);
+        ThemeStyles.registerScene(scene);
+        FocusRelease.install(scene);
         stage.setScene(scene);
         stage.setMinWidth(720);
         stage.setMinHeight(480);
@@ -395,7 +402,7 @@ final class TmdbManualMatchDialog {
         if (normalized.length() <= 180) {
             return normalized;
         }
-        return normalized.substring(0, 177).stripTrailing() + "...";
+        return normalized.substring(0, 179).stripTrailing() + "…";
     }
 
     private String localizedOverview(TmdbCandidate item) {

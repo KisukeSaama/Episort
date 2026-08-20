@@ -6,19 +6,56 @@
 
 /* ---- 1. Root shell ------------------------------------------------------- */
 
-.app-shell {
+/* Every scene root in the application, not just the shell's.
+ *
+ * `-fx-font-family` inherits down a scene graph, and stops there. A dialog
+ * Stage, a ContextMenu, a ComboBox popup and a Tooltip each own a separate
+ * scene root that is not a descendant of `.app-shell`, so the interface font
+ * never reached them: their unclassed labels fell back to the platform default
+ * face at the platform default size. Every root the application can open is
+ * listed here, and a new one belongs in this list on the day it is written. */
+.app-shell,
+.custom-dialog,
+.tmdb-dialog,
+.file-properties-dialog,
+.context-menu,
+.combo-box-popup,
+.tooltip {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
 }
 
+/* One antialiasing mode for the whole application.
+ *
+ * Modena asks for LCD subpixel text on `.text`, but Prism silently drops to
+ * grayscale for any text drawn through an intermediate image — which is every
+ * node under an `-fx-effect`. Episort puts `elevation.panel` on the cards, the
+ * tables, the settings sections and the detail panel, so most of the interface
+ * was already grayscale while the top bar and the sidebar, which carry no
+ * shadow, were LCD. Two rasterisations of the same 13 px face, side by side.
+ *
+ * The tie goes to grayscale rather than to LCD: it is what the majority of the
+ * surface already used, it is the mode that cannot be revoked by a shadow, and
+ * subpixel rendering fringes light strokes on a near-black ground. */
+.text {
+    -fx-font-smoothing-type: gray;
+}
+
+/* Instrument Sans ships Medium and SemiBold as their own RIBBI families, and
+ * JavaFX's font model holds only regular/bold per family. Under
+ * "Instrument Sans" it therefore knows two faces, so `-fx-font-weight: 500`
+ * and `600` both resolved to Regular and the 400/500/600/700 ladder rendered
+ * as 400/400/400/700. A weight is only real when the rule also names the
+ * family that carries it — see §2.2 of the design system. The numeric weight
+ * stays alongside it: it is what steers the "Segoe UI" fallback. */
+
 .app-shell.theme-dark {
     -fx-background-color:
         radial-gradient(center 12% 10%, radius 55%, rgba(249,115,22,0.10), transparent),
-        radial-gradient(center 88% 92%, radius 60%, rgba(56,189,248,0.06), transparent),
+        radial-gradient(center 88% 92%, radius 60%, rgba(249,115,22,0.04), transparent),
         linear-gradient(to bottom, #07080b, #0a0c11);
 }
 
-.mono,
 .card-value-mono,
 .status-pill,
 .workspace-value,
@@ -52,29 +89,43 @@
 
 /* A menu bar, not a row of buttons: the generic .menu-button rule would give
    each title a border and a rounded chip, which reads as a toolbar. Everything
-   it sets has to be unset here. */
+   it sets has to be unset here.
+
+   Including the colour, and on the button rather than on its label: the label
+   inside a MenuButton is a LabeledImpl, which JavaFX binds to the control's own
+   text fill. That binding outranks any rule written against the label, so the
+   titles wore the generic button's accent orange at rest and its hover orange
+   under the pointer, whatever `> .label` asked for. The label rules stay for
+   the face and the size, which no binding carries. */
 .app-menu-bar {
     -fx-background-color: transparent;
     -fx-padding: 0;
     -fx-spacing: 0;
 }
 
+/* The fill takes `radius.sm`, the same corner as every other pill in the shell.
+   At 0 it was a square of colour in a rounded interface, and the orange it wears
+   while its menu is open made that the most visible corner on screen. The title
+   itself carries no fill at rest, so the radius only shows on hover and while
+   showing — which is exactly when it is needed. */
 .app-menu-bar > .container > .menu-button {
     -fx-background-color: transparent;
     -fx-background-insets: 0;
-    -fx-background-radius: 0;
+    -fx-background-radius: 8;
     -fx-border-color: transparent;
     -fx-border-width: 0;
-    -fx-border-radius: 0;
+    -fx-border-radius: 8;
     -fx-effect: null;
     -fx-padding: 6 10 6 10;
     -fx-min-height: 0;
     -fx-pref-height: 30;
+    -fx-text-fill: #b8c0cc;
 }
 
 .app-menu-bar > .container > .menu-button > .label {
     -fx-text-fill: #b8c0cc;
     -fx-font-size: 13px;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 400;
     -fx-padding: 0;
 }
@@ -84,6 +135,7 @@
     -fx-background-color: rgba(255,255,255,0.06);
     -fx-border-color: transparent;
     -fx-effect: null;
+    -fx-text-fill: #f5f7fb;
 }
 
 .app-menu-bar > .container > .menu-button:hover > .label,
@@ -94,6 +146,7 @@
 .app-menu-bar > .container > .menu-button:showing {
     -fx-background-color: rgba(249,115,22,0.16);
     -fx-border-color: transparent;
+    -fx-text-fill: #fb923c;
 }
 
 .app-menu-bar > .container > .menu-button:showing > .label {
@@ -130,8 +183,8 @@
    three different weights and optical sizes. */
 .window-button {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
-    -fx-text-fill: #a8b0bd;
-    -fx-font-size: 12px;
+    -fx-text-fill: #8a93a3;
+    -fx-font-size: 13px;
     -fx-font-weight: 400;
     -fx-alignment: center;
     -fx-content-display: text-only;
@@ -153,16 +206,15 @@
 
 .window-button.danger:hover {
     -fx-background-color: #c42b1c;
-    -fx-text-fill: #ffffff;
+    -fx-text-fill: #fef2f2;
 }
 
 .window-button.danger:pressed {
     -fx-background-color: #b12419;
-    -fx-text-fill: #ffffff;
+    -fx-text-fill: #fef2f2;
 }
 
-.episort-search-box,
-.top-search {
+.episort-search-box {
     -fx-spacing: 8;
     -fx-padding: 6 12 6 12;
     -fx-background-color: rgba(20,23,30,0.85);
@@ -178,14 +230,14 @@
 /* JavaFX spells this pseudo-class :focus-within, not :focused-within. The
    inner text field is deliberately flat, so this wrapper carries the only
    focus signal the search boxes have. */
-.episort-search-box:focus-within,
-.top-search:focus-within {
-    -fx-border-color: rgba(249,115,22,1.0);
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.68), 18, 0, 0, 0);
+.episort-search-box:focus-within {
+    -fx-border-color: rgba(249,115,22,1.0), rgba(249,115,22,0.45);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -3;
+    -fx-border-radius: 8, 11;
 }
 
-.episort-search-field,
-.top-search .text-field {
+.episort-search-field {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
     -fx-background-insets: 0;
@@ -195,6 +247,7 @@
     -fx-prompt-text-fill: #767e8d;
     -fx-text-fill: #f5f7fb;
     -fx-font-size: 13px;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 400;
 }
 
@@ -203,6 +256,7 @@
    colour; the capsule around it added nothing the colour did not. */
 .status-pill {
     -fx-font-size: 10px;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 600;
     -fx-padding: 4 0 4 0;
     -fx-background-color: transparent;
@@ -245,12 +299,14 @@
 
 .sidebar-brand-name {
     -fx-font-size: 22px;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 700;
     -fx-text-fill: #f5f7fb;
 }
 
 .sidebar-section-label {
     -fx-font-size: 10px;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 600;
     -fx-text-fill: #8a93a3;
     -fx-padding: 0;
@@ -274,7 +330,7 @@
 }
 
 .nav-item {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans Medium", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 500;
     -fx-min-height: 36;
@@ -291,14 +347,14 @@
 }
 
 .nav-item-icon {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 17px;
     -fx-font-weight: 600;
     -fx-text-fill: #8a93a3;
 }
 
 .nav-item-label {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans Medium", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 500;
     -fx-text-fill: #b8c0cc;
@@ -362,38 +418,67 @@
 
 /* ---- Sidebar storage readout ------------------------------------------- */
 
+/* The rule and the labels take the rail's own 14, so the divider spans exactly
+   the width of a nav item's hover pill and the readout starts on the same left
+   edge as the nav labels above it. At 6 it was inset from the pills and 8 to
+   the left of every label in the rail: three left edges in one column. */
 .storage-usage {
-    -fx-padding: 14 6 0 6;
-    -fx-spacing: 6;
+    -fx-padding: 14 14 0 14;
+    -fx-spacing: 10;
     -fx-border-color: rgba(255,255,255,0.08) transparent transparent transparent;
     -fx-border-width: 1 0 0 0;
 }
 
 .storage-heading {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
     -fx-font-weight: 600;
-    -fx-text-fill: #8a93a3;
+    -fx-text-fill: #767e8d;
 }
 
+/* The figure and the bar it draws. */
+.storage-reading {
+    -fx-spacing: 6;
+}
+
+.storage-percentage-row {
+    -fx-spacing: 4;
+    -fx-alignment: baseline-left;
+}
+
+/* The one value the block exists to report, and the only thing in it that is
+   allowed any emphasis at all — carried by weight alone, at the body step, in
+   `text.muted`. It used to take the 17 step at 700 in `text.secondary`: a
+   readout nobody came to the screen to read was then the loudest thing in the
+   column after the brand, louder than the navigation above it and than the
+   table the user is actually working in. Inside the block the 600 against the
+   400 around it is enough to say which line is the answer. */
 .storage-percentage {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
-    -fx-text-fill: #f5f7fb;
+    -fx-text-fill: #767e8d;
 }
 
-.storage-capacity {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
-    -fx-font-size: 13px;
-    -fx-text-fill: #b8c0cc;
+/* The two measurements are a pair, tight at 4: at the same 6 as everything else
+   their weight and colour ladder read as an accident instead of a hierarchy. */
+.storage-detail {
+    -fx-spacing: 4;
 }
 
+/* The word beside the figure and the two measurements under the bar drop to the
+   caption step, which is what the rest of the shell uses for a label attached to
+   a value: column headers, field labels, meta lines. At the body step they were
+   three lines of light grey digits the size of the navigation above them, and
+   `text.faint` is already the lightest ink a label may take — the only volume
+   knob left was the amount of ink itself. */
+.storage-percentage-suffix,
+.storage-capacity,
 .storage-available {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
-    -fx-font-size: 13px;
-    -fx-font-weight: 400;
-    -fx-text-fill: #8a93a3;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #767e8d;
 }
 
 .storage-progress {
@@ -418,7 +503,7 @@
 }
 
 .workspace-explorer-chevron {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
     -fx-text-fill: #8a93a3;
@@ -471,11 +556,13 @@
 }
 
 .workspace-tree .tree-cell.workspace-node-directory {
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 400;
     -fx-text-fill: #b8c0cc;
 }
 
 .workspace-tree .tree-cell.workspace-node-root {
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 600;
     -fx-text-fill: #fb923c;
 }
@@ -557,10 +644,10 @@
 }
 
 .section-heading {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
-    -fx-text-fill: #a8b0bd;
+    -fx-text-fill: #8a93a3;
     -fx-padding: 2 0 2 8;
     -fx-border-color: transparent transparent transparent rgba(249,115,22,0.38);
     -fx-border-width: 0 0 0 1;
@@ -599,6 +686,7 @@
 
 .card-value-mono {
     -fx-font-size: 17px;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 600;
     -fx-text-fill: #f5f7fb;
 }
@@ -634,6 +722,7 @@
 
 .settings-section-title {
     -fx-font-size: 17px;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 600;
     -fx-text-fill: #f97316;
 }
@@ -691,10 +780,14 @@
 
 .button,
 .menu-button {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
-    -fx-padding: 8 14 8 14;
+    /* 6 top and bottom, not 8: the height is already pinned at 34, and 8 left
+       the text box 16 px tall — one pixel short of the 13 px line, which cut the
+       descender off the g in `Charger`. The button looks the same; the letters
+       are whole. */
+    -fx-padding: 6 14 6 14;
     -fx-min-height: 34;
     -fx-alignment: center;
     -fx-text-overrun: ellipsis;
@@ -703,23 +796,39 @@
     -fx-background-color: rgba(249,115,22,0.10);
     -fx-border-color: rgba(249,115,22,0.45);
     -fx-border-width: 1;
-    -fx-text-fill: #fb923c;
+    /* The accent at rest, `accent.hover` on hover: that is what the two orange
+       tokens are for. The button used to sit on `accent.hover` already and warm
+       to a third orange nobody had declared, which left the palette with an
+       undocumented step and the hover state with nowhere left to go. */
+    -fx-text-fill: #f97316;
     -fx-cursor: hand;
+    /* Named here rather than left to the property's initial value. Disabled
+       dims every button through -fx-opacity, and §28 transitions that same
+       property, so the way back out of disabled depends on the runtime
+       restoring a value no rule declares. Declaring it on the enabled state
+       gives the way back a rule of its own: a solid-orange action cannot come
+       back available still wearing the dimmed opacity, which is the one case
+       where the fill stays bright enough to read as clickable and the control
+       still looks switched off. */
+    -fx-opacity: 1;
 }
 
+/* Hover is a fill and an edge, not a halo. The wash goes from 0.10 to 0.20 and
+   the border from 0.45 to 0.75: the button reads as lit from within the surface
+   rather than radiating onto it, and the change is legible on the near-black
+   ground without spilling 16 px into the layout. */
 .button:hover,
 .menu-button:hover {
-    -fx-background-color: rgba(249,115,22,0.18);
+    -fx-background-color: rgba(249,115,22,0.20);
+    -fx-border-color: rgba(249,115,22,0.75);
     -fx-text-fill: #fb923c;
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.55), 16, 0, 0, 0);
 }
 
 .button:pressed,
 .menu-button:pressed {
     -fx-translate-y: 1;
-    -fx-background-color: rgba(249,115,22,0.14);
-    -fx-border-color: rgba(249,115,22,0.70);
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.24), 8, 0, 0, 0);
+    -fx-background-color: rgba(249,115,22,0.28);
+    -fx-border-color: rgba(249,115,22,0.90);
 }
 
 .button.primary,
@@ -727,27 +836,27 @@
     -fx-background-color: #f97316;
     -fx-border-color: transparent;
     -fx-text-fill: #111827;
-    -fx-padding: 8 16 8 16;
+    -fx-padding: 6 16 6 16;
 }
 
+/* A solid-orange action is already the brightest thing on screen; its hover is
+   the fill going one step lighter and nothing else. */
 .button.primary:hover,
 .menu-button.primary:hover {
     -fx-background-color: #fb923c;
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.65), 18, 0, 0, 0);
 }
 
 .button.primary:pressed,
 .menu-button.primary:pressed {
     -fx-translate-y: 1;
     -fx-background-color: #ea580c;
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.32), 8, 0, 0, 0);
 }
 
 .episort-search-icon {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
-    -fx-text-fill: rgba(118,126,141,1.0);
+    -fx-text-fill: #767e8d;
 }
 
 .episort-search-clear {
@@ -758,16 +867,22 @@
     -fx-padding: 0;
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-text-fill: rgba(138,147,163,1.0);
+    -fx-text-fill: #8a93a3;
     -fx-font-size: 17px;
+    -fx-font-family: "Instrument Sans Medium", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 500;
     -fx-effect: null;
+    /* On the base rule, not on :hover. The shared .button rules give this glyph
+       its pressed and focus states, and both draw on the radius declared here:
+       leaving it inside :hover rounded the hover chip to 6 and the focus ring
+       to the .button default of 8 on the same 24 px box. */
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
 }
 
 .episort-search-clear:hover {
     -fx-background-color: rgba(249,115,22,0.12);
-    -fx-background-radius: 6;
-    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-text-fill: #f5f7fb;
     -fx-effect: null;
 }
 
@@ -778,17 +893,19 @@
 }
 
 .episort-search-box:hover,
-.top-search:hover,
 .tmdb-search-box:hover {
     -fx-background-color: rgba(23,27,35,0.92);
     -fx-border-color: rgba(249,115,22,0.48);
 }
 
+/* A focused box that is also hovered keeps the focus ring: hover has nothing
+   left to add once the border is already at full accent. */
 .episort-search-box:focus-within:hover,
-.top-search:focus-within:hover,
 .tmdb-search-box:focus-within:hover {
-    -fx-border-color: rgba(249,115,22,1.0);
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.72), 20, 0, 0, 0);
+    -fx-border-color: rgba(249,115,22,1.0), rgba(249,115,22,0.45);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -3;
+    -fx-border-radius: 8, 11;
 }
 
 /* The top bar sits on one height: chip, search box and every action are 34,
@@ -803,28 +920,31 @@
 .menu-button.load-primary {
     -fx-background-color: transparent;
     -fx-border-color: rgba(249,115,22,0.70);
-    -fx-text-fill: rgba(245,247,251,1.0);
-    -fx-padding: 8 14 8 16;
+    -fx-text-fill: #f5f7fb;
+    -fx-padding: 6 14 6 16;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 700;
 }
 
 .menu-button.load-primary > .label {
-    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-text-fill: #f5f7fb;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 700;
     -fx-padding: 0 6 0 0;
 }
 
+/* Outlined, so hover has only the edge and a first hint of fill to work with —
+   which is enough, and keeps this control quieter than the solid primary
+   beside it. */
 .menu-button.load-primary:hover {
-    -fx-background-color: transparent;
+    -fx-background-color: rgba(249,115,22,0.10);
     -fx-border-color: rgba(251,146,60,1.0);
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 8, 0, 0, 0);
 }
 
 .menu-button.load-primary:pressed,
 .menu-button.load-primary:showing {
-    -fx-background-color: transparent;
+    -fx-background-color: rgba(249,115,22,0.18);
     -fx-border-color: rgba(249,115,22,1.0);
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.32), 8, 0, 0, 0);
 }
 
 .menu-button.load-primary > .arrow-button > .arrow {
@@ -841,22 +961,21 @@
 .button.validate-action {
     -fx-background-color: rgba(249,115,22,1.0);
     -fx-border-color: transparent;
-    -fx-text-fill: rgba(17,24,39,1.0);
-    -fx-padding: 8 16 8 16;
+    -fx-text-fill: #111827;
+    -fx-padding: 6 16 6 16;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 700;
 }
 
 .button.validate-action:hover {
     -fx-background-color: rgba(251,146,60,1.0);
     -fx-border-color: transparent;
-    -fx-text-fill: rgba(17,24,39,1.0);
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.65), 18, 0, 0, 0);
+    -fx-text-fill: #111827;
 }
 
 .button.validate-action:pressed {
     -fx-translate-y: 1;
     -fx-background-color: rgba(234,88,12,1.0);
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.32), 8, 0, 0, 0);
 }
 
 .button.validate-action:disabled {
@@ -905,6 +1024,30 @@
     -fx-border-color: #f87171;
 }
 
+/* The way out of a full-frame surface, not an action competing with the ones on
+   it. Outlined in the accent, next to a title, a five-letter word looked like a
+   button asking to be pressed; a back link is looked for, not offered. No edge
+   at rest, and a neutral wash under the pointer so the accent stays with the
+   controls that do something. */
+.button.back-action {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: #b8c0cc;
+    -fx-padding: 6 12 6 10;
+}
+
+.button.back-action:hover {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-border-color: transparent;
+    -fx-text-fill: #f5f7fb;
+}
+
+.button.back-action:pressed {
+    -fx-translate-y: 1;
+    -fx-background-color: rgba(255,255,255,0.10);
+    -fx-border-color: transparent;
+}
+
 .button:disabled,
 .menu-button:disabled {
     -fx-opacity: 0.45;
@@ -916,33 +1059,56 @@
 
 /* Every control that can take focus shows the same orange ring. :focus-visible
    rather than :focused so a mouse click does not light up the control the
-   pointer just pressed — only keyboard traversal does. Each rule reuses the
-   1px border the control already reserves, so nothing shifts on focus. */
+   pointer just pressed — only keyboard traversal does.
+
+   The ring is a second border layer, not a halo. A blurred glow spreads focus
+   over a dozen soft pixels and leaves no edge to read, and it reads as a
+   light-emitting object on a matte surface — the same reason the status dots
+   lost theirs (§7). Two crisp strokes say it exactly: the control's own border
+   at full accent, and a quieter one 3 px outside it. The outer layer sits on a
+   negative inset, so it is drawn beyond the layout bounds and nothing moves
+   when focus arrives — which is what the shared 1px border was reserved for. */
 
 .button:focus-visible,
 .menu-button:focus-visible,
-.filter-chip:focus-visible,
 .nav-item:focus-visible {
-    -fx-border-color: #f97316;
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.55), 14, 0, 0, 0);
+    -fx-border-color: #f97316, rgba(249,115,22,0.45);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -3;
+    -fx-border-radius: 8, 11;
+}
+
+.filter-chip:focus-visible {
+    -fx-border-color: #f97316, rgba(249,115,22,0.45);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -3;
+    -fx-border-radius: 999, 999;
 }
 
 /* Solid-orange actions cannot show an orange ring against their own fill. */
 .button.primary:focus-visible,
 .menu-button.primary:focus-visible,
 .button.validate-action:focus-visible {
-    -fx-border-color: #fff7ed;
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.70), 18, 0, 0, 0);
+    -fx-border-color: #fff7ed, rgba(255,247,237,0.55);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -3;
+    -fx-border-radius: 8, 11;
 }
 
 .icon-button:focus-visible {
-    -fx-border-color: #f97316;
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.55), 12, 0, 0, 0);
+    -fx-border-color: #f97316, rgba(249,115,22,0.45);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -3;
+    -fx-border-radius: 8, 11;
 }
 
+/* A 16 px box has no room for a 3 px gap without the ring touching the row
+   above it, so this one closes to 2. */
 .row-checkbox:focus-visible .box {
-    -fx-border-color: #f97316;
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.55), 10, 0, 0, 0);
+    -fx-border-color: #f97316, rgba(249,115,22,0.45);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -2;
+    -fx-border-radius: 4, 6;
 }
 
 .preview-table:focus-visible {
@@ -953,6 +1119,9 @@
 
 .text-field,
 .password-field,
+/* A dropdown is a control you click, so it takes the hand like every button and
+   chip does. Text fields keep the caret and tables keep the arrow: those are the
+   two places in the shell where the pointer means something else. */
 .combo-box {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
@@ -964,16 +1133,22 @@
     -fx-text-fill: #f5f7fb;
     -fx-prompt-text-fill: #767e8d;
     -fx-padding: 6 10 6 10;
+    -fx-cursor: hand;
+}
+
+.combo-box:disabled {
+    -fx-cursor: default;
 }
 
 .text-field:focused,
 .password-field:focused,
 .combo-box:focused {
-    -fx-border-color: #f97316;
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 14, 0, 0, 0);
+    -fx-border-color: #f97316, rgba(249,115,22,0.45);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -3;
+    -fx-border-radius: 8, 11;
 }
 
-.top-search .text-field:focused,
 .episort-search-field:focused {
     -fx-border-color: transparent;
     -fx-effect: null;
@@ -981,7 +1156,6 @@
 
 /* Search wrappers own the visible border; their inner text field must stay
    visually flat both before and after the generic input rules below apply. */
-.top-search .text-field,
 .episort-search-box .text-field,
 .episort-search-field {
     -fx-background-color: transparent;
@@ -1018,8 +1192,10 @@
 }
 
 .pattern-editor:focused {
-    -fx-border-color: #f97316;
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 14, 0, 0, 0);
+    -fx-border-color: #f97316, rgba(249,115,22,0.45);
+    -fx-border-width: 1, 1;
+    -fx-border-insets: 0, -3;
+    -fx-border-radius: 8, 11;
 }
 
 .pattern-editor .scroll-bar .thumb {
@@ -1056,6 +1232,7 @@
     -fx-background-color: rgba(20,23,30,0.85);
     -fx-border-color: rgba(249,115,22,0.25);
     -fx-text-fill: #f5f7fb;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 400;
     -fx-alignment: center-left;
 }
@@ -1074,7 +1251,6 @@
 .menu-button.tmdb-episode-picker:showing {
     -fx-background-color: rgba(20,23,30,0.85);
     -fx-border-color: #f97316;
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.45), 8, 0, 0, 0);
 }
 
 .combo-box-popup .list-view {
@@ -1088,6 +1264,12 @@
 .combo-box-popup .list-view .list-cell {
     -fx-text-fill: #f5f7fb;
     -fx-padding: 6 10 6 10;
+    -fx-cursor: hand;
+}
+
+/* The empty rows a short list leaves under its items are not choices. */
+.combo-box-popup .list-view .list-cell:empty {
+    -fx-cursor: default;
 }
 
 .combo-box-popup .list-view .list-cell:hover,
@@ -1116,12 +1298,8 @@
 .banner.banner-warn  { -fx-border-color: rgba(251,146,60,0.55); }
 .banner.banner-error { -fx-border-color: rgba(248,113,113,0.55); }
 
-.banner-icon {
-    -fx-text-fill: #f97316;
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
-    -fx-font-size: 13px;
-    -fx-font-weight: 600;
-}
+/* No accent dot in front of a banner: the surface already says it is one, and
+   a lone orange bullet next to a sentence reads as a bullet list of one. */
 
 .banner-text {
     -fx-text-fill: #b8c0cc;
@@ -1161,13 +1339,14 @@
     -fx-pref-height: 22;
     -fx-alignment: center;
     -fx-background-radius: 999;
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
     -fx-font-weight: 600;
 }
 
 .workflow-step-label {
     -fx-font-size: 13px;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 600;
 }
 
@@ -1240,10 +1419,13 @@
     -fx-padding: 0;
     -fx-font-size: 10px;
     -fx-text-fill: #767e8d;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-weight: 600;
 }
 
 .metric-grid .card .card-value-mono {
     -fx-font-size: 22px;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 600;
     -fx-text-fill: #f5f7fb;
 }
@@ -1273,6 +1455,7 @@
 
 .workspace-chip-prefix {
     -fx-font-size: 10px;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 600;
     -fx-text-fill: #767e8d;
 }
@@ -1326,13 +1509,22 @@
     -fx-pref-width: 2;
 }
 
+/* A header lights up under the pointer and sorts the table when clicked, so it
+   takes the hand — on the label, not on the header itself. The skin drives the
+   header's own cursor to a resize arrow near each edge through `setCursor`, which
+   a stylesheet must not fight: the label covers the part of the header that
+   sorts, and the edges keep the resize cursor they need.
+   The rows below deliberately keep the arrow: selecting a row is what a table
+   does, and a grid where every cell begs to be clicked reads like a page of
+   links. */
 .preview-table .column-header .label {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
     -fx-font-weight: 600;
     -fx-text-fill: #767e8d;
     -fx-alignment: center-left;
     -fx-padding: 0 12 0 12;
+    -fx-cursor: hand;
 }
 
 .preview-table .column-header > .arrow {
@@ -1372,7 +1564,7 @@
 }
 
 .preview-table .table-cell {
-    -fx-text-fill: #d2d8e0;
+    -fx-text-fill: #b8c0cc;
     -fx-font-size: 13px;
     -fx-padding: 6 12 6 12;
     -fx-background-color: transparent;
@@ -1470,6 +1662,11 @@
     -fx-pref-height: 16;
     -fx-max-width: 16;
     -fx-max-height: 16;
+    -fx-cursor: hand;
+}
+
+.row-checkbox:disabled {
+    -fx-cursor: default;
 }
 
 .row-checkbox .box {
@@ -1486,8 +1683,17 @@
     -fx-border-radius: 4;
 }
 
-.row-checkbox:selected .mark {
+/* The tick is drawn at rest and hidden by opacity rather than by colour. A
+   shape's -fx-background-color flips in a single frame (§28) while an opacity
+   is interpolated, so this is what lets ticking a row animate at all — and
+   selecting twenty-five rows at once then reads as one movement. */
+.row-checkbox .mark {
     -fx-background-color: #f97316;
+    -fx-opacity: 0;
+}
+
+.row-checkbox:selected .mark {
+    -fx-opacity: 1;
 }
 
 .row-checkbox:selected .box {
@@ -1526,7 +1732,7 @@
    carried by the ink, and by nothing else. */
 
 .row-status {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
     -fx-font-weight: 600;
     -fx-padding: 2 0 2 0;
@@ -1553,10 +1759,6 @@
    it. Desaturated from #4ade80, which read as a signal light. */
 .row-status.ready {
     -fx-text-fill: #7fae8c;
-}
-
-.row-status.preview {
-    -fx-text-fill: #c58a52;
 }
 
 /* Needs a fix. Common enough on a fresh scan to stay text, dimmed from #fb923c
@@ -1610,6 +1812,13 @@
 .detail-scroll .scroll-bar:vertical,
 .detail-scroll .scroll-bar:horizontal {
     -fx-background-color: transparent;
+}
+
+/* The negative right padding above pulls the bar of the filled panel against
+   the card edge. The empty state is centred text, and the same pull would move
+   it off centre, so it keeps the transparent background and nothing else. */
+.detail-empty-scroll {
+    -fx-padding: 0;
 }
 
 .detail-scroll .scroll-bar .track,
@@ -1672,20 +1881,21 @@
 }
 
 .app-loader-eyebrow {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
     -fx-font-weight: 600;
     -fx-text-fill: #f97316;
 }
 
 .app-loader-text {
-    -fx-text-fill: rgba(241,245,249,1);
+    -fx-text-fill: #f5f7fb;
     -fx-font-size: 17px;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 700;
 }
 
 .app-loader-percent {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
     -fx-text-fill: #fb923c;
@@ -1695,12 +1905,14 @@
 
 /* Size and weight come from .button; only the padding is wider here. */
 .app-loader-cancel {
-    -fx-padding: 8 18 8 18;
+    -fx-padding: 6 18 6 18;
 }
 
 .app-loader-hint {
-    -fx-text-fill: rgba(148,163,184,0.85);
+    -fx-text-fill: #767e8d;
     -fx-font-size: 10px;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-weight: 600;
 }
 
 .prereq-overlay {
@@ -1719,19 +1931,19 @@
 .prereq-title {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 22px;
-    -fx-font-weight: 600;
-    -fx-text-fill: #f1f5f9;
+    -fx-font-weight: 700;
+    -fx-text-fill: #f5f7fb;
 }
 
 .prereq-subtitle,
 .prereq-bullet {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
-    -fx-text-fill: #cbd5e1;
+    -fx-text-fill: #b8c0cc;
 }
 
 .prereq-bullet {
-    -fx-text-fill: #f1f5f9;
+    -fx-text-fill: #f5f7fb;
 }
 
 .detail-panel-section {
@@ -1742,7 +1954,7 @@
 .detail-panel-label {
     -fx-font-size: 10px;
     -fx-text-fill: #767e8d;
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 600;
 }
 
@@ -1764,8 +1976,12 @@
     -fx-font-style: italic;
 }
 
+/* No padding above or below. The card already keeps 18 all round, and the state
+   is centred in whatever height is left, so a padding of its own only added
+   dead space under the text — on the stacked layout, the very height the hint
+   was missing to show its second line. */
 .detail-panel-empty-state {
-    -fx-padding: 36 18 36 18;
+    -fx-padding: 0 18 0 18;
     -fx-spacing: 10;
     -fx-alignment: center;
 }
@@ -1777,8 +1993,9 @@
 }
 
 .detail-panel-empty-title {
-    -fx-font-size: 13px;
-    -fx-font-weight: 600;
+    -fx-font-size: 17px;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-weight: 700;
     -fx-text-fill: #b8c0cc;
 }
 
@@ -1791,9 +2008,19 @@
 
 /* ---- 19. Filter chips -------------------------------------------------- */
 
+/* The two predicates read as two questions: 8 inside a group, 16 between them.
+   The gap belongs to the FlowPane, which spends it only between the groups it
+   lays out side by side. A left padding on the status group did the same job
+   until the row wrapped: padding survives the wrap, so the status chips started
+   8 px to the right of the kind chips above them. */
 .scan-filter-bar {
     -fx-padding: 0 0 2 0;
-    -fx-spacing: 8;
+    -fx-hgap: 16;
+    -fx-vgap: 8;
+    -fx-alignment: center-left;
+}
+
+.scan-status-filter-group {
     -fx-alignment: center-left;
 }
 
@@ -1806,7 +2033,7 @@
 }
 
 .filter-chip {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
     -fx-padding: 6 12 6 12;
@@ -1824,6 +2051,15 @@
     -fx-text-fill: #f5f7fb;
 }
 
+/* The same 1px dip the buttons take. A chip is a control the user aims at
+   repeatedly while narrowing a list, and without it the only answer to a click
+   is the row of results changing somewhere else on screen. */
+.filter-chip:pressed {
+    -fx-translate-y: 1;
+    -fx-background-color: rgba(249,115,22,0.24);
+    -fx-border-color: rgba(249,115,22,0.75);
+}
+
 .filter-chip:selected,
 .filter-chip.active {
     -fx-background-color: rgba(249,115,22,0.18);
@@ -1834,7 +2070,7 @@
 /* ---- 20. Compact sidebar (narrow widths) ------------------------------ */
 
 .nav-item-icon {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 17px;
     -fx-font-weight: 600;
     -fx-text-fill: inherit;
@@ -1857,14 +2093,20 @@
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 8, 0.08, 0, 3);
 }
 
+/* Every item in every menu the application opens — the title-bar menus, the load
+   dropdown, the table's right-click menu, the episode picker. They are the most
+   obviously clickable things in the shell and were the only ones still under an
+   arrow. */
 .context-menu .menu-item {
-    -fx-padding: 7 16 7 16;
+    -fx-padding: 6 16 6 16;
     -fx-background-radius: 6;
+    -fx-cursor: hand;
 }
 
 .context-menu .menu-item .label {
-    -fx-text-fill: #d5dae2;
+    -fx-text-fill: #b8c0cc;
     -fx-font-size: 13px;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 400;
 }
 
@@ -1876,6 +2118,7 @@
 .context-menu .menu-item:focused .label,
 .context-menu .menu-item:hover .label {
     -fx-text-fill: #fb923c;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 400;
 }
 
@@ -1887,6 +2130,7 @@
    muted state, so a second opacity pass would make it unreadable. */
 .context-menu .menu-item:disabled {
     -fx-opacity: 1;
+    -fx-cursor: default;
 }
 
 .context-menu .menu-item:disabled:focused,
@@ -1903,8 +2147,9 @@
    .label rule above does not reach. The shortcut is a hint, not a second
    label: it stays quiet and keeps its distance from the item name. */
 .context-menu .menu-item > .accelerator-text {
-    -fx-fill: #6f7787;
+    -fx-fill: #767e8d;
     -fx-font-size: 10px;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 400;
     -fx-padding: 0 0 0 28;
 }
@@ -1920,12 +2165,33 @@
 }
 
 .context-menu .separator {
-    -fx-padding: 5 0 5 0;
+    -fx-padding: 4 0 4 0;
 }
 
 .context-menu .separator .line {
     -fx-border-color: rgba(255,255,255,0.09) transparent transparent transparent;
     -fx-border-width: 1 0 0 0;
+}
+
+/* ---- 21b. Tooltip ------------------------------------------------------ */
+
+/* The app leans on tooltips for every truncated path and every icon-only
+   button, and they were the one surface still drawn entirely by Modena: a
+   pale grey box in the platform font, opening on top of a near-black shell.
+   It is the same panel as everything else, one step darker so it reads as
+   floating above the surface it explains. */
+.tooltip {
+    -fx-background-color: rgba(13,15,20,0.97);
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: rgba(249,115,22,0.22);
+    -fx-border-width: 1;
+    -fx-padding: 6 10 6 10;
+    -fx-text-fill: #b8c0cc;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-weight: 400;
+    -fx-wrap-text: true;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 8, 0.08, 0, 3);
 }
 
 /* ---- 22. View host ---------------------------------------------------- */
@@ -1938,6 +2204,53 @@
     -fx-padding: 26 30 26 30;
     -fx-spacing: 14;
 }
+
+/* The title line of every screen is one control tall, whether or not it
+   carries a control. Scan puts the search box on that line (§4.13), which made
+   its heading sit six pixels lower than the other two and pushed everything
+   under it down by thirteen; reserving the height everywhere means the three
+   screens start their content on the same line. */
+.screen-heading-row {
+    -fx-min-height: 34;
+    -fx-alignment: center-left;
+}
+
+/* ---- 22b. Compact layout ---------------------------------------------- */
+
+/* Below 1000 px the outer padding is 60 of the window's width, and the table
+   pays for all of it. It steps back one notch on the spacing scale (§2.3)
+   rather than to a new value, and the vertical rhythm goes with it so the
+   screen does not become wide and airless at the same time. */
+.layout-compact .screen-root {
+    -fx-padding: 18 18 18 18;
+    -fx-spacing: 12;
+}
+
+/* The rail keeps its glyphs and loses its labels. Padding drops to the 8 step
+   so a 17 px glyph sits centred in 64 px rather than pushed off it. */
+.sidebar.collapsed {
+    -fx-padding: 20 8 18 8;
+}
+
+.sidebar.collapsed .nav-item {
+    -fx-padding: 0 8 0 8;
+    -fx-alignment: center;
+}
+
+/* The rail gives the readout every pixel it has left: the figure is the only
+   thing still on screen and it needs all 48 of them, so the horizontal padding
+   goes to 0 and the divider spans the same width as the collapsed nav pills. */
+.sidebar.collapsed .storage-usage {
+    -fx-padding: 14 0 0 0;
+}
+
+.sidebar.collapsed .storage-percentage-row {
+    -fx-alignment: center;
+}
+
+/* No type override left here: the figure sits at the body step in both states,
+   so "100 %" already fits the 48 px the collapsed rail has, and only the
+   centring below it is the rail's business. */
 
 /* ---- 23. Table empty states ------------------------------------------- */
 
@@ -1955,6 +2268,7 @@
 
 .table-empty-title {
     -fx-font-size: 17px;
+    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-weight: 700;
     -fx-text-fill: #b8c0cc;
 }
@@ -1968,26 +2282,9 @@
 
 /* ---- 24. Settings page ------------------------------------------------ */
 
-.settings-page {
-    -fx-padding: 26 30 26 30;
-    -fx-spacing: 18;
-}
-
-.page-title {
-    -fx-font-size: 13px;
-    -fx-font-weight: 600;
-    -fx-text-fill: #d7dce5;
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
-    -fx-padding: 1 0 1 8;
-    -fx-border-color: transparent transparent transparent #f97316;
-    -fx-border-width: 0 0 0 1;
-}
-
-.page-heading {
-    -fx-font-size: 22px;
-    -fx-font-weight: 700;
-    -fx-text-fill: #f5f7fb;
-}
+/* Geometry comes from .screen-root, which this page also carries: padding and
+   vertical rhythm stay identical to Scan and History, in every layout. The
+   class remains for the light theme's control rules below it. */
 
 .page-subtitle {
     -fx-font-size: 13px;
@@ -2023,15 +2320,24 @@
     -fx-text-fill: #b8c0cc;
 }
 
+/* The focus ring only recolours a border that is already there. Growing one on
+   focus would push the row's copy sideways at the moment the eye lands on it. */
 .tmdb-attribution-link {
-    -fx-padding: 2 0 2 0;
-    -fx-border-width: 0;
+    -fx-padding: 2 4 2 4;
+    -fx-border-width: 1;
+    -fx-border-color: transparent;
+    -fx-border-radius: 4;
     -fx-background-color: transparent;
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
     -fx-text-fill: #fb923c;
     -fx-underline: true;
+    -fx-cursor: hand;
+}
+
+.tmdb-attribution-link:disabled {
+    -fx-cursor: default;
 }
 
 .tmdb-attribution-link:hover {
@@ -2040,9 +2346,6 @@
 
 .tmdb-attribution-link:focus-visible {
     -fx-border-color: #fb923c;
-    -fx-border-width: 1;
-    -fx-border-radius: 4;
-    -fx-padding: 1 3 1 3;
 }
 
 /* ---- 25. ScrollPane viewports (transparent backgrounds) --------------- */
@@ -2063,7 +2366,7 @@
 
 .preview-table .table-row-cell:selected .table-cell,
 .preview-table .table-row-cell:filled:selected .table-cell {
-    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-text-fill: #f5f7fb;
 }
 
 /* Selection and ticking are told apart by weight of tint, not by an accent bar:
@@ -2092,11 +2395,11 @@
 }
 
 .plan-table .table-row-cell.picked-row .table-cell {
-    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-text-fill: #f5f7fb;
 }
 
 .before-after-arrow-cell {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
     -fx-text-fill: #f97316;
@@ -2164,27 +2467,27 @@
 .tmdb-poster-placeholder {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
-    -fx-text-fill: rgba(245,247,251,0.42);
+    -fx-text-fill: #767e8d;
 }
 
 .tmdb-match-title {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 17px;
     -fx-font-weight: 700;
-    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-text-fill: #f5f7fb;
 }
 
 .tmdb-match-meta {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
     -fx-font-weight: 600;
-    -fx-text-fill: rgba(245,247,251,0.62);
+    -fx-text-fill: #767e8d;
 }
 
 .tmdb-match-overview {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
-    -fx-text-fill: rgba(245,247,251,0.72);
+    -fx-text-fill: #b8c0cc;
     -fx-max-width: infinity;
 }
 
@@ -2197,13 +2500,13 @@
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 17px;
     -fx-font-weight: 700;
-    -fx-text-fill: rgba(245,247,251,0.86);
+    -fx-text-fill: #b8c0cc;
 }
 
 .tmdb-empty-hint {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
-    -fx-text-fill: rgba(138,147,163,1.0);
+    -fx-text-fill: #767e8d;
     -fx-text-alignment: center;
 }
 
@@ -2231,7 +2534,7 @@
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 17px;
     -fx-font-weight: 700;
-    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-text-fill: #f5f7fb;
 }
 
 .file-properties-close-icon {
@@ -2262,35 +2565,35 @@
 }
 
 .file-properties-section-title {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
-    -fx-font-weight: 500;
-    -fx-text-fill: rgba(249,115,22,1.0);
+    -fx-font-weight: 600;
+    -fx-text-fill: #f97316;
 }
 
 .file-properties-label {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
     -fx-font-weight: 600;
-    -fx-text-fill: rgba(118,126,141,1.0);
+    -fx-text-fill: #767e8d;
 }
 
 .file-properties-value {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
-    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-text-fill: #f5f7fb;
 }
 
 .file-properties-empty {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
-    -fx-text-fill: rgba(138,147,163,1.0);
+    -fx-text-fill: #767e8d;
 }
 
 .file-properties-path {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
-    -fx-text-fill: rgba(251,146,60,1.0);
+    -fx-text-fill: #fb923c;
     -fx-background-color: rgba(20,23,30,0.85);
     -fx-background-radius: 8;
     -fx-border-color: rgba(249,115,22,0.18);
@@ -2308,7 +2611,7 @@
 .file-properties-feedback {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
-    -fx-text-fill: rgba(251,146,60,1.0);
+    -fx-text-fill: #fb923c;
 }
 
 .tmdb-dialog-header {
@@ -2321,7 +2624,7 @@
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 17px;
     -fx-font-weight: 700;
-    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-text-fill: #f5f7fb;
 }
 
 .tmdb-dialog-close {
@@ -2334,7 +2637,7 @@
 }
 
 .tmdb-dialog-message {
-    -fx-text-fill: rgba(245,247,251,0.72);
+    -fx-text-fill: #b8c0cc;
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
 }
@@ -2349,6 +2652,13 @@
     -fx-control-inner-background: transparent;
     -fx-fixed-cell-size: 152;
     -fx-padding: 8 8 8 8;
+}
+
+/* A result card is picked by clicking it, and it already lights its border under
+   the pointer — only the cursor was still saying otherwise. `:filled` so the
+   empty rows below a short result list keep the arrow. */
+.tmdb-search-results .list-cell:filled {
+    -fx-cursor: hand;
 }
 
 .tmdb-search-results .list-cell {
@@ -2396,7 +2706,7 @@
 .tmdb-search-results .list-cell:selected .tmdb-result-card,
 .tmdb-search-results .list-cell:hover .tmdb-result-card {
     -fx-border-color: rgba(249,115,22,0.42);
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.18), 10, 0, 0, 0);
+    -fx-background-color: rgba(249,115,22,0.08);
 }
 
 .tmdb-search-loader {
@@ -2455,9 +2765,8 @@
 }
 
 .icon-button:hover {
-    -fx-background-color: rgba(249,115,22,0.14);
-    -fx-border-color: rgba(249,115,22,0.40);
-    -fx-effect: dropshadow(gaussian, rgba(249,115,22,0.35), 10, 0, 0, 0);
+    -fx-background-color: rgba(249,115,22,0.18);
+    -fx-border-color: rgba(249,115,22,0.55);
 }
 
 .icon-button:disabled {
@@ -2485,7 +2794,7 @@
    (13px) — a block header set smaller than the rows it heads reads as a caption
    that was forgotten. */
 .group-name {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
     -fx-max-width: 9999;
@@ -2497,7 +2806,7 @@
 
 /* Ignored blocks carry no media identity: same shape, dimmer ink. */
 .group-name-ignored {
-    -fx-text-fill: rgba(245,247,251,0.40);
+    -fx-text-fill: #767e8d;
 }
 
 /* A hairline across the full row opens each block. One rule per group, against
@@ -2530,23 +2839,23 @@
 }
 
 .identity-title {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
-    -fx-text-fill: rgba(245,247,251,1.0);
+    -fx-text-fill: #f5f7fb;
 }
 
 .identity-title-missing {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
-    -fx-text-fill: rgba(248,113,113,0.92);
+    -fx-text-fill: #f87171;
 }
 
 .identity-meta {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
-    -fx-text-fill: rgba(245,247,251,0.58);
+    -fx-text-fill: #767e8d;
 }
 
 .identity-state-ok {
@@ -2558,18 +2867,18 @@
 .identity-state-pending {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
-    -fx-text-fill: #facc15;
+    -fx-text-fill: #fb923c;
 }
 
 /* The TMDB id is a system value: faint, aligned under the title. */
 .identity-id {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
-    -fx-text-fill: rgba(245,247,251,0.45);
+    -fx-text-fill: #767e8d;
 }
 
 .identity-warning {
-    -fx-text-fill: #facc15;
+    -fx-text-fill: #fb923c;
 }
 
 /* ---- 26. Execution readout and recap (Epic 7) ------------------------- */
@@ -2591,19 +2900,19 @@
 .exec-count {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 22px;
-    -fx-font-weight: 500;
+    -fx-font-weight: 700;
     -fx-text-fill: #f5f7fb;
 }
 
 .exec-count-total {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 22px;
     -fx-font-weight: 600;
     -fx-text-fill: #767e8d;
 }
 
 .exec-percent {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
     -fx-text-fill: #fb923c;
@@ -2618,7 +2927,7 @@
 }
 
 .exec-label {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
     -fx-font-weight: 600;
     -fx-text-fill: #767e8d;
@@ -2665,7 +2974,7 @@
 .exec-stat-value.alarming { -fx-text-fill: #f87171; }
 
 .exec-stat-label {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
     -fx-font-weight: 600;
     -fx-text-fill: #767e8d;
@@ -2695,7 +3004,7 @@
 .about-brand-name {
     -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 22px;
-    -fx-font-weight: 600;
+    -fx-font-weight: 700;
     -fx-text-fill: #f5f7fb;
 }
 
@@ -2706,7 +3015,7 @@
 }
 
 .about-version {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
     -fx-font-weight: 600;
     -fx-text-fill: #fb923c;
@@ -2729,21 +3038,21 @@
     -fx-alignment: center;
     -fx-background-color: rgba(249,115,22,0.16);
     -fx-background-radius: 999;
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
     -fx-font-weight: 600;
     -fx-text-fill: #fb923c;
 }
 
 .about-step-label {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
     -fx-text-fill: #b8c0cc;
 }
 
 .about-label {
-    -fx-font-family: "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
     -fx-font-size: 10px;
     -fx-font-weight: 600;
     -fx-text-fill: #767e8d;
@@ -2767,3 +3076,136 @@
     -fx-text-fill: #8a93a3;
     -fx-line-spacing: 3;
 }
+
+/* ---- 28. Motion -------------------------------------------------------- */
+
+/* One place decides how the interface moves. Three durations, one easing
+   curve, and nothing that loops or bounces — the brand is mechanical, so
+   motion confirms a state change and then stops.
+
+     90ms   pointer feedback: hover, press, the text warming under the cursor
+     160ms  a surface changing condition: enabled/disabled, selected, focused
+     240ms  a whole view or overlay arriving or leaving
+
+   ease-out throughout: movement decelerates into its final state, never
+   overshoots it.
+
+   Only properties this runtime actually interpolates appear below —
+   -fx-text-fill, -fx-opacity, -fx-scale-*, -fx-translate-*. A Region's
+   background and border are the composite CSS properties -fx-region-background
+   and -fx-region-border, which JavaFX 25 does not interpolate: it holds the
+   start value and flips. That is measured, not assumed (see
+   CssTransitionSupportTest), so a colour wash lands in a single frame while the
+   transition carries the text colour, the lift and the fade instead. Adding
+   `transition: -fx-background-color` anywhere would be a silent no-op. */
+
+/* Sidebar: the label and icon warm up, the item itself does not move — a
+   navigation list that nudges under the pointer reads as noise. */
+.nav-item-icon,
+.nav-item-label {
+    transition: -fx-text-fill 90ms ease-out;
+}
+
+.nav-item {
+    transition: -fx-opacity 160ms ease-out;
+}
+
+/* Buttons: the press already declares -fx-translate-y: 1, which was landing in
+   one frame. Disabled is the state this application shows most, because an
+   unavailable action stays on screen by design; fading into it is the
+   difference between a button dimming and a button flickering. */
+.button,
+.menu-button {
+    transition: -fx-text-fill 90ms ease-out,
+                -fx-translate-y 90ms ease-out,
+                -fx-opacity 160ms ease-out;
+}
+
+.icon-button {
+    transition: -fx-text-fill 90ms ease-out,
+                -fx-opacity 160ms ease-out;
+}
+
+/* Window buttons stay instant on colour, like the native ones, but the glyph
+   still warms rather than switching. */
+.window-button {
+    transition: -fx-text-fill 90ms ease-out;
+}
+
+.app-menu-bar > .container > .menu-button > .label {
+    transition: -fx-text-fill 90ms ease-out;
+}
+
+.context-menu .menu-item .label,
+.context-menu .menu-item > .accelerator-text {
+    transition: -fx-text-fill 90ms ease-out;
+}
+
+.filter-chip,
+.workspace-chip {
+    transition: -fx-text-fill 90ms ease-out,
+                -fx-translate-y 90ms ease-out,
+                -fx-opacity 160ms ease-out;
+}
+
+/* Table: rows carry the ignored/normal opacity change, cells the text. */
+.preview-table .table-row-cell {
+    transition: -fx-opacity 160ms ease-out;
+}
+
+.preview-table .table-cell,
+.workspace-tree .tree-cell {
+    transition: -fx-text-fill 90ms ease-out;
+}
+
+/* The tick of a row's checkbox. Pointer speed, not surface speed: it answers a
+   click on that exact box. */
+.row-checkbox .mark {
+    transition: -fx-opacity 90ms ease-out;
+}
+
+/* A dropdown's own rows, once the popup itself has finished arriving. The
+   context menu's items are covered by the .menu-item rule further up. */
+.combo-box-popup .list-view .list-cell {
+    transition: -fx-text-fill 90ms ease-out;
+}
+
+.text-field,
+.password-field,
+.combo-box {
+    transition: -fx-text-fill 90ms ease-out,
+                -fx-opacity 160ms ease-out;
+}
+
+/* Scroll thumbs sit back until they are addressed. Their colour change cannot
+   animate, so the presence does. */
+.preview-table .scroll-bar .thumb,
+.workspace-tree .scroll-bar:vertical .thumb,
+.scroll-pane .scroll-bar .thumb {
+    -fx-opacity: 0.72;
+    transition: -fx-opacity 160ms ease-out;
+}
+
+.preview-table .scroll-bar .thumb:hover,
+.preview-table .scroll-bar .thumb:pressed,
+.workspace-tree .scroll-bar:vertical .thumb:hover,
+.scroll-pane .scroll-bar .thumb:hover,
+.scroll-pane .scroll-bar .thumb:pressed {
+    -fx-opacity: 1.0;
+}
+
+/* Two parts of the motion scale are not here, for the same reason: CSS can only
+   carry a transition when a state *changes*, and neither of these has a before.
+
+   ViewTransition, at 240ms, plays a screen or an overlay arriving. A screen
+   root outlives its time on screen and is put back later, so a CSS-driven
+   entrance would first animate the node *out* of the state it still holds from
+   its last appearance. Java sets the start state and plays forward, which
+   cannot flash. It also carries the settle a table plays when a filter chip
+   replaces its rows, at 160ms.
+
+   PopupMotion, at 160ms, plays every dropdown opening. A popup is a window of
+   its own: its content is laid out and shown already in its final state, so
+   there is nothing for a rule here to transition from.
+
+   The durations are documented together in docs/design-system.md §6b. */

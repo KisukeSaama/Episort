@@ -4,6 +4,7 @@ import com.episort.planning.ApprovedPlan;
 import com.episort.planning.OperationPlan;
 import com.episort.planning.PlannedOperation;
 import com.episort.ui.AppLanguage;
+import com.episort.ui.SmoothScroll;
 import com.episort.ui.UiText;
 import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ExecutionFailureDecision;
@@ -102,6 +103,7 @@ public final class ExecutionPane {
         recapScroll = new ScrollPane(recapPanel);
         recapScroll.setFitToWidth(true);
         recapScroll.getStyleClass().add("content-scroll");
+        SmoothScroll.install(recapScroll);
         setVisible(recapScroll, false);
 
         root = new VBox(18, readout, failurePanel, failureLog, recapScroll);
