@@ -13,7 +13,7 @@ plugins {
     id("org.openjfx.javafxplugin") version "0.1.0"
 }
 
-version = "0.2.0"
+version = "0.2.1"
 
 // Java 25 and JavaFX 25 are the current long-term-support pair. JavaFX carries
 // the reason for the jump: CSS transitions arrived in 23 and interpolation of
