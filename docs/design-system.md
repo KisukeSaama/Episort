@@ -923,8 +923,15 @@ section of Settings.
     conflict is blocking, `Copie comparée` / `Compared copy` names the existing
     destination or duplicate and shows its size; the dates column compares the
     same two files. Missing/unreadable sizes render `—`.
-  - Duplicate rows may offer `DELETE_SOURCE`, but deletion remains only a row
+  - Conflicts between two real files offer three explicit outcomes: replace the
+    existing destination with the source, keep both files unchanged, or delete
+    the source and keep the existing file. The labels name both files and the
+    resulting state; never use a bare `Ignorer` / `Ignore`. Structural path and
+    folder conflicts never offer deletion. A deletion remains only a row
     decision until the exact plan is applied and then explicitly validated.
+    The decision column reserves 340px minimum and every popup option repeats its
+    full label in a tooltip; destructive meaning must never depend on truncated
+    text.
   - The primary action never disappears: while
     `OperationPlan.hasBlockingConflicts()` is true it reads `Appliquer` and only
     rebuilds the plan from the row decisions; once no conflict remains it

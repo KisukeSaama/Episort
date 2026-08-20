@@ -17,7 +17,8 @@ public enum ConflictResolution {
      * This file is the copy too many: execution removes it from disk, to the
      * recycle bin when the system offers one. The only decision that destroys
      * something, so it is offered exactly where a real duplicate is the problem
-     * ({@link PlanConflictType#resolvableByReplacement()}) and never as a default.
+     * ({@link PlanConflictType#deletableSource()}) and never as an automatic
+     * age-based decision.
      */
     DELETE_SOURCE
 }

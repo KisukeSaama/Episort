@@ -91,7 +91,11 @@ final class PlanReviewText {
             case REPLACE -> type == PlanConflictType.DUPLICATE_MEDIA
                     ? UiText.conflictOptionKeepThis(language)
                     : UiText.conflictOptionReplace(language);
-            case DELETE_SOURCE -> UiText.conflictOptionDeleteSource(language);
+            case DELETE_SOURCE -> switch (type) {
+                case DESTINATION_FILE_EXISTS, MEDIA_ALREADY_IN_LIBRARY ->
+                        UiText.conflictOptionDeleteSourceKeepExisting(language);
+                default -> UiText.conflictOptionDeleteSource(language);
+            };
             case SKIP -> switch (type) {
                 case DESTINATION_FILE_EXISTS, MEDIA_ALREADY_IN_LIBRARY ->
                         UiText.conflictOptionKeepExisting(language);

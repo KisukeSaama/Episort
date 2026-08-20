@@ -9,6 +9,7 @@ import com.episort.planning.PlanConflictType;
 import com.episort.planning.PlanOperationStatus;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.UiText;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class PlanReviewTextTest {
@@ -83,12 +84,44 @@ class PlanReviewTextTest {
                 "ignoring a file is not dropping a row that could never run");
     }
 
-    /** The destructive decision reads the same everywhere it is offered. */
     @Test
-    void deletingAlwaysReadsAsDeleting() {
+    void occupiedDestinationChoicesNameBothFilesAndTheirOutcome() {
+        assertEquals("Remplacer l'existant par le fichier source",
+                PlanReviewText.decisionOption(
+                        ConflictResolution.REPLACE, PlanConflictType.DESTINATION_FILE_EXISTS, FR));
+        assertEquals("Conserver les deux fichiers (aucune modification)",
+                PlanReviewText.decisionOption(
+                        ConflictResolution.SKIP, PlanConflictType.DESTINATION_FILE_EXISTS, FR));
+        assertEquals("Supprimer le fichier source et conserver l'existant",
+                PlanReviewText.decisionOption(
+                        ConflictResolution.DELETE_SOURCE, PlanConflictType.DESTINATION_FILE_EXISTS, FR));
+    }
+
+    @Test
+    void anOccupiedDestinationOffersAllThreeExplicitOutcomes() {
+        assertEquals(
+                List.of(ConflictResolution.REPLACE, ConflictResolution.SKIP, ConflictResolution.DELETE_SOURCE),
+                PlanReviewPane.offeredFor(PlanConflictType.DESTINATION_FILE_EXISTS));
+    }
+
+    @Test
+    void aStructuralConflictNeverOffersSourceDeletion() {
+        assertEquals(
+                List.of(ConflictResolution.SKIP),
+                PlanReviewPane.offeredFor(PlanConflictType.PATH_TOO_LONG));
+    }
+
+    /** The destructive decision names the existing file when one is identified. */
+    @Test
+    void deletingAlwaysNamesTheSourceAndAnyExistingFileThatWillRemain() {
         for (PlanConflictType type : PlanConflictType.values()) {
+            String expected = switch (type) {
+                case DESTINATION_FILE_EXISTS, MEDIA_ALREADY_IN_LIBRARY ->
+                        UiText.conflictOptionDeleteSourceKeepExisting(FR);
+                default -> UiText.conflictOptionDeleteSource(FR);
+            };
             assertEquals(
-                    UiText.conflictOptionDeleteSource(FR),
+                    expected,
                     PlanReviewText.decisionOption(ConflictResolution.DELETE_SOURCE, type, FR));
         }
     }
