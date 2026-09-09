@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 
 final class WindowsDpapiCredentialProtector implements CredentialProtector {
-    private static final String FORMAT = "windows-dpapi-v1";
+    static final String FORMAT = "windows-dpapi-v1";
     private static final int CRYPTPROTECT_UI_FORBIDDEN = 0x1;
 
     @Override
@@ -35,7 +35,7 @@ final class WindowsDpapiCredentialProtector implements CredentialProtector {
             boolean success = protect
                     ? Crypt32.INSTANCE.CryptProtectData(
                             inputBlob,
-                            new WString("Episort TMDB credentials"),
+                            new WString("Episort credentials"),
                             null,
                             null,
                             null,
@@ -51,7 +51,7 @@ final class WindowsDpapiCredentialProtector implements CredentialProtector {
                             outputBlob);
             if (!success) {
                 throw new SettingsStoreException(
-                        "Windows could not protect the TMDB credentials (error " + Native.getLastError() + ").",
+                        "Windows could not protect the credentials (error " + Native.getLastError() + ").",
                         null);
             }
             outputBlob.read();

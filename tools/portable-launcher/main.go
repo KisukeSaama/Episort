@@ -76,6 +76,9 @@ func run() error {
 	if info, err := os.Stat(executable); err != nil || info.IsDir() {
 		return fmt.Errorf("packaged application launcher is missing")
 	}
+	// Best effort: a profile whose registry refuses the write still gets the
+	// application, only not the episort:// links from the browser.
+	_ = registerURLProtocol(executable)
 
 	command := exec.Command(executable, os.Args[1:]...)
 	command.Dir = filepath.Dir(executable)

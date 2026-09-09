@@ -1,5 +1,6 @@
 package com.episort.ui;
 
+import com.episort.filesystem.RemoteWorkspaceSessions;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
@@ -40,7 +41,7 @@ public final class UiText {
 
     public static String workspaceValue(AppLanguage language, Optional<Path> workspace) {
         return workspace
-                .map(path -> t(language, "workspace.configured.prefix") + " " + path)
+                .map(path -> t(language, "workspace.configured.prefix") + " " + RemoteWorkspaceSessions.displayName(path))
                 .orElseGet(() -> t(language, "workspace.value.empty"));
     }
 
@@ -542,6 +543,38 @@ public final class UiText {
     public static String prereqOverlayTitle(AppLanguage language) { return t(language, "prereq.overlay.title"); }
     public static String prereqOverlaySubtitle(AppLanguage language) { return t(language, "prereq.overlay.subtitle"); }
     public static String prereqMissingWorkspace(AppLanguage language) { return t(language, "prereq.missing.workspace"); }
+    public static String prereqMissingRemote(AppLanguage language) { return t(language, "prereq.missing.remote"); }
+
+    // ---- Remote workspace (SFTP) --------------------------------------
+    public static String workspaceKindLabel(AppLanguage language) { return t(language, "workspace.kind.label"); }
+    public static String workspaceKindLocal(AppLanguage language) { return t(language, "workspace.kind.local"); }
+    public static String workspaceKindRemote(AppLanguage language) { return t(language, "workspace.kind.remote"); }
+    public static String workspaceSectionDescriptionRemote(AppLanguage language) { return t(language, "workspace.section.description.remote"); }
+    public static String remoteHostLabel(AppLanguage language) { return t(language, "remote.host.label"); }
+    public static String remotePortLabel(AppLanguage language) { return t(language, "remote.port.label"); }
+    public static String remoteUsernameLabel(AppLanguage language) { return t(language, "remote.username.label"); }
+    public static String remoteAuthLabel(AppLanguage language) { return t(language, "remote.auth.label"); }
+    public static String remoteAuthPassword(AppLanguage language) { return t(language, "remote.auth.password"); }
+    public static String remoteAuthKey(AppLanguage language) { return t(language, "remote.auth.key"); }
+    public static String remotePasswordLabel(AppLanguage language) { return t(language, "remote.password.label"); }
+    public static String remoteKeyFileLabel(AppLanguage language) { return t(language, "remote.keyFile.label"); }
+    public static String remoteKeyFileBrowse(AppLanguage language) { return t(language, "remote.keyFile.browse"); }
+    public static String remoteKeyFileChooserTitle(AppLanguage language) { return t(language, "remote.keyFile.chooser.title"); }
+    public static String remotePassphraseLabel(AppLanguage language) { return t(language, "remote.passphrase.label"); }
+    public static String remoteRootLabel(AppLanguage language) { return t(language, "remote.root.label"); }
+    public static String remoteRootBrowse(AppLanguage language) { return t(language, "remote.root.browse"); }
+    public static String remoteConnectButton(AppLanguage language) { return t(language, "remote.connect.button"); }
+    public static String remoteDisconnectButton(AppLanguage language) { return t(language, "remote.disconnect.button"); }
+    public static String remoteStatusConnecting(AppLanguage language) { return t(language, "remote.status.connecting"); }
+    public static String remoteStatusConnected(AppLanguage language, String server) { return t(language, "remote.status.connected") + " " + server; }
+    public static String remoteStatusDisconnected(AppLanguage language, String server) { return t(language, "remote.status.disconnected") + " " + server; }
+    public static String remoteStatusNone(AppLanguage language) { return t(language, "remote.status.none"); }
+    public static String remoteStatusIncomplete(AppLanguage language) { return t(language, "remote.status.incomplete"); }
+    public static String remotePickerFolderTitle(AppLanguage language) { return t(language, "remote.picker.folder.title"); }
+    public static String remotePickerFilesTitle(AppLanguage language) { return t(language, "remote.picker.files.title"); }
+    public static String remotePickerChoose(AppLanguage language) { return t(language, "remote.picker.choose"); }
+    public static String remotePickerServerRoot(AppLanguage language) { return t(language, "remote.picker.serverRoot"); }
+    public static String loadingRemoteConnect(AppLanguage language) { return t(language, "loading.remoteConnect"); }
     public static String prereqOpenSettings(AppLanguage language) { return t(language, "prereq.openSettings"); }
 
     /* ---- Exact plan review (Epic 6) ---------------------------------- */

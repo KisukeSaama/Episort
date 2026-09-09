@@ -4,6 +4,8 @@ import com.episort.config.JanusConfigurationProvider;
 import com.episort.config.FileSettingsStore;
 import com.episort.config.JanusConfiguration;
 import com.episort.config.WindowPlacement;
+import com.episort.config.WorkspaceLocation.RemoteWorkspace;
+import com.episort.filesystem.RemoteWorkspaceSessions;
 import com.episort.persistence.FileExecutionJournal;
 import com.episort.persistence.FileRunEventStore;
 import com.episort.persistence.RunEvent;
@@ -34,9 +36,11 @@ import com.episort.ui.platform.SystemTheme;
 import com.episort.ui.platform.WindowManager;
 import com.episort.ui.platform.WindowState;
 import com.episort.ui.platform.WindowsTitleBar;
+import com.episort.ui.settings.RemoteWorkspaceSupport;
 import com.episort.workflow.ApplicationError;
 import com.episort.workflow.ErrorSeverity;
 import com.episort.workflow.InventoryWorkflowService;
+import com.episort.workflow.LaunchRequest;
 import com.episort.workflow.ScanCancellation;
 import com.episort.workflow.ScanCancelledException;
 import com.episort.workflow.StartupWorkflow;
@@ -45,6 +49,7 @@ import com.episort.workflow.TmdbBatchMatchService;
 import com.episort.workflow.TmdbGatewayStatus;
 import com.episort.workflow.TmdbGatewayService;
 import com.episort.workflow.WorkspaceConfigurationService;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -85,6 +90,9 @@ public class EpisortApplication extends Application {
     });
 
     private final FileSettingsStore settingsStoreEarly = FileSettingsStore.userProfileStore();
+    /** The SSH sessions behind a workspace on a server; closed with the application. */
+    private final RemoteWorkspaceSessions remoteSessions =
+            new RemoteWorkspaceSessions(settingsStoreEarly.knownHostsFile());
 
     private volatile AppShell appShellRef;
     private volatile ThemePreference themePreference = ThemePreference.SYSTEM;
@@ -116,7 +124,7 @@ public class EpisortApplication extends Application {
         Optional<JanusConfiguration> janusConfiguration = JanusConfigurationProvider.load();
         tmdbCredentialsSupplier = () -> janusConfiguration;
         StartupWorkflow startupWorkflow = new StartupWorkflow(
-                new WorkspaceConfigurationService(settingsStore),
+                new WorkspaceConfigurationService(settingsStore, remoteSessions),
                 janusConfiguration
                         .map(configuration -> new TmdbGatewayService(configuration, new HttpTmdbConnectionTester()))
                         .orElse(null));
@@ -150,6 +158,15 @@ public class EpisortApplication extends Application {
                 themePreference,
                 preference -> applyThemePreference(preference, settingsStore, stage));
         this.appShellRef = appShell;
+        appShell.setWorkspaceLocationSupplier(startupWorkflow::configuredWorkspaceLocation);
+        if (appShell.settingsPane() != null) {
+            appShell.settingsPane().setRemoteWorkspaceSupport(new RemoteWorkspaceSupport(
+                    location -> AppShellViewModel.fromWorkspaceConfiguration(
+                            startupWorkflow.configureRemoteWorkspace(location)),
+                    startupWorkflow::configuredWorkspaceLocation,
+                    remoteSessions,
+                    startupWorkflow::disconnectRemoteWorkspace));
+        }
         appShell.setScanCancelHandler(this::cancelActiveScan);
         appShell.setInputSourcesLoader(paths -> scanInputSources(startupWorkflow, paths, runEventStore));
         appShell.setExecutionJournal(FileExecutionJournal.userProfileJournal());
@@ -178,10 +195,13 @@ public class EpisortApplication extends Application {
                 event -> persistWindowPlacement(settingsStore, windowManager));
         stage.show();
         FrameRateProbe.startIfEnabled();
+        Optional<LaunchRequest> launchRequest = LaunchRequest.fromArguments(getParameters().getRaw());
         Platform.runLater(() -> {
             appShell.setLoading(false, "");
             // Story 7.4: an execution that never closed means the app stopped mid-run.
             appShell.reportInterruptedExecution();
+            connectRemoteWorkspaceAtStartup(startupWorkflow, appShell,
+                    () -> launchRequest.ifPresent(request -> openLaunchRequest(startupWorkflow, appShell, request)));
         });
         stage.toFront();
         stage.requestFocus();
@@ -237,6 +257,70 @@ public class EpisortApplication extends Application {
     public void stop() {
         scanExecutor.shutdownNow();
         themeWatcher.shutdownNow();
+        remoteSessions.close();
+    }
+
+    /**
+     * A workspace on a server is reconnected when the application opens, off
+     * the interface thread, with the loader up so the gate does not flash
+     * "connect to your server" at someone who did nothing wrong. A failure
+     * lands in the shell as the error it is; the settings screen says the rest.
+     */
+    private void connectRemoteWorkspaceAtStartup(
+            StartupWorkflow startupWorkflow, AppShell appShell, Runnable thenOnFxThread) {
+        boolean remote = startupWorkflow.configuredWorkspaceLocation()
+                .filter(RemoteWorkspace.class::isInstance)
+                .isPresent();
+        if (!remote) {
+            thenOnFxThread.run();
+            return;
+        }
+        appShell.setLoading(true, UiText.loadingRemoteConnect(appShell.currentLanguage()));
+        Thread worker = new Thread(() -> {
+            var result = startupWorkflow.connectConfiguredWorkspace();
+            Platform.runLater(() -> {
+                appShell.setLoading(false, "");
+                appShell.applyWorkspaceConfiguration(AppShellViewModel.fromWorkspaceConfiguration(result));
+                thenOnFxThread.run();
+            });
+        }, "episort-remote-startup");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /**
+     * Honours an episort:// link once the workspace is known. With no
+     * workspace, or a server that did not connect, the settings screen comes
+     * up with the reason: the link is not lost, the user finishes there and
+     * clicks it again. A folder the link names that is not under the
+     * workspace is reported, never guessed at.
+     */
+    private void openLaunchRequest(StartupWorkflow startupWorkflow, AppShell appShell, LaunchRequest request) {
+        var configuration = startupWorkflow.loadWorkspaceConfiguration();
+        Optional<Path> root = configuration.settings().workspaceDirectory();
+        if (!configuration.success() || root.isEmpty()) {
+            appShell.showSettings();
+            return;
+        }
+        Path folder = request.folderUnder(root.orElseThrow());
+        if (!Files.isDirectory(folder)) {
+            appShell.applyWorkspaceConfiguration(AppShellViewModel.fromError(ApplicationError.recoverable(
+                    "LAUNCH_TARGET_MISSING",
+                    ErrorSeverity.BLOCKING,
+                    "The folder the link points at is not in the workspace.",
+                    "Requested " + request.describe() + " under " + root.orElseThrow())));
+            return;
+        }
+        if (request.hasFiles()) {
+            List<Path> files = request.filesUnder(root.orElseThrow()).stream()
+                    .filter(Files::isRegularFile)
+                    .toList();
+            if (!files.isEmpty()) {
+                appShell.loadFiles(files);
+                return;
+            }
+        }
+        appShell.loadFolder(folder);
     }
 
     private void applyThemePreference(

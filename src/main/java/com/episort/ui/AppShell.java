@@ -2,6 +2,9 @@ package com.episort.ui;
 
 import com.episort.persistence.ExecutionJournal;
 import com.episort.persistence.FileExecutionJournal;
+import com.episort.config.WorkspaceLocation;
+import com.episort.config.WorkspaceLocation.RemoteWorkspace;
+import com.episort.filesystem.RemoteWorkspaceSessions;
 import com.episort.persistence.FileRollbackPlanStore;
 import com.episort.persistence.RunEvent;
 import com.episort.persistence.RunEventStatus;
@@ -70,6 +73,8 @@ public final class AppShell {
     private final Function<Path, CompletableFuture<AppShellViewModel>> selectInputFolder;
     private Function<List<Path>, CompletableFuture<AppShellViewModel>> selectInputSources;
     private final Supplier<Optional<Path>> currentWorkspace;
+    /** The recorded location, reachable or not: what the gate names when nothing is mounted. */
+    private Supplier<Optional<WorkspaceLocation>> workspaceLocation = Optional::empty;
     private AppShellViewModel currentViewModel;
     private AppView currentView = AppView.SCAN;
     private Optional<Path> lastInputFolder = Optional.empty();
@@ -229,6 +234,63 @@ public final class AppShell {
         this.selectInputSources = loader == null ? this.selectInputSources : loader;
     }
 
+    public void setWorkspaceLocationSupplier(Supplier<Optional<WorkspaceLocation>> supplier) {
+        this.workspaceLocation = supplier == null ? Optional::empty : supplier;
+    }
+
+    /** Folds a workspace change made outside the settings screen into the shell. */
+    public void applyWorkspaceConfiguration(AppShellViewModel viewModel) {
+        apply(viewModel);
+        if (settingsPane != null) {
+            settingsPane.refreshWorkspace();
+        }
+    }
+
+    /**
+     * Loads a folder the way the top bar's "load folder" does, for a request
+     * that came from outside the window: an episort:// link from Umbra.
+     */
+    public void loadFolder(Path folder) {
+        if (selectInputFolder == null || folder == null) {
+            return;
+        }
+        Path normalized = folder.toAbsolutePath().normalize();
+        lastInputFolder = Optional.of(normalized);
+        if (currentView != AppView.SCAN) {
+            showView(AppView.SCAN);
+        }
+        apply(new AppShellViewModel(
+                "Episort",
+                UiText.scanRowStatusPreview(currentViewModel.language()),
+                RemoteWorkspaceSessions.displayName(normalized),
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty(),
+                currentViewModel.theme(),
+                currentViewModel.language()));
+        beginScan();
+        trackScan(selectInputFolder.apply(normalized), false, UiText.scanFailedFolder(currentViewModel.language()));
+    }
+
+    /** Loads a list of files the way the top bar's "load files" does. */
+    public void loadFiles(List<Path> files) {
+        if (selectInputSources == null || files == null || files.isEmpty()) {
+            return;
+        }
+        List<Path> normalized = files.stream().map(path -> path.toAbsolutePath().normalize()).toList();
+        lastInputFolder = Optional.empty();
+        if (currentView != AppView.SCAN) {
+            showView(AppView.SCAN);
+        }
+        beginScan();
+        trackScan(selectInputSources.apply(normalized), false, UiText.scanFailedFiles(currentViewModel.language()));
+    }
+
+    /** Puts the settings screen in front, for a request the shell cannot honour without them. */
+    public void showSettings() {
+        showView(AppView.SETTINGS);
+    }
+
     public AppShellViewModel currentViewModel() {
         return currentViewModel;
     }
@@ -238,9 +300,15 @@ public final class AppShell {
         boolean show = workspaceMissing && currentView != AppView.SETTINGS;
 
         AppLanguage language = currentViewModel.language();
+        // A recorded server that is not connected is a different missing step
+        // from no workspace at all: the user has to connect, not to choose.
+        boolean remoteRecorded = workspaceLocation.get().filter(RemoteWorkspace.class::isInstance).isPresent();
+        String missingStep = remoteRecorded
+                ? UiText.prereqMissingRemote(language)
+                : UiText.prereqMissingWorkspace(language);
         prereqOverlay.show(
                 show,
-                workspaceMissing ? List.of(UiText.prereqMissingWorkspace(language)) : List.of(),
+                workspaceMissing ? List.of(missingStep) : List.of(),
                 language);
         if (currentScreenRoot != null) {
             currentScreenRoot.setMouseTransparent(show);
@@ -622,20 +690,15 @@ public final class AppShell {
         if (workspace.isEmpty()) {
             return;
         }
-        DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setTitle(UiText.chooserLoadFolderTitle(currentViewModel.language()));
-        File initial = workspace.get().toFile();
-        if (initial.isDirectory()) {
-            chooser.setInitialDirectory(initial);
-        }
-        Window owner = root.getScene() == null ? null : root.getScene().getWindow();
-        File selected = chooser.showDialog(owner);
-        if (selected != null) {
-            lastInputFolder = Optional.of(selected.toPath().toAbsolutePath().normalize());
+        Optional<Path> selected = chooseFolder(
+                workspace.orElseThrow(), UiText.chooserLoadFolderTitle(currentViewModel.language()));
+        if (selected.isPresent()) {
+            Path folder = selected.orElseThrow().toAbsolutePath().normalize();
+            lastInputFolder = Optional.of(folder);
             apply(new AppShellViewModel(
                     "Episort",
                     UiText.scanRowStatusPreview(currentViewModel.language()),
-                    selected.toPath().toAbsolutePath().normalize().toString(),
+                    RemoteWorkspaceSessions.displayName(folder),
                     Optional.empty(),
                     Optional.empty(),
                     Optional.empty(),
@@ -643,10 +706,59 @@ public final class AppShell {
                     currentViewModel.language()));
             beginScan();
             trackScan(
-                    selectInputFolder.apply(selected.toPath()),
+                    selectInputFolder.apply(folder),
                     false,
                     UiText.scanFailedFolder(currentViewModel.language()));
         }
+    }
+
+    /**
+     * The native chooser for a folder on this computer, the server tree for a
+     * workspace that lives on one: the native dialog cannot show a server.
+     */
+    private Optional<Path> chooseFolder(Path workspace, String title) {
+        Window owner = root.getScene() == null ? null : root.getScene().getWindow();
+        if (RemoteWorkspaceSessions.isRemote(workspace)) {
+            return RemotePathPicker.show(
+                            owner, currentViewModel.language(), title, workspace,
+                            workspaceRootLabel(workspace), RemotePathPicker.Mode.FOLDER)
+                    .flatMap(paths -> paths.stream().findFirst());
+        }
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle(title);
+        File initial = workspace.toFile();
+        if (initial.isDirectory()) {
+            chooser.setInitialDirectory(initial);
+        }
+        File selected = chooser.showDialog(owner);
+        return Optional.ofNullable(selected).map(File::toPath);
+    }
+
+    private Optional<List<Path>> chooseFiles(Path workspace, String title) {
+        AppLanguage language = currentViewModel.language();
+        Window owner = root.getScene() == null ? null : root.getScene().getWindow();
+        if (RemoteWorkspaceSessions.isRemote(workspace)) {
+            return RemotePathPicker.show(
+                    owner, language, title, workspace, workspaceRootLabel(workspace), RemotePathPicker.Mode.FILES);
+        }
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle(title);
+        File initial = workspace.toFile();
+        if (initial.isDirectory()) {
+            chooser.setInitialDirectory(initial);
+        }
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+                UiText.chooserVideoFiles(language), "*.avi", "*.mp4", "*.mkv"));
+        List<File> selected = chooser.showOpenMultipleDialog(owner);
+        if (selected == null || selected.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(selected.stream().map(File::toPath).toList());
+    }
+
+    private static String workspaceRootLabel(Path workspace) {
+        Path name = workspace.getFileName();
+        return name == null || name.toString().isEmpty() ? workspace.toString() : name.toString();
     }
 
     private void openLoadFilesDialog() {
@@ -666,21 +778,13 @@ public final class AppShell {
             return;
         }
         AppLanguage language = currentViewModel.language();
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle(UiText.chooserLoadFilesTitle(language));
-        File initial = currentWorkspace.get().orElseThrow().toFile();
-        if (initial.isDirectory()) {
-            chooser.setInitialDirectory(initial);
-        }
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
-                UiText.chooserVideoFiles(language), "*.avi", "*.mp4", "*.mkv"));
-        Window owner = root.getScene() == null ? null : root.getScene().getWindow();
-        List<File> selected = chooser.showOpenMultipleDialog(owner);
-        if (selected == null || selected.isEmpty()) {
+        Optional<List<Path>> selected = chooseFiles(
+                currentWorkspace.get().orElseThrow(), UiText.chooserLoadFilesTitle(language));
+        if (selected.isEmpty() || selected.orElseThrow().isEmpty()) {
             return;
         }
-        List<Path> paths = selected.stream()
-                .map(file -> file.toPath().toAbsolutePath().normalize())
+        List<Path> paths = selected.orElseThrow().stream()
+                .map(path -> path.toAbsolutePath().normalize())
                 .toList();
         if (!append) {
             lastInputFolder = Optional.empty();
@@ -697,19 +801,13 @@ public final class AppShell {
         if (workspace.isEmpty()) {
             return;
         }
-        DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setTitle(UiText.chooserAddFolderTitle(currentViewModel.language()));
-        File initial = workspace.get().toFile();
-        if (initial.isDirectory()) {
-            chooser.setInitialDirectory(initial);
-        }
-        Window owner = root.getScene() == null ? null : root.getScene().getWindow();
-        File selected = chooser.showDialog(owner);
-        if (selected == null) {
+        Optional<Path> selected = chooseFolder(
+                workspace.orElseThrow(), UiText.chooserAddFolderTitle(currentViewModel.language()));
+        if (selected.isEmpty()) {
             return;
         }
         beginScan();
-        trackScan(selectInputFolder.apply(selected.toPath()), append, null);
+        trackScan(selectInputFolder.apply(selected.orElseThrow()), append, null);
     }
 
     /**

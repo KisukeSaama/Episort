@@ -1,18 +1,37 @@
 package com.episort.config;
 
+import com.episort.config.SftpAuthentication.Password;
+import com.episort.config.SftpAuthentication.PrivateKey;
+import com.episort.config.WorkspaceLocation.LocalWorkspace;
+import com.episort.config.WorkspaceLocation.RemoteWorkspace;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 
 public final class FileSettingsStore implements SettingsStore {
     private static final String WORKSPACE_DIRECTORY = "workspaceDirectory";
+    private static final String WORKSPACE_KIND = "workspace.kind";
+    private static final String KIND_LOCAL = "local";
+    private static final String KIND_SFTP = "sftp";
+    private static final String SFTP_HOST = "workspace.sftp.host";
+    private static final String SFTP_PORT = "workspace.sftp.port";
+    private static final String SFTP_USERNAME = "workspace.sftp.username";
+    private static final String SFTP_ROOT = "workspace.sftp.root";
+    private static final String SFTP_AUTH = "workspace.sftp.auth";
+    private static final String AUTH_PASSWORD = "password";
+    private static final String AUTH_KEY = "key";
+    private static final String SFTP_KEY_FILE = "workspace.sftp.keyFile";
+    private static final String SFTP_SECRET = "workspace.sftp.secret";
+    private static final String SFTP_SECRET_FORMAT = "workspace.sftp.secret.format";
     private static final String LANGUAGE = "language";
     private static final String WINDOW_X = "window.x";
     private static final String WINDOW_Y = "window.y";
@@ -22,13 +41,28 @@ public final class FileSettingsStore implements SettingsStore {
     private static final String THEME_PREFERENCE = "theme.preference";
 
     private final Path settingsFile;
+    private final CredentialProtector credentialProtector;
 
     public FileSettingsStore(Path settingsFile) {
-        this(settingsFile, true);
+        this(settingsFile, true, CredentialProtectors.forCurrentPlatform());
+    }
+
+    FileSettingsStore(Path settingsFile, CredentialProtector credentialProtector) {
+        this(settingsFile, true, credentialProtector);
     }
 
     private FileSettingsStore(Path settingsFile, boolean normalizeAbsolute) {
+        this(settingsFile, normalizeAbsolute, CredentialProtectors.forCurrentPlatform());
+    }
+
+    private FileSettingsStore(Path settingsFile, boolean normalizeAbsolute, CredentialProtector credentialProtector) {
         this.settingsFile = normalizeAbsolute ? settingsFile.toAbsolutePath().normalize() : settingsFile.normalize();
+        this.credentialProtector = credentialProtector;
+    }
+
+    /** Where the SSH host keys Episort has already trusted are recorded. */
+    public Path knownHostsFile() {
+        return settingsFile.resolveSibling("known_hosts");
     }
 
     public static FileSettingsStore userProfileStore() {
@@ -76,6 +110,11 @@ public final class FileSettingsStore implements SettingsStore {
             throw new SettingsStoreException("Unable to load Episort settings.", exception);
         }
 
+        String kind = properties.getProperty(WORKSPACE_KIND, KIND_LOCAL);
+        if (KIND_SFTP.equals(kind)) {
+            return AppSettings.remote(readRemoteWorkspace(properties));
+        }
+
         String workspaceDirectory = properties.getProperty(WORKSPACE_DIRECTORY);
         if (workspaceDirectory == null || workspaceDirectory.isBlank()) {
             return AppSettings.empty();
@@ -92,9 +131,78 @@ public final class FileSettingsStore implements SettingsStore {
     public void save(AppSettings settings) {
         Properties properties = readExistingProperties();
         properties.remove(WORKSPACE_DIRECTORY);
-        settings.workspaceDirectory()
-                .ifPresent(workspace -> properties.setProperty(WORKSPACE_DIRECTORY, workspace.toString()));
+        properties.remove(WORKSPACE_KIND);
+        for (String key : new String[] {SFTP_HOST, SFTP_PORT, SFTP_USERNAME, SFTP_ROOT, SFTP_AUTH,
+                SFTP_KEY_FILE, SFTP_SECRET, SFTP_SECRET_FORMAT}) {
+            properties.remove(key);
+        }
+        settings.workspace().ifPresent(location -> {
+            switch (location) {
+                case LocalWorkspace local -> {
+                    properties.setProperty(WORKSPACE_KIND, KIND_LOCAL);
+                    properties.setProperty(WORKSPACE_DIRECTORY, local.directory().toString());
+                }
+                case RemoteWorkspace remote -> writeRemoteWorkspace(properties, remote);
+            }
+        });
         writeProperties(properties);
+    }
+
+    private RemoteWorkspace readRemoteWorkspace(Properties properties) {
+        try {
+            String host = properties.getProperty(SFTP_HOST, "");
+            int port = Integer.parseInt(properties.getProperty(SFTP_PORT, String.valueOf(SftpEndpoint.DEFAULT_PORT)));
+            String username = properties.getProperty(SFTP_USERNAME, "");
+            String root = properties.getProperty(SFTP_ROOT, "/");
+            Optional<String> secret = readSecret(properties);
+            SftpAuthentication authentication = AUTH_KEY.equals(properties.getProperty(SFTP_AUTH))
+                    ? new PrivateKey(Path.of(properties.getProperty(SFTP_KEY_FILE, "")), secret)
+                    : new Password(secret);
+            return new RemoteWorkspace(new SftpEndpoint(host, port, username, authentication), root);
+        } catch (IllegalArgumentException exception) {
+            throw new InvalidSettingsException("Invalid remote workspace in settings.", exception);
+        }
+    }
+
+    private void writeRemoteWorkspace(Properties properties, RemoteWorkspace remote) {
+        SftpEndpoint endpoint = remote.endpoint();
+        properties.setProperty(WORKSPACE_KIND, KIND_SFTP);
+        properties.setProperty(SFTP_HOST, endpoint.host());
+        properties.setProperty(SFTP_PORT, String.valueOf(endpoint.port()));
+        properties.setProperty(SFTP_USERNAME, endpoint.username());
+        properties.setProperty(SFTP_ROOT, remote.rootPath());
+        switch (endpoint.authentication()) {
+            case Password ignored -> properties.setProperty(SFTP_AUTH, AUTH_PASSWORD);
+            case PrivateKey key -> {
+                properties.setProperty(SFTP_AUTH, AUTH_KEY);
+                properties.setProperty(SFTP_KEY_FILE, key.keyFile().toString());
+            }
+        }
+        endpoint.authentication().secret().ifPresent(secret -> {
+            byte[] protectedBytes = credentialProtector.protect(secret.getBytes(StandardCharsets.UTF_8));
+            properties.setProperty(SFTP_SECRET, Base64.getEncoder().encodeToString(protectedBytes));
+            properties.setProperty(SFTP_SECRET_FORMAT, credentialProtector.format());
+        });
+    }
+
+    private Optional<String> readSecret(Properties properties) {
+        String encoded = properties.getProperty(SFTP_SECRET);
+        if (encoded == null || encoded.isBlank()) {
+            return Optional.empty();
+        }
+        String format = properties.getProperty(SFTP_SECRET_FORMAT, "");
+        try {
+            CredentialProtector protector = format.equals(credentialProtector.format())
+                    ? credentialProtector
+                    : CredentialProtectors.forFormat(format);
+            byte[] plain = protector.unprotect(Base64.getDecoder().decode(encoded));
+            return Optional.of(new String(plain, StandardCharsets.UTF_8));
+        } catch (SettingsStoreException | IllegalArgumentException exception) {
+            // The secret is unreadable here, typically because another machine
+            // or user protected it. The connection details survive; the user is
+            // asked for the secret again instead of being shown a broken profile.
+            return Optional.empty();
+        }
     }
 
     public Optional<String> loadLanguage() {

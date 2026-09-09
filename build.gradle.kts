@@ -97,6 +97,11 @@ dependencies {
     implementation("net.java.dev.jna:jna:5.18.1")
     implementation("net.java.dev.jna:jna-platform:5.18.1")
     implementation("com.google.code.gson:gson:2.11.0")
+    // SFTP workspaces: Apache MINA SSHD speaks SSH and exposes the remote
+    // tree as a java.nio.file.FileSystem, so the scanner, the mover and the
+    // boundary checks run unchanged against a Plex server.
+    implementation("org.apache.sshd:sshd-sftp:2.19.0")
+    runtimeOnly("org.slf4j:slf4j-jdk14:2.0.17")
     testImplementation(platform("org.junit:junit-bom:5.12.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

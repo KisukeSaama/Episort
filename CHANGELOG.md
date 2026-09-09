@@ -4,7 +4,29 @@ All notable changes to Episort are documented in this file.
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+
+- The workspace can live on the server that runs Plex. Settings offers "A
+  folder on a server (SFTP)": host, port, user, a password or a private key,
+  and the folder picked from the server's own tree. Scanning, planning and
+  the run itself then happen on the server over SFTP through the same code
+  and the same safety rules as a local folder; a rename there is instant
+  whatever the file size, and nothing is copied to this computer. One server
+  is remembered with its credentials, protected with DPAPI on Windows, and a
+  Disconnect button closes the session without forgetting it. The server's
+  host key is trusted on first use and refused if it later changes. A
+  remembered server is reconnected when the application opens; until it is,
+  the setup gate asks to connect rather than to choose a folder.
+- The "load" and "add" actions open a picker on the server's tree when the
+  workspace is remote, in place of the system dialogs that only know local
+  disks.
+- Episort answers `episort://` links. The Windows launcher registers the
+  scheme for the current user at every start, and Umbra's storage page
+  carries an "Open in Episort" button that opens the application on the
+  folder being looked at, or on the files selected there. The link names a
+  volume and the folders below it, never an absolute path, and is resolved
+  under the workspace root; with no workspace connected the settings screen
+  opens instead.
 
 ## [0.2.0] - 2026-08-13
 

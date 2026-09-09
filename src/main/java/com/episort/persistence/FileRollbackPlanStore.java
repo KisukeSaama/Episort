@@ -1,6 +1,7 @@
 package com.episort.persistence;
 
 import com.episort.filesystem.MediaFileFingerprint;
+import com.episort.filesystem.PathSerialization;
 import com.episort.workflow.ExecutionReport;
 import com.episort.workflow.FileExecutionResult;
 import java.io.IOException;
@@ -68,7 +69,8 @@ public final class FileRollbackPlanStore {
             return;
         }
 
-        List<RollbackPlan> plans = new ArrayList<>(loadAll());
+        StoredPlans stored = readFile();
+        List<RollbackPlan> plans = new ArrayList<>(stored.plans());
         plans.removeIf(plan -> plan.runId().equals(report.runId()));
         plans.add(new RollbackPlan(
                 report.runId(), Instant.now(), report.workspaceRoot(), moves));
@@ -76,7 +78,7 @@ public final class FileRollbackPlanStore {
         if (plans.size() > maxPlans) {
             plans = new ArrayList<>(plans.subList(plans.size() - maxPlans, plans.size()));
         }
-        writeAll(plans);
+        writeAll(plans, stored.unresolved());
     }
 
     /** Compatibility helper returning the newest retained plan. */
@@ -89,59 +91,81 @@ public final class FileRollbackPlanStore {
     }
 
     public synchronized List<RollbackPlan> loadAll() {
+        return readFile().plans();
+    }
+
+    /**
+     * Reads every retained plan. A plan recorded against a server that is not
+     * connected right now cannot be turned into live paths, so its lines are
+     * kept verbatim and written back untouched: being offline must not erase
+     * the way back.
+     */
+    private StoredPlans readFile() {
         if (!Files.exists(file)) {
-            return List.of();
+            return StoredPlans.empty();
         }
         try {
             List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
             if (lines.isEmpty() || !HEADER.equals(lines.getFirst())) {
-                return List.of();
+                return StoredPlans.empty();
             }
             List<RollbackPlan> plans = new ArrayList<>();
+            List<List<String>> unresolved = new ArrayList<>();
             int cursor = 1;
             while (cursor < lines.size()) {
+                int planStart = cursor;
                 String[] planFields = lines.get(cursor++).split("\\t", -1);
                 if (planFields.length != 4 || !"PLAN".equals(planFields[0])) {
-                    return List.of();
+                    return StoredPlans.empty();
                 }
                 UUID runId = UUID.fromString(planFields[1]);
                 Instant recordedAt = Instant.parse(planFields[2]);
-                Path workspace = decode(planFields[3]);
+                Optional<Path> workspace = decode(planFields[3]);
+                boolean resolvable = workspace.isPresent();
                 List<RollbackMove> moves = new ArrayList<>();
                 while (cursor < lines.size() && !"END".equals(lines.get(cursor))) {
                     String[] moveFields = lines.get(cursor++).split("\\t", -1);
                     if (moveFields.length != 6 || !"MOVE".equals(moveFields[0])) {
-                        return List.of();
+                        return StoredPlans.empty();
                     }
-                    moves.add(new RollbackMove(
-                            decode(moveFields[1]),
-                            decode(moveFields[2]),
-                            new MediaFileFingerprint(
-                                    Long.parseLong(moveFields[3]),
-                                    Long.parseLong(moveFields[4]),
-                                    moveFields[5])));
+                    Optional<Path> original = decode(moveFields[1]);
+                    Optional<Path> current = decode(moveFields[2]);
+                    MediaFileFingerprint fingerprint = new MediaFileFingerprint(
+                            Long.parseLong(moveFields[3]),
+                            Long.parseLong(moveFields[4]),
+                            moveFields[5]);
+                    if (original.isEmpty() || current.isEmpty()) {
+                        resolvable = false;
+                    } else {
+                        moves.add(new RollbackMove(original.orElseThrow(), current.orElseThrow(), fingerprint));
+                    }
                 }
-                if (cursor >= lines.size() || moves.isEmpty()) {
-                    return List.of();
+                if (cursor >= lines.size() || (resolvable && moves.isEmpty())) {
+                    return StoredPlans.empty();
                 }
                 cursor++;
-                plans.add(new RollbackPlan(runId, recordedAt, workspace, moves));
+                if (resolvable) {
+                    plans.add(new RollbackPlan(runId, recordedAt, workspace.orElseThrow(), moves));
+                } else {
+                    unresolved.add(List.copyOf(lines.subList(planStart, cursor)));
+                }
             }
-            return List.copyOf(plans);
+            return new StoredPlans(List.copyOf(plans), List.copyOf(unresolved));
         } catch (IOException | RuntimeException exception) {
-            return List.of();
+            return StoredPlans.empty();
         }
     }
 
     /** Consumes only the plan that was successfully restored. */
     public synchronized void remove(UUID runId) {
-        List<RollbackPlan> retained = loadAll().stream()
+        StoredPlans stored = readFile();
+        List<RollbackPlan> retained = stored.plans().stream()
                 .filter(plan -> !plan.runId().equals(runId))
                 .toList();
-        if (retained.isEmpty()) {
+        if (retained.isEmpty() && stored.unresolved().isEmpty()) {
             clear();
         } else {
-            writeAll(retained);
+            writeAll(retained, stored.unresolved());
         }
     }
 
@@ -153,9 +177,12 @@ public final class FileRollbackPlanStore {
         }
     }
 
-    private void writeAll(List<RollbackPlan> plans) {
+    private void writeAll(List<RollbackPlan> plans, List<List<String>> unresolved) {
         List<String> lines = new ArrayList<>();
         lines.add(HEADER);
+        for (List<String> block : unresolved) {
+            lines.addAll(block);
+        }
         for (RollbackPlan plan : plans) {
             lines.add("PLAN\t" + plan.runId() + "\t" + plan.recordedAt() + "\t" + encode(plan.workspace()));
             for (RollbackMove move : plan.moves()) {
@@ -187,10 +214,17 @@ public final class FileRollbackPlanStore {
 
     private static String encode(Path path) {
         return Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(path.toString().getBytes(StandardCharsets.UTF_8));
+                .encodeToString(PathSerialization.encode(path).getBytes(StandardCharsets.UTF_8));
     }
 
-    private static Path decode(String value) {
-        return Path.of(new String(Base64.getUrlDecoder().decode(value), StandardCharsets.UTF_8));
+    private static Optional<Path> decode(String value) {
+        return PathSerialization.decode(new String(Base64.getUrlDecoder().decode(value), StandardCharsets.UTF_8));
+    }
+
+    /** Plans usable now, plus the verbatim lines of those that are not. */
+    private record StoredPlans(List<RollbackPlan> plans, List<List<String>> unresolved) {
+        private static StoredPlans empty() {
+            return new StoredPlans(List.of(), List.of());
+        }
     }
 }

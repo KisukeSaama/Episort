@@ -99,6 +99,47 @@ The Windows executable, or the Linux `.deb` and `.rpm` packages, are written to
 `build/portable/distributions/`. Native packages must be built on Linux, so the
 repository workflow builds Windows and Linux artifacts independently.
 
+## Workspace on a server (SFTP)
+
+The workspace can live on the machine that runs Plex instead of on a local
+disk. In Settings, choose "A folder on a server (SFTP)", enter the host, port,
+user and either a password or a private key file, pick the folder from the
+server's own tree, and connect. Episort then scans, renames and moves the
+files there directly over SFTP: nothing is copied to this computer, and a
+rename on the server is instant whatever the file size.
+
+- One server is remembered, credentials included, so reconnecting after a
+  restart is one click. On Windows the secret is protected with DPAPI, tied to
+  the Windows user; elsewhere it sits in the user's private configuration
+  directory. Disconnect keeps the profile and closes the session.
+- The server's host key is trusted on first use and recorded in `known_hosts`
+  next to the settings file. A key that later differs is refused.
+- Every safety rule holds unchanged: the boundary is the chosen folder on the
+  server, symbolic links are never followed out of it, and the two validations
+  happen before anything moves. Deleting a duplicate on a server is final,
+  since no recycle bin can take it.
+- The SSH account needs write access to the library. A read-only account can
+  scan and plan, and the run stops at the first move.
+
+## Opening a folder from Umbra
+
+Episort answers `episort://` links. On Windows the portable launcher registers
+the scheme for the current user every time it starts, so the "Open in
+Episort" button on Umbra's storage page opens Episort positioned on that
+folder, or on the files selected there. The link names a volume and the
+folders below it, never an absolute path; Episort resolves it under its own
+workspace root, so set the workspace to the same folder as the Umbra volume
+(`/mnt/plex` by default). With no workspace, or a server that is not
+connected, the settings screen opens instead and the link can be used again
+once it is. A folder that is not under the workspace is reported, not guessed.
+
+```text
+episort://open?volume=Media&path=Series%2FSome+Show&file=ep1.mkv&file=ep2.mkv
+```
+
+Linux packages are installed by the system package manager, which owns
+desktop integration there; the scheme is not registered by the packages yet.
+
 ## Configuration
 
 Episort calls TMDB through the Janus gateway. The Janus client configuration is
