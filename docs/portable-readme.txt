@@ -7,7 +7,9 @@ application and its private runtime in the normal system locations.
 WINDOWS
 -------
 Double-click Episort-0.2.2-windows-x64.exe. Runtime files are stored under
-%LOCALAPPDATA%\Episort.
+%LOCALAPPDATA%\Episort. Each start also registers the episort:// link scheme
+for the current user, so "Open in Episort" buttons in a browser open this
+application. Nothing is written outside the user profile.
 
 LINUX
 -----

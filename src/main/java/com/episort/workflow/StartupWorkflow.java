@@ -2,8 +2,12 @@ package com.episort.workflow;
 
 import com.episort.config.AppSettings;
 import com.episort.config.JanusConfiguration;
+import com.episort.config.WorkspaceLocation;
+import com.episort.config.WorkspaceLocation.RemoteWorkspace;
+import com.episort.filesystem.RemoteWorkspaceSessions;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 public final class StartupWorkflow {
     private final WorkspaceConfigurationService workspaceConfigurationService;
@@ -32,6 +36,41 @@ public final class StartupWorkflow {
         }
 
         return workspaceConfigurationService.configureWorkspace(workspaceDirectory);
+    }
+
+    /** Blocking: connects to the server before recording the location. */
+    public WorkspaceConfigurationResult configureRemoteWorkspace(RemoteWorkspace location) {
+        if (workspaceConfigurationService == null) {
+            return WorkspaceConfigurationResult.failure(AppSettings.empty(), missingWorkspace());
+        }
+
+        return workspaceConfigurationService.configureRemoteWorkspace(location);
+    }
+
+    /** Blocking: opens the session of a recorded remote workspace. */
+    public WorkspaceConfigurationResult connectConfiguredWorkspace() {
+        if (workspaceConfigurationService == null) {
+            return WorkspaceConfigurationResult.failure(AppSettings.empty(), missingWorkspace());
+        }
+
+        return workspaceConfigurationService.connectConfiguredWorkspace();
+    }
+
+    public Optional<WorkspaceLocation> configuredWorkspaceLocation() {
+        if (workspaceConfigurationService == null) {
+            return Optional.empty();
+        }
+        return workspaceConfigurationService.configuredLocation();
+    }
+
+    public void disconnectRemoteWorkspace() {
+        if (workspaceConfigurationService != null) {
+            workspaceConfigurationService.disconnectRemoteWorkspace();
+        }
+    }
+
+    public Optional<RemoteWorkspaceSessions> remoteWorkspaceSessions() {
+        return Optional.ofNullable(workspaceConfigurationService).map(WorkspaceConfigurationService::sessions);
     }
 
     public TmdbGatewayStatus loadTmdbConfiguration() {

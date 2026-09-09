@@ -1491,13 +1491,14 @@ public final class ScanScreen {
             }
         });
 
+        boolean localFile = DesktopFileActions.isLocal(row.sourcePath());
         MenuItem openFile = new MenuItem(UiText.scanContextOpenFile(currentLanguage));
-        openFile.setDisable(!DesktopFileActions.canOpenFile());
+        openFile.setDisable(!localFile || !DesktopFileActions.canOpenFile());
         openFile.setOnAction(event -> openSourceFile(row));
 
         MenuItem openFolder = new MenuItem(UiText.scanContextOpenFolder(currentLanguage));
         Path parent = row.sourcePath().getParent();
-        openFolder.setDisable(parent == null);
+        openFolder.setDisable(!localFile || parent == null);
         openFolder.setOnAction(event -> {
             try {
                 DesktopFileActions.openParent(row.sourcePath());

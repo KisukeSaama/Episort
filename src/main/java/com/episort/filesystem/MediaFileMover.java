@@ -188,7 +188,9 @@ public final class MediaFileMover {
      */
     private static boolean moveToTrash(Path target) {
         try {
-            if (!Desktop.isDesktopSupported()) {
+            // A server has no recycle bin this desktop can reach; the file on
+            // it goes for good, as the user was told in front of the plan.
+            if (RemoteWorkspaceSessions.isRemote(target) || !Desktop.isDesktopSupported()) {
                 return false;
             }
             Desktop desktop = Desktop.getDesktop();

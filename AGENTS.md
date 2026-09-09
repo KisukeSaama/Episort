@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-Episort is a JavaFX desktop app that sorts TV series episodes (`.avi`, `.mp4`, `.mkv`) using TMDB references — aired, DVD, and absolute orders — from a user-selected working directory that may mix several series.
+Episort is a JavaFX desktop app that sorts TV series episodes (`.avi`, `.mp4`, `.mkv`) using TMDB references — aired, DVD, and absolute orders — from a user-selected working directory that may mix several series. The working directory is a local folder or a folder on a server reached over SFTP.
 
 Stack: Java 25, JavaFX 25, Gradle, JUnit 5, plus Go 1.26 only for the native single-file launcher under `tools/portable-launcher/`. Layout: `src/main/`, `src/test/`, `docs/`, `assets/`. Keep TMDB access, episode matching, filesystem ops, and UI in separate packages.
 
@@ -23,11 +23,15 @@ The Go launcher uses `gofmt`, standard-library-only code, and `go test .` from
 `tools/portable-launcher`. Its extraction tests must use temporary directories
 and reject absolute paths, traversal, and unsafe archive links.
 
+`episort://` links (`workflow/LaunchRequest`) name a volume and folder names below it, never an absolute path, and are resolved under the workspace root; every name is validated and a request that fails any check is dropped whole. On Windows the Go launcher registers the scheme under `HKCU\Software\Classes` only.
+
 ## Security
 
 TMDB API keys and read access tokens live exclusively in the Janus vault and must never be committed or distributed. The Janus URL, Episort application ID, and Janus caller key are intentionally embedded in official Episort builds so end users need no credentials; the operator accepts exposure and manages restrictions, monitoring, rotation, and revocation in Janus. Never commit other keys or tokens, real media paths, or private library metadata.
 
 All scans, folder creation, renaming, and moving operations must stay inside the configured working directory. Never touch files outside it.
+
+A workspace may live on a server reached over SFTP (`filesystem/RemoteWorkspaceSessions`, Apache MINA SSHD). The remote tree is a `java.nio.file` filesystem, so scanning, boundary checks and moves run through the same code as a local folder; never shell out over SSH to move files. The SSH secret is the user's own, stored locally by `FileSettingsStore` under platform protection (DPAPI on Windows), never sent to Janus, and never logged. One server is remembered at a time.
 
 ## UI / Design System
 

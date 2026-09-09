@@ -732,6 +732,19 @@
     -fx-text-fill: #8a93a3;
 }
 
+/* Caption over an input in a settings form: the field's name at the caption
+   step (§2.2), in the faint ink so the value in the field reads first. */
+.settings-field-caption {
+    -fx-font-size: 10px;
+    -fx-font-family: "Instrument Sans SemiBold", "Instrument Sans", "Segoe UI", sans-serif;
+    -fx-font-weight: 600;
+    -fx-text-fill: #767e8d;
+}
+
+.settings-form {
+    -fx-spacing: 12;
+}
+
 .workspace-value {
     -fx-font-size: 13px;
     -fx-text-fill: #fb923c;

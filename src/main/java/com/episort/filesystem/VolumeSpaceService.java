@@ -17,7 +17,9 @@ public final class VolumeSpaceService {
             long unallocated = Math.clamp(store.getUnallocatedSpace(), 0, total);
             long available = Math.clamp(store.getUsableSpace(), 0, total);
             return Optional.of(new VolumeSpace(total, total - unallocated, available));
-        } catch (IOException | SecurityException exception) {
+        } catch (IOException | RuntimeException exception) {
+            // A server that does not report its free space is not an error the
+            // user can act on: the gauge shows nothing rather than a guess.
             return Optional.empty();
         }
     }
