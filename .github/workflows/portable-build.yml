@@ -105,7 +105,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" release-assets/* \
-            --verify-tag \
-            --title "Episort $version" \
-            --notes-file "docs/releases/$GITHUB_REF_NAME.md"
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
+          else
+            notes_file="docs/releases/$GITHUB_REF_NAME.md"
+            if [[ -f "$notes_file" ]]; then
+              notes_args=(--notes-file "$notes_file")
+            else
+              notes_args=(--generate-notes)
+            fi
+            gh release create "$GITHUB_REF_NAME" release-assets/* \
+              --verify-tag \
+              --title "Episort $version" \
+              "${notes_args[@]}"
+          fi
