@@ -30,13 +30,17 @@ public final class EmbeddedSftpServer implements AutoCloseable {
     }
 
     public static EmbeddedSftpServer start(Path root) throws IOException {
+        return start(root, new SftpSubsystemFactory());
+    }
+
+    static EmbeddedSftpServer start(Path root, SftpSubsystemFactory subsystemFactory) throws IOException {
         SshServer server = SshServer.setUpDefaultServer();
         server.setHost(HOST);
         server.setPort(0);
         server.setKeyPairProvider(new SimpleGeneratorHostKeyProvider());
         server.setPasswordAuthenticator(
                 (username, password, session) -> USER.equals(username) && PASSWORD.equals(password));
-        server.setSubsystemFactories(List.of(new SftpSubsystemFactory()));
+        server.setSubsystemFactories(List.of(subsystemFactory));
         server.setFileSystemFactory(new VirtualFileSystemFactory(root.toAbsolutePath().normalize()));
         server.start();
         return new EmbeddedSftpServer(server, root);
