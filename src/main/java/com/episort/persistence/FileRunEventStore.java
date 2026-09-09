@@ -1,5 +1,6 @@
 package com.episort.persistence;
 
+import com.episort.filesystem.PathSerialization;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -120,8 +121,8 @@ public final class FileRunEventStore implements RunEventStore {
                 .put("occurredAt", event.occurredAt().toString())
                 .put("type", event.type().name())
                 .put("status", event.status().name())
-                .put("workspace", event.workspace().map(Path::toString).orElse(""))
-                .put("subjectPath", event.subjectPath().map(Path::toString).orElse(""))
+                .put("workspace", event.workspace().map(PathSerialization::encode).orElse(""))
+                .put("subjectPath", event.subjectPath().map(PathSerialization::encode).orElse(""))
                 .put("summary", event.summary())
                 .putObject("metrics", event.metrics());
         return writer.build();
@@ -167,14 +168,11 @@ public final class FileRunEventStore implements RunEventStore {
         throw new IllegalArgumentException("Field '" + key + "' is not a string");
     }
 
+    /**
+     * A remote path only comes back while its server is connected; until
+     * then the field reads as absent rather than as a path on this disk.
+     */
     private static Optional<Path> optionalPath(String value) {
-        if (value == null || value.isBlank()) {
-            return Optional.empty();
-        }
-        try {
-            return Optional.of(Path.of(value));
-        } catch (RuntimeException exception) {
-            return Optional.empty();
-        }
+        return PathSerialization.decode(value);
     }
 }

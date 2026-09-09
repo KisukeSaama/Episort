@@ -64,7 +64,7 @@ class FileSettingsStoreTest {
 
     @Test
     void appSettingsRejectsNullOptional() {
-        assertThrows(NullPointerException.class, () -> new AppSettings((Optional<Path>) null));
+        assertThrows(NullPointerException.class, () -> new AppSettings(null, Optional.empty()));
     }
 
     @Test

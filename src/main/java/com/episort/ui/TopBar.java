@@ -1,5 +1,6 @@
 package com.episort.ui;
 
+import com.episort.filesystem.RemoteWorkspaceSessions;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
@@ -252,7 +253,7 @@ public final class TopBar {
             workspaceTooltip = null;
         }
         if (workspace.isPresent()) {
-            String path = workspace.orElseThrow().toAbsolutePath().normalize().toString();
+            String path = RemoteWorkspaceSessions.displayName(workspace.orElseThrow().toAbsolutePath().normalize());
             workspaceChipValue.setText(path);
             workspaceTooltip = new Tooltip(path);
             Tooltip.install(workspaceChip, workspaceTooltip);

@@ -550,6 +550,54 @@ section of Settings.
     move sideways and downwards every time the user changed screen.
   - The language combo sits alone on its row, so it carries `setAccessibleText`
     with the localized language label.
+  - **Where the workspace lives** is a combo at the top of the workspace
+    section: a folder on this computer, or a folder on a server over SFTP.
+    The server option only appears once the shell has handed the pane a
+    `RemoteWorkspaceSupport`; without it the section is the local one and
+    nothing else. Switching the combo swaps the form under it and the section
+    description, so the sentence above the fields always describes the choice
+    that is showing.
+  - The server form is three rows of captioned inputs (`.settings-field-caption`,
+    the 10-step caption in `text.faint`, over the field, the field itself in the shared `.text-field` /
+    `.password-field` / `.combo-box` surface): host, port and user; the
+    authentication method with either the password or the key file, its
+    `Parcourir…` button and its passphrase; then the folder on the server with
+    `Parcourir le serveur…`, which opens a session with the fields as typed and
+    lets the user pick from the server's own tree (§4.6b). The last row is
+    `Connecter` (the screen's one `.primary`), `Déconnecter` (`.ghost`), and a
+    `.dot` plus text that reports the real session state: `dot-good` and
+    "Connecté à sftp://user@host/folder" while the session is open, `dot-idle`
+    and "Non connecté à …" when it is not, `dot-error` and the shell's error
+    status when the last attempt failed. There is no "testing" state that is
+    not a real attempt.
+  - One server, remembered. The form always holds the recorded server, the
+    secret included, so reconnecting after a restart is one click; there is no
+    list of servers to manage. Disconnecting closes the session and keeps the
+    profile.
+  - Connecting runs off the JavaFX thread. While it runs, `Connecter`,
+    `Déconnecter` and `Parcourir le serveur…` are disabled and the status
+    reads "Connexion…"; nothing else on the screen is locked.
+
+### 4.6b Remote path picker
+
+- **Anatomy:** custom dialog (§4.7b): title, the server-qualified root as the
+  message line, a `.workspace-tree` of the same cells as the sidebar explorer,
+  then `Annuler` (`.ghost`) and `Choisir` (`.primary`).
+- **Classes:** `.custom-dialog`, `.remote-path-picker`, `.workspace-tree` and
+  its `.workspace-node-*` cells; nothing new.
+- **Rules:**
+  - Used wherever a native chooser would be used on a local workspace: choosing
+    the workspace root in Settings, and `Charger un dossier`, `Charger des
+    fichiers`, `Ajouter un dossier`, `Ajouter des fichiers` in the top bar.
+    The native dialogs are kept for local workspaces; they cannot show a server.
+  - Folder mode lists directories only and returns one; file mode lists
+    everything, marks supported media with the same square glyph as the
+    explorer, and returns the selected media files. `Choisir` is disabled until
+    the selection contains something the mode can return.
+  - Every listing goes through `WorkspaceDirectoryReader`, hence through the
+    workspace boundary: the dialog cannot show anything outside the root it was
+    opened on. Reads run off the JavaFX thread and show the explorer's
+    `Chargement…` / `Dossier inaccessible` rows meanwhile.
 
 ### 4.7 Buttons
 
@@ -1262,7 +1310,8 @@ has to set its start state in Java and play forward.
 | `src/main/java/com/episort/ui/LoadingOverlay.java`                | Blocking-work overlay (addendum)                    |
 | `src/main/java/com/episort/BuildInfo.java`                        | Version read from the Gradle build stamp            |
 | `src/main/java/com/episort/ui/history/HistoryScreen.java`         | History dashboard backed by `RunEventStore`         |
-| `src/main/java/com/episort/ui/settings/SettingsPane.java`         | Settings-section component                          |
+| `src/main/java/com/episort/ui/settings/SettingsPane.java`         | Settings-section component, local and server forms (§4.6) |
+| `src/main/java/com/episort/ui/RemotePathPicker.java`              | Folder and file chooser on a server (§4.6b)         |
 | `src/main/java/com/episort/ui/UiText.java`                        | FR/EN strings — extend, don't bypass                |
 | `src/main/java/com/episort/ui/ShellLayout.java`                   | Wide / medium / compact and what each gives up (§3.1) |
 | `src/test/java/com/episort/ui/ShellLayoutTest.java`               | Asserts every layout is reachable by a real window   |

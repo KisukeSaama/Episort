@@ -147,3 +147,13 @@ func TestSafeLinkNameRejectsLinkOutsideArchiveRoot(t *testing.T) {
 		t.Fatal("expected unsafe symbolic link to be rejected")
 	}
 }
+
+func TestProtocolCommandQuotesExecutableAndUrl(t *testing.T) {
+	command := protocolCommand(`C:\Users\Test User\AppData\Local\Episort\Episort.exe`)
+	if command != `"C:\Users\Test User\AppData\Local\Episort\Episort.exe" "%1"` {
+		t.Fatalf("unexpected command: %s", command)
+	}
+	if protocolIcon(`C:\E.exe`) != `"C:\E.exe",0` {
+		t.Fatalf("unexpected icon: %s", protocolIcon(`C:\E.exe`))
+	}
+}

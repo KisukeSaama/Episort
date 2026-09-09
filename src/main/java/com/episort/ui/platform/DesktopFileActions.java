@@ -1,5 +1,6 @@
 package com.episort.ui.platform;
 
+import com.episort.filesystem.RemoteWorkspaceSessions;
 import java.awt.Desktop;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -11,7 +12,15 @@ public final class DesktopFileActions {
     private DesktopFileActions() {
     }
 
+    /** False for a file on a server: no local file manager or player can show it. */
+    public static boolean isLocal(Path file) {
+        return !RemoteWorkspaceSessions.isRemote(file);
+    }
+
     public static void openParent(Path file) throws IOException {
+        if (!isLocal(file)) {
+            throw new UnsupportedOperationException("Remote files cannot be shown in the local file manager");
+        }
         Path safeFile = file.toAbsolutePath().normalize();
         Path parent = safeFile.getParent();
         if (parent == null) return;
@@ -28,6 +37,9 @@ public final class DesktopFileActions {
     }
 
     public static void openFile(Path file) throws IOException {
+        if (!isLocal(file)) {
+            throw new UnsupportedOperationException("Remote files cannot be opened with a local player");
+        }
         Path safeFile = file.toAbsolutePath().normalize();
         if (!canOpenFile()) return;
         Desktop.getDesktop().open(safeFile.toFile());
