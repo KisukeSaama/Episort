@@ -19,6 +19,7 @@ import java.util.OptionalInt;
  * @param movieTitle      English movie name, required for movies
  * @param movieYear       release year, optional but recommended for homonyms
  * @param exclusionReason {@code NONE} for executable items, otherwise why it is skipped
+ * @param kai             a Fankai kai, whose series folder is tagged {@code [Kaï]}
  */
 public record PlanSourceItem(
         Path sourcePath,
@@ -30,7 +31,8 @@ public record PlanSourceItem(
         Optional<String> episodeTitle,
         Optional<String> movieTitle,
         OptionalInt movieYear,
-        PlanExclusionReason exclusionReason) {
+        PlanExclusionReason exclusionReason,
+        boolean kai) {
 
     public PlanSourceItem {
         Objects.requireNonNull(sourcePath, "sourcePath");
@@ -81,6 +83,7 @@ public record PlanSourceItem(
         private Optional<String> movieTitle = Optional.empty();
         private OptionalInt movieYear = OptionalInt.empty();
         private PlanExclusionReason exclusionReason = PlanExclusionReason.NONE;
+        private boolean kai;
 
         private Builder(Path sourcePath, String extension, PlanMediaKind kind) {
             this.sourcePath = sourcePath;
@@ -147,6 +150,11 @@ public record PlanSourceItem(
             return this;
         }
 
+        public Builder kai(boolean kai) {
+            this.kai = kai;
+            return this;
+        }
+
         public PlanSourceItem build() {
             return new PlanSourceItem(
                     sourcePath,
@@ -158,7 +166,8 @@ public record PlanSourceItem(
                     episodeTitle,
                     movieTitle,
                     movieYear,
-                    exclusionReason);
+                    exclusionReason,
+                    kai);
         }
     }
 }

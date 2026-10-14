@@ -4,10 +4,10 @@ import java.net.URI;
 import java.util.Objects;
 import java.util.Optional;
 
-/** Public caller configuration used to reach TMDB through the Janus gateway. */
+/** Public caller configuration used to reach TMDB and Fankai through the Janus gateway. */
 public record JanusConfiguration(URI baseUri, String applicationId, String apiKey) {
     private static final URI DEFAULT_URL = URI.create("https://janus.kisukesaama.com");
-    private static final String DEFAULT_APPLICATION_ID = "be061c51-1947-4ec5-9ac7-86e917168e41";
+    private static final String DEFAULT_APPLICATION_ID = "b446464a-fcfe-46fb-928a-8275a9543811";
     public JanusConfiguration {
         baseUri = normalizeBaseUri(Objects.requireNonNull(baseUri, "baseUri"));
         applicationId = requireValue(applicationId, "applicationId");
@@ -30,6 +30,10 @@ public record JanusConfiguration(URI baseUri, String applicationId, String apiKe
 
     public URI tmdbBaseUri() {
         return baseUri.resolve("gateway/tmdb-v3/");
+    }
+
+    public URI fankaiBaseUri() {
+        return baseUri.resolve("gateway/fankai-metadata/");
     }
 
     private static URI normalizeBaseUri(URI value) {

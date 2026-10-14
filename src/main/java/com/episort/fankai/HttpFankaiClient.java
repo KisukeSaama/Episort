@@ -1,107 +1,58 @@
 package com.episort.fankai;
 
+import com.episort.config.JanusConfiguration;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import java.io.IOException;
-import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Public, unauthenticated metadata.fankai.fr API, the same one FanKarr reads:
- * {@code /series}, then {@code /series/{id}/seasons} and
- * {@code /seasons/{id}/episodes}. No key is involved, so it does not go
- * through Janus.
- *
- * <p>The catalog changes a few times a month and a library scan asks for it
- * once per group, so answers are kept in memory for an hour.
+ * The metadata.fankai.fr API, the same one FanKarr reads: {@code /series},
+ * then {@code /series/{id}/seasons} and {@code /seasons/{id}/episodes}. It
+ * needs no key, yet goes through Janus like TMDB under the
+ * {@code fankai-metadata} slug, which caches the answers, retries and pauses
+ * the API when it fails, so nothing of the kind is rebuilt here.
  */
 public final class HttpFankaiClient implements FankaiClient {
-    private static final URI DEFAULT_BASE_URI = URI.create("https://metadata.fankai.fr/");
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(20);
-    private static final Duration CACHE_TTL = Duration.ofHours(1);
-    /**
-     * A scan asks once per group. When the catalog is down, the first failure
-     * is replayed for a while instead of every group waiting on its own
-     * timeout.
-     */
-    private static final Duration FAILURE_BACKOFF = Duration.ofMinutes(5);
+    /** Janus waits 30 s upstream; the client gives it room to answer. */
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(40);
 
     private final HttpClient httpClient;
-    private final URI baseUri;
-    private final Clock clock;
-    private final Object seriesLock = new Object();
-    private Cached<List<FankaiSeries>> seriesCache;
-    private FankaiException lastSeriesFailure;
-    private Instant retrySeriesAfter = Instant.MIN;
-    private final Map<Integer, Cached<List<FankaiEpisode>>> episodesCache = new ConcurrentHashMap<>();
 
     public HttpFankaiClient() {
-        this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(), DEFAULT_BASE_URI, Clock.systemUTC());
+        this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build());
     }
 
-    HttpFankaiClient(HttpClient httpClient, URI baseUri, Clock clock) {
+    HttpFankaiClient(HttpClient httpClient) {
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
-        String value = Objects.requireNonNull(baseUri, "baseUri").toString();
-        this.baseUri = URI.create(value.endsWith("/") ? value : value + "/");
-        this.clock = Objects.requireNonNull(clock, "clock");
     }
 
     @Override
-    public List<FankaiSeries> series() {
-        synchronized (seriesLock) {
-            Instant now = clock.instant();
-            if (seriesCache != null && !seriesCache.expired(now)) return seriesCache.value();
-            if (lastSeriesFailure != null && now.isBefore(retrySeriesAfter)) {
-                throw new FankaiException(lastSeriesFailure.getMessage(), lastSeriesFailure);
-            }
-            try {
-                seriesCache = new Cached<>(loadSeries(), now.plus(CACHE_TTL));
-                lastSeriesFailure = null;
-                return seriesCache.value();
-            } catch (FankaiException failure) {
-                lastSeriesFailure = failure;
-                retrySeriesAfter = now.plus(FAILURE_BACKOFF);
-                throw failure;
-            }
-        }
-    }
-
-    @Override
-    public List<FankaiEpisode> episodes(int seriesId) {
-        return episodesCache.compute(seriesId, (id, cached) ->
-                cached == null || cached.expired(clock.instant())
-                        ? new Cached<>(loadEpisodes(id), clock.instant().plus(CACHE_TTL))
-                        : cached).value();
-    }
-
-    private List<FankaiSeries> loadSeries() {
+    public List<FankaiSeries> series(JanusConfiguration credentials) {
         List<FankaiSeries> series = new ArrayList<>();
-        for (JsonElement element : list(get("series"), "series")) {
+        for (JsonElement element : list(get("series", credentials), "series")) {
             if (!element.isJsonObject()) continue;
             JsonObject json = element.getAsJsonObject();
             Optional<Integer> id = integer(json, "id");
             Optional<String> title = text(json, "title");
             if (id.isEmpty() || title.isEmpty()) continue;
+            // original_title names the source show ("BLACK LAGOON"), not the
+            // kai: as an alias it ties the kai with TMDB's own series.
             List<String> alternates = new ArrayList<>();
             text(json, "title_for_plex").ifPresent(alternates::add);
             text(json, "show_title").ifPresent(alternates::add);
-            text(json, "original_title").ifPresent(alternates::add);
             series.add(new FankaiSeries(
                     id.get(),
                     title.get(),
@@ -116,15 +67,16 @@ public final class HttpFankaiClient implements FankaiClient {
         return List.copyOf(series);
     }
 
-    private List<FankaiEpisode> loadEpisodes(int seriesId) {
+    @Override
+    public List<FankaiEpisode> episodes(int seriesId, JanusConfiguration credentials) {
         List<FankaiEpisode> episodes = new ArrayList<>();
-        for (JsonElement element : list(get("series/" + seriesId + "/seasons"), "seasons")) {
+        for (JsonElement element : list(get("series/" + seriesId + "/seasons", credentials), "seasons")) {
             if (!element.isJsonObject()) continue;
             JsonObject season = element.getAsJsonObject();
             Optional<Integer> seasonId = integer(season, "id");
             Optional<Integer> seasonNumber = integer(season, "season_number");
             if (seasonId.isEmpty() || seasonNumber.isEmpty()) continue;
-            for (JsonElement episodeElement : list(get("seasons/" + seasonId.get() + "/episodes"), "episodes")) {
+            for (JsonElement episodeElement : list(get("seasons/" + seasonId.get() + "/episodes", credentials), "episodes")) {
                 if (!episodeElement.isJsonObject()) continue;
                 JsonObject episode = episodeElement.getAsJsonObject();
                 Optional<Integer> id = integer(episode, "id");
@@ -139,10 +91,12 @@ public final class HttpFankaiClient implements FankaiClient {
         return List.copyOf(episodes);
     }
 
-    private JsonElement get(String path) {
-        HttpRequest request = HttpRequest.newBuilder(baseUri.resolve(path))
+    private JsonElement get(String path, JanusConfiguration credentials) {
+        HttpRequest request = HttpRequest.newBuilder(credentials.fankaiBaseUri().resolve(path))
                 .timeout(REQUEST_TIMEOUT)
                 .header("Accept", "application/json")
+                .header("X-Janus-Application-Id", credentials.applicationId())
+                .header("X-Janus-Api-Key", credentials.apiKey())
                 .GET()
                 .build();
         HttpResponse<String> response;
@@ -155,7 +109,9 @@ public final class HttpFankaiClient implements FankaiClient {
             throw new FankaiException("Fankai request interrupted on /" + path + ".", interrupted);
         }
         if (response.statusCode() != 200) {
-            throw new FankaiException("Fankai catalog answered HTTP " + response.statusCode() + " on /" + path + ".");
+            String correlationId = response.headers().firstValue("X-Janus-Correlation-Id").orElse("none");
+            throw new FankaiException("Fankai catalog answered HTTP " + response.statusCode() + " on /" + path
+                    + " (janusCorrelationId=" + correlationId + ").");
         }
         try {
             return JsonParser.parseString(response.body());
@@ -197,9 +153,4 @@ public final class HttpFankaiClient implements FankaiClient {
         return date.matches("\\d{4}.*") ? Optional.of(Integer.parseInt(date.substring(0, 4))) : Optional.empty();
     }
 
-    private record Cached<T>(T value, Instant expiresAt) {
-        boolean expired(Instant now) {
-            return !now.isBefore(expiresAt);
-        }
-    }
 }

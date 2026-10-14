@@ -1,5 +1,6 @@
 package com.episort.ui.scan;
 
+import com.episort.fankai.FankaiTmdbClient;
 import com.episort.filename.SeasonEpisodePattern;
 import com.episort.filename.FilenameParser;
 import com.episort.planning.PlanExclusionReason;
@@ -46,6 +47,7 @@ public final class ScanPlanMapper {
                 .seasonNumber(seasonNumber(row))
                 .episodeNumber(episodeNumber(row))
                 .episodeTitle(token(row, ScanInputRole.TITLE))
+                .kai(row.tmdbCandidate().map(candidate -> FankaiTmdbClient.isFankai(candidate.identity())).orElse(false))
                 .build();
     }
 

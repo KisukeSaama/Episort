@@ -103,12 +103,30 @@ public final class WindowsPathSafety {
         Objects.requireNonNull(baseName, "baseName");
         Objects.requireNonNull(extension, "extension");
 
-        List<String> folders = folderComponents.stream().map(WindowsPathSafety::sanitizeComponent).toList();
+        return fitSanitizedFolders(
+                root,
+                folderComponents.stream().map(WindowsPathSafety::sanitizeComponent).toList(),
+                baseName,
+                extension);
+    }
+
+    /**
+     * Same as {@link #fitWithinMaxPath}, for folder names the caller already
+     * passed through {@link #sanitizeComponent} and then tagged with a fixed,
+     * legal suffix that must keep its accents (a kai's {@code [Kaï]}).
+     */
+    static Path fitSanitizedFolders(
+            Path root, List<String> safeFolders, String baseName, String extension) {
+        Objects.requireNonNull(root, "root");
+        Objects.requireNonNull(safeFolders, "safeFolders");
+        Objects.requireNonNull(baseName, "baseName");
+        Objects.requireNonNull(extension, "extension");
+
         String base = sanitizeComponent(baseName);
         String safeExtension = sanitizeExtension(extension);
 
         Path result = root;
-        for (String folder : folders) {
+        for (String folder : safeFolders) {
             result = result.resolve(folder);
         }
         return result.resolve(base + safeExtension);

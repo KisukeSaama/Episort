@@ -16,9 +16,11 @@ import com.episort.tmdb.TmdbMovieDetails;
 import com.episort.tmdb.TmdbSearchCriteria;
 import com.episort.tmdb.TmdbSearchResult;
 import com.episort.tmdb.TmdbSeriesDetails;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -41,6 +43,7 @@ public final class FankaiTmdbClient implements TmdbClient {
     static final String SERIES_ID_PREFIX = "fankai-";
     static final String EPISODE_ID_PREFIX = "fankai-ep-";
     private static final String SOURCE_LABEL = "Fankai";
+    private static final String KAI_SUFFIX = "Kaï";
     /**
      * Above the scorer's suggestion floor: kai titles share their suffix
      * (Henshū, Kaï, Yabai…), which alone lifts an unrelated kai to about 0.70
@@ -63,32 +66,48 @@ public final class FankaiTmdbClient implements TmdbClient {
         return identity != null && identity.id().startsWith(SERIES_ID_PREFIX);
     }
 
+    /**
+     * The series title as match lists show it: a kai ends with "Kaï" so it
+     * reads apart from the show it was cut from, unless its own title already
+     * says so ("Black Clover Kaï", "Dragon Ball Kai"). File names keep the
+     * Fankai title as is.
+     */
+    public static String listingTitle(TmdbIdentity identity) {
+        String title = identity.displayName();
+        if (!isFankai(identity)) return title;
+        String folded = Normalizer.normalize(title, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT)
+                .strip();
+        return folded.equals("kai") || folded.endsWith(" kai") ? title : title + " " + KAI_SUFFIX;
+    }
+
     @Override
     public TmdbSearchResult search(String query, JanusConfiguration credentials) {
-        return withKai(delegate.search(query, credentials), TmdbSearchCriteria.title(query));
+        return withKai(delegate.search(query, credentials), TmdbSearchCriteria.title(query), credentials);
     }
 
     @Override
     public TmdbSearchResult search(TmdbSearchCriteria criteria, JanusConfiguration credentials) {
-        return withKai(delegate.search(criteria, credentials), criteria);
+        return withKai(delegate.search(criteria, credentials), criteria, credentials);
     }
 
     @Override
     public TmdbSeriesDetails seriesDetails(TmdbIdentity identity, JanusConfiguration credentials) {
-        return isFankai(identity) ? kaiDetails(identity) : delegate.seriesDetails(identity, credentials);
+        return isFankai(identity) ? kaiDetails(identity, credentials) : delegate.seriesDetails(identity, credentials);
     }
 
     /** A kai has a single order, Fankai's own; any requested order loads it. */
     @Override
     public TmdbSeriesDetails seriesDetails(
             TmdbIdentity identity, TmdbEpisodeOrder order, JanusConfiguration credentials) {
-        return isFankai(identity) ? kaiDetails(identity) : delegate.seriesDetails(identity, order, credentials);
+        return isFankai(identity) ? kaiDetails(identity, credentials) : delegate.seriesDetails(identity, order, credentials);
     }
 
     @Override
     public TmdbSeriesDetails seriesDetails(
             TmdbIdentity identity, TmdbEpisodeGroup group, JanusConfiguration credentials) {
-        return isFankai(identity) ? kaiDetails(identity) : delegate.seriesDetails(identity, group, credentials);
+        return isFankai(identity) ? kaiDetails(identity, credentials) : delegate.seriesDetails(identity, group, credentials);
     }
 
     @Override
@@ -96,11 +115,12 @@ public final class FankaiTmdbClient implements TmdbClient {
         return delegate.movieDetails(identity, credentials);
     }
 
-    private TmdbSearchResult withKai(TmdbSearchResult tmdb, TmdbSearchCriteria criteria) {
+    private TmdbSearchResult withKai(
+            TmdbSearchResult tmdb, TmdbSearchCriteria criteria, JanusConfiguration credentials) {
         if (criteria.mediaType().filter(TmdbMediaType.MOVIE::equals).isPresent()) return tmdb;
         List<TmdbCandidate> kai;
         try {
-            kai = matchingKai(criteria);
+            kai = matchingKai(criteria, credentials);
         } catch (FankaiException unreachable) {
             LOG.log(System.Logger.Level.WARNING, "Fankai catalog skipped: " + unreachable.getMessage());
             return tmdb;
@@ -111,16 +131,16 @@ public final class FankaiTmdbClient implements TmdbClient {
         return new TmdbSearchResult(series, tmdb.movieCandidates());
     }
 
-    private List<TmdbCandidate> matchingKai(TmdbSearchCriteria criteria) {
+    private List<TmdbCandidate> matchingKai(TmdbSearchCriteria criteria, JanusConfiguration credentials) {
         if (criteria.tmdbId().isPresent()) {
             String tmdbId = criteria.tmdbId().get();
-            return fankai.series().stream()
+            return fankai.series(credentials).stream()
                     .filter(series -> series.tmdbId().filter(tmdbId::equals).isPresent())
                     .map(FankaiTmdbClient::candidate)
                     .toList();
         }
         String query = criteria.query() + criteria.year().map(year -> " " + year).orElse("");
-        return fankai.series().stream()
+        return fankai.series(credentials).stream()
                 .map(FankaiTmdbClient::candidate)
                 .map(candidate -> scorer.score(query, InventoryGroupType.LIKELY_SERIES, candidate))
                 .filter(scored -> scored.score() >= KAI_THRESHOLD)
@@ -148,11 +168,11 @@ public final class FankaiTmdbClient implements TmdbClient {
         return new TmdbIdentity(SERIES_ID_PREFIX + series.id(), TmdbMediaType.SERIES, series.title());
     }
 
-    private TmdbSeriesDetails kaiDetails(TmdbIdentity identity) {
+    private TmdbSeriesDetails kaiDetails(TmdbIdentity identity, JanusConfiguration credentials) {
         int seriesId = seriesId(identity);
         List<FankaiEpisode> episodes;
         try {
-            episodes = fankai.episodes(seriesId);
+            episodes = fankai.episodes(seriesId, credentials);
         } catch (FankaiException failure) {
             throw TmdbException.recoverable(
                     "FANKAI_UNAVAILABLE",

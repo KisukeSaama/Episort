@@ -13,6 +13,7 @@ import java.util.Optional;
  * <pre>
  * Series Name/Season 02/Series Name - S02E05 - Episode Title.mkv
  * Series Name/Specials/Series Name - S00E03 - Special Title.mkv
+ * Kai Title [Kaï]/Season 02/Kai Title - S02E08 - Episode Title.mkv
  * Movie Name (1999).mkv
  * </pre>
  *
@@ -22,6 +23,11 @@ import java.util.Optional;
  */
 public final class PlexDestinationNamer {
     static final String SPECIALS_FOLDER = "Specials";
+    /**
+     * Tags the series folder of a Fankai kai. It keeps its diaeresis although
+     * every title loses its accents: it is a fixed, legal suffix, not a title.
+     */
+    static final String KAI_FOLDER_TAG = "[Kaï]";
     private static final int SPECIALS_SEASON = 0;
 
     /**
@@ -46,9 +52,9 @@ public final class PlexDestinationNamer {
         String series = item.seriesTitle().orElseThrow().trim();
         int season = item.seasonNumber().orElseThrow();
         int episode = item.episodeNumber().orElseThrow();
-        return WindowsPathSafety.fitWithinMaxPath(
+        return WindowsPathSafety.fitSanitizedFolders(
                 workspaceRoot,
-                List.of(series, seasonFolder(season)),
+                List.of(seriesFolder(series, item.kai()), seasonFolder(season)),
                 episodeBaseName(series, season, episode, item.episodeTitle()),
                 item.extension());
     }
@@ -61,9 +67,9 @@ public final class PlexDestinationNamer {
         String series = item.seriesTitle().orElseThrow().trim();
         int season = item.seasonNumber().orElse(SPECIALS_SEASON);
         int episode = item.episodeNumber().orElseThrow();
-        return WindowsPathSafety.fitWithinMaxPath(
+        return WindowsPathSafety.fitSanitizedFolders(
                 workspaceRoot,
-                List.of(series, SPECIALS_FOLDER),
+                List.of(seriesFolder(series, item.kai()), SPECIALS_FOLDER),
                 episodeBaseName(series, season, episode, item.episodeTitle()),
                 item.extension());
     }
@@ -81,6 +87,11 @@ public final class PlexDestinationNamer {
     static String movieIdentity(PlanSourceItem item) {
         String title = item.movieTitle().orElseThrow().trim();
         return item.movieYear().isPresent() ? title + " (" + item.movieYear().getAsInt() + ")" : title;
+    }
+
+    static String seriesFolder(String series, boolean kai) {
+        String folder = WindowsPathSafety.sanitizeComponent(series);
+        return kai ? folder + " " + KAI_FOLDER_TAG : folder;
     }
 
     static String seasonFolder(int season) {

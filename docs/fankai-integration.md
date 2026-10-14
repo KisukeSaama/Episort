@@ -8,23 +8,35 @@ same way FanKarr reads them, so the plan names the files the way that agent
 expects:
 
 ```text
-Naruto Shippuden Yabai/
+Naruto Shippuden Yabai [Kaï]/
   Season 02/
     Naruto Shippuden Yabai - S02E08 - Rituel.mkv
 ```
 
+The series folder of a kai is tagged `[Kaï]` so it stands apart from the show
+it was cut from; the files keep the Fankai title. Like every generated path,
+the title loses its accents (`Black Lagoon Henshu [Kaï]`); the tag alone keeps
+its diaeresis. A later scan reads that folder back as the kai title, since the
+TMDB query drops bracketed tags. Match lists show the title with a trailing
+"Kaï" (`Naruto Shippuden Yabai Kaï`), unless it already ends that way
+(`Black Clover Kaï`).
+
 ## Source
 
-`HttpFankaiClient` reads the public, unauthenticated API at
-`https://metadata.fankai.fr`:
+`HttpFankaiClient` reads the public API at `https://metadata.fankai.fr`:
 
 - `/series`: the catalog (title, alternate titles, TMDB id, poster, plot);
 - `/series/{id}/seasons`, then `/seasons/{id}/episodes`: a kai's episodes.
 
-No key is involved, so these requests do not go through Janus. Answers are kept
-in memory for an hour. When the catalog cannot be reached, the failure is
-replayed for five minutes instead of every scanned group waiting on its own
-timeout.
+The API needs no key, yet it is reached through Janus like TMDB, at
+`$JANUS_URL/gateway/fankai-metadata/…` with the Episort caller headers
+(`JanusConfiguration.fankaiBaseUri()`). Janus caches the answers for an hour,
+retries, and pauses the API for every caller when it fails, so the client keeps
+no cache or backoff of its own. A refusal reports Janus's correlation id.
+
+In Janus, the `fankai-metadata` API (authentication `NONE`) is granted to the
+Episort application for `GET` and `HEAD` only. Should that grant go, the
+gateway answers 403 and searches fall back to TMDB alone.
 
 ## Matching
 
@@ -35,6 +47,10 @@ timeout.
   match automatically; a plain show title still resolves to TMDB, with its
   kai offered as alternatives in the manual search;
 - a search by TMDB id also returns the kai built on that series;
+- a kai's alternate titles are its Plex and show titles. Its original title
+  names the source show ("BLACK LAGOON") and is left out: as an alias it tied
+  the kai with TMDB's series, and a plain "Black Lagoon" folder lost its
+  automatic match;
 - a kai identity has a `fankai-{id}` id, never numeric, so no TMDB page link is
   offered for it. Loading it returns Fankai's episodes as a single order.
 

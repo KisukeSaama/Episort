@@ -46,13 +46,13 @@ class FankaiBatchMatchTest {
         episodes.add(new FankaiEpisode(8, 2, 8, "Rituel"));
         FankaiClient fankai = new FankaiClient() {
             @Override
-            public List<FankaiSeries> series() {
+            public List<FankaiSeries> series(JanusConfiguration credentials) {
                 return List.of(new FankaiSeries(12, "Naruto Shippuden Yabai", List.of(), Optional.of("31910"),
                         Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
             }
 
             @Override
-            public List<FankaiEpisode> episodes(int seriesId) {
+            public List<FankaiEpisode> episodes(int seriesId, JanusConfiguration credentials) {
                 return episodes;
             }
         };

@@ -1,5 +1,6 @@
 package com.episort.ui.scan;
 
+import com.episort.fankai.FankaiTmdbClient;
 import com.episort.tmdb.TmdbCandidate;
 import com.episort.tmdb.TmdbEpisode;
 import com.episort.tmdb.TmdbEpisodeGroup;
@@ -605,7 +606,7 @@ public final class RowDetailPanel {
             return;
         }
         TmdbCandidate value = candidate.orElseThrow();
-        tmdbMatchTitle.setText(value.identity().displayName());
+        tmdbMatchTitle.setText(FankaiTmdbClient.listingTitle(value.identity()));
         installTooltip(tmdbMatchTitle, tmdbMatchTitle.getText());
         tmdbMatchMeta.setText(ScanRowText.mediaType(value.identity().mediaType(), currentLanguage)
                 + value.year().map(year -> " • " + year).orElse(""));

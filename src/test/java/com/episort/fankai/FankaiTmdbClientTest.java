@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 class FankaiTmdbClientTest {
     private static final JanusConfiguration CREDENTIALS = new JanusConfiguration("key", Optional.empty());
     private static final FankaiSeries BLACK_LAGOON = new FankaiSeries(
-            1, "Black Lagoon Henshū", List.of("BLACK LAGOON"), Optional.of("12598"),
+            1, "Black Lagoon Henshū", List.of("Black Lagoon Henshu"), Optional.of("12598"),
             Optional.of("https://metadata.fankai.fr/series/1/image/poster"), Optional.of("Rock rejoint les pirates."),
             Optional.of(2019), Optional.of("Japon"));
     private static final FankaiSeries LASTMAN = new FankaiSeries(
@@ -60,8 +60,9 @@ class FankaiTmdbClientTest {
         assertEquals("Black Lagoon Henshū", kai.identity().displayName());
         assertEquals(Optional.of("Fankai"), kai.network());
         assertEquals(Optional.of("Rock rejoint les pirates."), kai.frenchOverview());
-        assertEquals(List.of("BLACK LAGOON"), kai.alternateTitles());
+        assertEquals(List.of("Black Lagoon Henshu"), kai.alternateTitles());
         assertEquals(Optional.empty(), TmdbWebUrl.forIdentity(kai.identity()));
+        assertSame(CREDENTIALS, fankai.lastCredentials);
     }
 
     @Test
@@ -82,6 +83,16 @@ class FankaiTmdbClientTest {
         TmdbSearchResult result = client.search("Black Lagoon", CREDENTIALS);
 
         assertSame(tmdb.searchResult, result);
+    }
+
+    @Test
+    void listingTitlesEndWithKaiExactlyOnce() {
+        assertEquals("Naruto Shippuden Yabai Kaï", FankaiTmdbClient.listingTitle(FankaiTmdbClient.identity(YABAI)));
+        assertEquals("Black Clover Kaï", FankaiTmdbClient.listingTitle(
+                new TmdbIdentity("fankai-90", TmdbMediaType.SERIES, "Black Clover Kaï")));
+        assertEquals("Dragon Ball Kai", FankaiTmdbClient.listingTitle(
+                new TmdbIdentity("fankai-7", TmdbMediaType.SERIES, "Dragon Ball Kai")));
+        assertEquals("Black Lagoon", FankaiTmdbClient.listingTitle(TMDB_BLACK_LAGOON.identity()));
     }
 
     @Test
@@ -136,6 +147,7 @@ class FankaiTmdbClientTest {
                 new TmdbEpisode("fankai-ep-2", 1, 2, Optional.of(2), "Le réceptacle", false),
                 new TmdbEpisode("fankai-ep-8", 2, 8, Optional.of(3), "Rituel", false)), details.airedEpisodes());
         assertEquals(12, fankai.lastEpisodesSeriesId);
+        assertSame(CREDENTIALS, fankai.lastCredentials);
         assertEquals(0, tmdb.detailCalls);
     }
 
@@ -195,18 +207,21 @@ class FankaiTmdbClientTest {
         FankaiException failure;
         int seriesCalls;
         int lastEpisodesSeriesId = -1;
+        JanusConfiguration lastCredentials;
 
         @Override
-        public List<FankaiSeries> series() {
+        public List<FankaiSeries> series(JanusConfiguration credentials) {
             seriesCalls++;
+            lastCredentials = credentials;
             if (failure != null) throw failure;
             return series;
         }
 
         @Override
-        public List<FankaiEpisode> episodes(int seriesId) {
+        public List<FankaiEpisode> episodes(int seriesId, JanusConfiguration credentials) {
             if (failure != null) throw failure;
             lastEpisodesSeriesId = seriesId;
+            lastCredentials = credentials;
             return episodes;
         }
     }

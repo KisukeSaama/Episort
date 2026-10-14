@@ -1,6 +1,7 @@
 package com.episort.ui.scan;
 
 import com.episort.config.JanusConfiguration;
+import com.episort.fankai.FankaiTmdbClient;
 import com.episort.scanner.InventoryGroupType;
 import com.episort.tmdb.TmdbCandidate;
 import com.episort.tmdb.TmdbCandidateScorer;
@@ -360,7 +361,7 @@ final class TmdbManualMatchDialog {
                 poster.setVisible(true);
             });
 
-            Label title = new Label(item.identity().displayName());
+            Label title = new Label(FankaiTmdbClient.listingTitle(item.identity()));
             title.getStyleClass().add("tmdb-match-title");
             Label meta = new Label(ScanRowText.mediaType(item.identity().mediaType(), language)
                     + item.year().map(year -> " • " + year).orElse(""));

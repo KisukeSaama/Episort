@@ -7,6 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.episort.planning.PlanExclusionReason;
 import com.episort.planning.PlanMediaKind;
 import com.episort.planning.PlanSourceItem;
+import com.episort.tmdb.OptionalDoubleScore;
+import com.episort.tmdb.TmdbCandidate;
+import com.episort.tmdb.TmdbIdentity;
+import com.episort.tmdb.TmdbMediaType;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
@@ -30,6 +34,24 @@ class ScanPlanMapperTest {
         assertEquals(Optional.of("Out of Gas"), item.episodeTitle());
         assertEquals(PlanExclusionReason.NONE, item.exclusionReason());
         assertTrue(item.hasCompleteIdentity());
+    }
+
+    @Test
+    void aFankaiMatchIsPlannedAsAKai() {
+        ScanRow row = row("yabai.08.mkv", ScanMediaType.SERIES, ScanRowStatus.TMDB);
+        row.setInputParse(Optional.of(episodeParse("Naruto Shippuden Yabai", "02", "08", "Rituel")));
+        row.setTmdbCandidate(Optional.of(seriesCandidate("fankai-12", "Naruto Shippuden Yabai")));
+
+        assertTrue(ScanPlanMapper.toPlanItem(row).kai());
+    }
+
+    @Test
+    void aTmdbMatchIsNotAKai() {
+        ScanRow row = row("naruto.s01e01.mkv", ScanMediaType.SERIES, ScanRowStatus.TMDB);
+        row.setInputParse(Optional.of(episodeParse("Naruto Shippuden", "01", "01", "Homecoming")));
+        row.setTmdbCandidate(Optional.of(seriesCandidate("31910", "Naruto Shippuden")));
+
+        assertFalse(ScanPlanMapper.toPlanItem(row).kai());
     }
 
     @Test
@@ -128,6 +150,11 @@ class ScanPlanMapperTest {
 
         assertEquals(List.of(Path.of("C:/Media/a.mkv"), Path.of("C:/Media/b.mkv")),
                 items.stream().map(PlanSourceItem::sourcePath).toList());
+    }
+
+    private static TmdbCandidate seriesCandidate(String id, String title) {
+        return new TmdbCandidate(new TmdbIdentity(id, TmdbMediaType.SERIES, title), Optional.empty(),
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), OptionalDoubleScore.empty(), 0);
     }
 
     private static ScanRow row(String filename, ScanMediaType type, ScanRowStatus status) {

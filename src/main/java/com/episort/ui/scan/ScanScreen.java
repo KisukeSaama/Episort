@@ -1,5 +1,6 @@
 package com.episort.ui.scan;
 
+import com.episort.fankai.FankaiTmdbClient;
 import com.episort.tmdb.TmdbQueryCleaner;
 import com.episort.filename.SeasonEpisodePattern;
 import com.episort.config.JanusConfiguration;
@@ -610,7 +611,7 @@ public final class ScanScreen {
     }
 
     private static String batchCandidateLabel(TmdbBatchMatchResult.GroupMatch match) {
-        StringBuilder label = new StringBuilder(match.identity().displayName());
+        StringBuilder label = new StringBuilder(FankaiTmdbClient.listingTitle(match.identity()));
         match.movie().flatMap(TmdbMovieDetails::releaseYear)
                 .ifPresent(year -> label.append(" (").append(year).append(")"));
         label.append(" [TMDB ").append(match.identity().id()).append("]");
@@ -1136,7 +1137,7 @@ public final class ScanScreen {
 
     private static String candidateLabel(TmdbCandidate candidate) {
         StringBuilder label = new StringBuilder();
-        label.append(candidate.identity().displayName());
+        label.append(FankaiTmdbClient.listingTitle(candidate.identity()));
         candidate.year().ifPresent(year -> label.append(" (").append(year).append(")"));
         label.append(" [TMDB ").append(candidate.identity().id()).append("]");
         candidate.network().ifPresent(network -> label.append(" · ").append(network));

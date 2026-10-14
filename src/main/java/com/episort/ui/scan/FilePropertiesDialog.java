@@ -1,5 +1,6 @@
 package com.episort.ui.scan;
 
+import com.episort.fankai.FankaiTmdbClient;
 import com.episort.tmdb.TmdbCandidate;
 import com.episort.ui.AppLanguage;
 import com.episort.ui.SmoothScroll;
@@ -187,7 +188,7 @@ final class FilePropertiesDialog {
         return List.of(
                 textRow(UiText.filePropertiesStatus(language), tmdbStatus()),
                 textRow(UiText.filePropertiesTmdbTitle(language),
-                        candidate.map(c -> c.identity().displayName()).or(() -> row.tmdbMatch()).orElse(UiText.EMPTY)),
+                        candidate.map(c -> FankaiTmdbClient.listingTitle(c.identity())).or(() -> row.tmdbMatch()).orElse(UiText.EMPTY)),
                 textRow(UiText.filePropertiesTmdbType(language),
                         candidate.map(c -> c.identity().mediaType().name()).orElse(UiText.EMPTY)),
                 textRow(UiText.filePropertiesYear(language),

@@ -29,6 +29,34 @@ class PlexDestinationNamerTest {
     }
 
     @Test
+    void aKaiFolderIsTaggedKaiWhileItsFilesKeepTheFankaiTitle() {
+        PlanSourceItem item = PlanSourceItem.forSource(
+                        Path.of("C:/Media/Black Lagoon Henshu 01.mkv"), ".mkv", PlanMediaKind.SERIES_EPISODE)
+                .series("Black Lagoon Henshū", 1, 1)
+                .episodeTitle("Le Black Lagoon")
+                .kai(true)
+                .build();
+
+        assertEquals(
+                Path.of("C:/Media/Black Lagoon Henshu [Kaï]/Season 01/Black Lagoon Henshu - S01E01 - Le Black Lagoon.mkv"),
+                namer.destinationFor(WORKSPACE, item));
+    }
+
+    @Test
+    void kaiSpecialsLandInTheTaggedFolder() {
+        PlanSourceItem item = PlanSourceItem.forSource(
+                        Path.of("C:/Media/yabai-film.mkv"), ".mkv", PlanMediaKind.SPECIAL)
+                .series("Naruto Shippuden Yabai", 0, 1)
+                .episodeTitle("Film")
+                .kai(true)
+                .build();
+
+        assertEquals(
+                Path.of("C:/Media/Naruto Shippuden Yabai [Kaï]/Specials/Naruto Shippuden Yabai - S00E01 - Film.mkv"),
+                namer.destinationFor(WORKSPACE, item));
+    }
+
+    @Test
     void seasonNumbersAreZeroPaddedToTwoDigitsAndKeepThreeDigitEpisodes() {
         PlanSourceItem item = PlanSourceItem.forSource(
                         Path.of("C:/Media/one-piece-1000.mkv"), ".mkv", PlanMediaKind.SERIES_EPISODE)
