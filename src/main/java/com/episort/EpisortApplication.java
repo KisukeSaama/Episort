@@ -5,6 +5,8 @@ import com.episort.config.FileSettingsStore;
 import com.episort.config.JanusConfiguration;
 import com.episort.config.WindowPlacement;
 import com.episort.config.WorkspaceLocation.RemoteWorkspace;
+import com.episort.fankai.FankaiTmdbClient;
+import com.episort.fankai.HttpFankaiClient;
 import com.episort.filesystem.RemoteWorkspaceSessions;
 import com.episort.persistence.FileExecutionJournal;
 import com.episort.persistence.FileRunEventStore;
@@ -111,7 +113,7 @@ public class EpisortApplication extends Application {
     private final AtomicReference<ScanCancellation> activeScan =
             new AtomicReference<>();
 
-    private final TmdbClient tmdbClient = new HttpTmdbClient();
+    private final TmdbClient tmdbClient = new FankaiTmdbClient(new HttpTmdbClient(), new HttpFankaiClient());
     private final TmdbBatchMatchService tmdbBatchMatchService = new TmdbBatchMatchService(tmdbClient);
     private Supplier<Optional<JanusConfiguration>> tmdbCredentialsSupplier = Optional::empty;
 

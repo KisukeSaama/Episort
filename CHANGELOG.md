@@ -6,6 +6,14 @@ All notable changes to Episort are documented in this file.
 
 ### Added
 
+- Fankai kai (Kaï, Henshū, Yabai, Fan-Cut…) are recognised next to TMDB
+  series, from the same metadata.fankai.fr catalog FanKarr reads. A folder of
+  kai release files resolves to the kai and is planned as
+  `Kai Title/Season XX/Kai Title - SXXEXX - Title.ext` with Fankai's own
+  seasons, episode numbers and titles, which is what the Plex Fankai agent
+  matches. A plain show title still resolves to TMDB, its kai offered as
+  alternatives in the manual search. When the catalog is unreachable, TMDB
+  results are used alone.
 - The workspace can live on the server that runs Plex. Settings offers "A
   folder on a server (SFTP)": host, port, user, a password or a private key,
   and the folder picked from the server's own tree. Scanning, planning and
